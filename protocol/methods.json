@@ -1,0 +1,41 @@
+{
+  "protocol": "0.2",
+  "methods": [
+    "hello",
+    "session.ping",
+    "host.capabilities",
+    "world.list",
+    "world.create",
+    "world.join",
+    "world.snapshot",
+    "world.leave",
+    "lease.renew",
+    "lease.release",
+    "world.destroy",
+    "scene.replace",
+    "scene.patch",
+    "data.replace",
+    "window.configure",
+    "action.result"
+  ],
+  "components": [
+    "stack",
+    "row",
+    "text",
+    "metric",
+    "progress",
+    "badge",
+    "button",
+    "input",
+    "key_value",
+    "divider"
+  ],
+  "limits": {
+    "max_worlds": 16,
+    "max_nodes": 256,
+    "max_depth": 16,
+    "max_message_bytes": 262144,
+    "lease_ms": 15000,
+    "max_session_messages_per_second": 120
+  }
+}

@@ -1,0 +1,91 @@
+
+> wincraft-prototype@0.1.0-alpha.1 test:ui
+> npm run ui:build && node --test tests/*.test.mjs
+
+
+> wincraft-prototype@0.1.0-alpha.1 ui:build
+> node scripts/build-ui.mjs
+
+UI built: apps/desktop/dist (no runtime framework, no external assets)
+TAP version 13
+# Subtest: literal values stay literal
+ok 1 - literal values stay literal
+  ---
+  duration_ms: 2.819356
+  type: 'test'
+  ...
+# Subtest: JSON pointer reads nested fields and arrays
+ok 2 - JSON pointer reads nested fields and arrays
+  ---
+  duration_ms: 0.303765
+  type: 'test'
+  ...
+# Subtest: escaped pointer fields
+ok 3 - escaped pointer fields
+  ---
+  duration_ms: 0.191387
+  type: 'test'
+  ...
+# Subtest: missing and malformed paths produce undefined
+ok 4 - missing and malformed paths produce undefined
+  ---
+  duration_ms: 0.11675
+  type: 'test'
+  ...
+# Subtest: prototype traversal is forbidden
+ok 5 - prototype traversal is forbidden
+  ---
+  duration_ms: 0.186165
+  type: 'test'
+  ...
+# Subtest: root pointer
+ok 6 - root pointer
+  ---
+  duration_ms: 0.095002
+  type: 'test'
+  ...
+# Subtest: progress is finite and bounded
+ok 7 - progress is finite and bounded
+  ---
+  duration_ms: 0.220793
+  type: 'test'
+  ...
+# Subtest: number parser does not execute/coerce strings
+ok 8 - number parser does not execute/coerce strings
+  ---
+  duration_ms: 0.14208
+  type: 'test'
+  ...
+# Subtest: tone whitelist does not become raw CSS
+ok 9 - tone whitelist does not become raw CSS
+  ---
+  duration_ms: 0.290137
+  type: 'test'
+  ...
+# Subtest: nulls and structs have deterministic text
+ok 10 - nulls and structs have deterministic text
+  ---
+  duration_ms: 0.471041
+  type: 'test'
+  ...
+# Subtest: late initial fetch cannot replace event state
+ok 11 - late initial fetch cannot replace event state
+  ---
+  duration_ms: 0.191494
+  type: 'test'
+  ...
+# Subtest: cross-world snapshot rejected after first binding
+ok 12 - cross-world snapshot rejected after first binding
+  ---
+  duration_ms: 0.083018
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 91.285504

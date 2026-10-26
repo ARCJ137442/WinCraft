@@ -1,0 +1,21 @@
+// Excerpt, not a complete file.
+// ExoMind @ ddb1ba1a6c1e0760af77b55d5659df44ad253b34
+// src-tauri/src/commands/now_workbench_overlay_commands.rs
+// Copyright (c) 2026 ExoMind Collective; CCOPL-1.0. See ../../LICENSE.
+
+let builder = WebviewWindowBuilder::new(
+    app,
+    NOW_WORKBENCH_OVERLAY_WINDOW_LABEL,
+    WebviewUrl::App("now-workbench-overlay.html".into()),
+)
+.title("ExoMind Now")
+.inner_size(NOW_WORKBENCH_OVERLAY_WIDTH, NOW_WORKBENCH_OVERLAY_HEIGHT)
+.always_on_top(true)
+.decorations(false)
+.shadow(false)
+.skip_taskbar(true)
+.resizable(false)
+.visible(false);
+
+#[cfg(not(target_os = "macos"))]
+let builder = builder.transparent(true);

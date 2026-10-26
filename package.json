@@ -1,0 +1,22 @@
+{
+  "name": "wincraft-prototype",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/desktop"
+  ],
+  "scripts": {
+    "ui:build": "node scripts/build-ui.mjs",
+    "ui:dev": "node scripts/dev-server.mjs",
+    "test:ui": "npm run ui:build && node --test tests/*.test.mjs",
+    "check:contracts": "python scripts/check_contracts.py",
+    "desktop:dev": "cd apps/desktop && tauri dev",
+    "desktop:build": "cd apps/desktop && tauri build --no-bundle",
+    "check": "npm run test:ui && npm run check:contracts"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "typescript": "5.8.3"
+  }
+}

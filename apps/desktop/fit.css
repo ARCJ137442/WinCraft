@@ -1,0 +1,112 @@
+/* Keep the native WebView itself scrollbar-free; the world body owns any overflow. */
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.world::-webkit-scrollbar,
+.preview-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.world {
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chrome,
+.status-line,
+.scene,
+#error,
+#action-status,
+footer {
+  flex-shrink: 0;
+}
+
+.scene {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scene::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* The manager is the navigation surface for many worlds; its work area exposes
+   one subtle internal scrollbar while the native window itself stays scrollbar-free. */
+body[data-system="true"] .scene {
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff35 transparent;
+  scrollbar-gutter: stable;
+}
+
+body[data-system="true"] .scene::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+body[data-system="true"] .scene::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body[data-system="true"] .scene::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: #ffffff35;
+}
+
+body[data-system="true"] [data-component-id="toolbar"] {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding-block: 8px;
+  border-bottom: 1px solid #ffffff12;
+  background: linear-gradient(145deg, #152231f5, #101a27f8);
+}
+
+.scene:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.preview-body {
+  height: auto;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.preview-body .world {
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: visible;
+}
+
+.preview-body .scene {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+  scrollbar-width: auto;
+}

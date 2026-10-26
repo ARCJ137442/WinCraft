@@ -1,0 +1,1330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:scene:0.2",
+  "$defs": {
+    "Node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "stack"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "gap": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "align": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Node"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "row"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "gap": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "align": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Node"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "text"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "size": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "tone": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "metric"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "caption": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "tone": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "progress"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "max": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "tone": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "badge"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "tone": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "button"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "context_action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "disabled": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "tone": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "props"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "input"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "context_action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "placeholder": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "disabled": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "props"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "key_value"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "divider"
+            },
+            "props": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Scene": {
+      "type": "object",
+      "properties": {
+        "root": {
+          "$ref": "#/$defs/Node"
+        },
+        "data": {}
+      },
+      "required": [
+        "root"
+      ],
+      "additionalProperties": false
+    },
+    "Position": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": -100000,
+          "maximum": 100000
+        },
+        "y": {
+          "type": "integer",
+          "minimum": -100000,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "Lease": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "epoch"
+      ],
+      "additionalProperties": false
+    },
+    "Window": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "width": {
+          "type": "number",
+          "minimum": 160,
+          "maximum": 2400
+        },
+        "height": {
+          "type": "number",
+          "minimum": 80,
+          "maximum": 1800
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "geometry_control": {
+          "enum": [
+            "provider",
+            "human"
+          ]
+        },
+        "surface_opacity": {
+          "type": "number",
+          "minimum": 0.15,
+          "maximum": 1
+        },
+        "always_on_top": {
+          "type": "boolean"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "resizable": {
+          "type": "boolean"
+        },
+        "title_bar_visible": {
+          "type": "boolean",
+          "default": true
+        },
+        "decorations": {
+          "type": "boolean"
+        },
+        "skip_taskbar": {
+          "type": "boolean"
+        },
+        "click_through": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "WindowPatch": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "width": {
+          "type": "number",
+          "minimum": 160,
+          "maximum": 2400
+        },
+        "height": {
+          "type": "number",
+          "minimum": 80,
+          "maximum": 1800
+        },
+        "position": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Position"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "geometry_control": {
+          "enum": [
+            "provider",
+            "human"
+          ]
+        },
+        "surface_opacity": {
+          "type": "number",
+          "minimum": 0.15,
+          "maximum": 1
+        },
+        "always_on_top": {
+          "type": "boolean"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "resizable": {
+          "type": "boolean"
+        },
+        "title_bar_visible": {
+          "type": "boolean"
+        },
+        "decorations": {
+          "type": "boolean"
+        },
+        "skip_taskbar": {
+          "type": "boolean"
+        },
+        "click_through": {
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "SceneOp": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "insert"
+            },
+            "parent": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "node": {
+              "$ref": "#/$defs/Node"
+            }
+          },
+          "required": [
+            "op",
+            "parent",
+            "index",
+            "node"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "remove"
+            },
+            "node_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "op",
+            "node_id"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "replace"
+            },
+            "node_id": {
+              "type": "string"
+            },
+            "node": {
+              "$ref": "#/$defs/Node"
+            }
+          },
+          "required": [
+            "op",
+            "node_id",
+            "node"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "move"
+            },
+            "node_id": {
+              "type": "string"
+            },
+            "parent": {
+              "type": "string"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "op",
+            "node_id",
+            "parent",
+            "index"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "props"
+            },
+            "node_id": {
+              "type": "string"
+            },
+            "props": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "op",
+            "node_id",
+            "props"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "$ref": "#/$defs/Scene"
+}

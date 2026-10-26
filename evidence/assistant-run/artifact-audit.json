@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "scope": "artifact structure, syntax and provenance, not Rust execution",
+  "markdown_relative_links_checked": 28,
+  "broken_links": [],
+  "upstream_license_blob_sha": "6e73a892c873e6244dcf669d38b5b56140b90f25",
+  "rust_test_definitions": 22,
+  "rust_tests_executed": 0,
+  "no_cargo_or_rustc_in_environment": true
+}

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "world-renderer",
+  "description": "Event subscription and five caller-window-scoped custom commands. Content-fit reports only rendered height for the caller's own human-controlled window; no shell/fs/general native window mutation.",
+  "windows": ["world-*"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

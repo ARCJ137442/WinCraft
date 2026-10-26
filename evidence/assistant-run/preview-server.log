@@ -1,0 +1,2 @@
+UI built: apps/desktop/dist (no runtime framework, no external assets)
+Preview: http://127.0.0.1:1420  | manager: ?preview=manager | rebuild after source edits

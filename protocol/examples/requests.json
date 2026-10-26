@@ -1,0 +1,201 @@
+[
+  {
+    "id": "hello-1",
+    "method": "hello",
+    "params": {
+      "protocol": "0.2",
+      "provider_name": "python.example"
+    }
+  },
+  {
+    "id": "list-1",
+    "method": "world.list",
+    "params": {}
+  },
+  {
+    "id": "create-1",
+    "method": "world.create",
+    "params": {
+      "window": {
+        "title": "示例世界",
+        "width": 460,
+        "height": 600,
+        "title_bar_visible": true
+      },
+      "join_policy": "invite"
+    }
+  },
+  {
+    "id": "scene-1",
+    "method": "scene.replace",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "epoch": 1
+      },
+      "expected_revision": 2,
+      "scene": {
+        "root": {
+          "id": "root",
+          "kind": "stack",
+          "props": {
+            "gap": 16
+          },
+          "children": [
+            {
+              "id": "banner",
+              "kind": "badge",
+              "props": {
+                "text": "Python 提供者 · 模拟业务",
+                "tone": "accent"
+              },
+              "children": []
+            },
+            {
+              "id": "heading",
+              "kind": "text",
+              "props": {
+                "text": "窗口只是身体，业务仍在程序中",
+                "size": "title"
+              },
+              "children": []
+            },
+            {
+              "id": "clock",
+              "kind": "metric",
+              "props": {
+                "label": "专注倒计时",
+                "value": {
+                  "$path": "/clock"
+                },
+                "caption": "权威计时来自 Python 提供者"
+              },
+              "children": []
+            },
+            {
+              "id": "progress",
+              "kind": "progress",
+              "props": {
+                "label": "后台任务（模拟）",
+                "value": {
+                  "$path": "/progress"
+                },
+                "max": 100
+              },
+              "children": []
+            },
+            {
+              "id": "buttons",
+              "kind": "row",
+              "props": {
+                "gap": 8
+              },
+              "children": [
+                {
+                  "id": "pause",
+                  "kind": "button",
+                  "props": {
+                    "label": {
+                      "$path": "/button"
+                    },
+                    "action": "toggle_pause",
+                    "tone": "accent"
+                  },
+                  "children": []
+                },
+                {
+                  "id": "rebuild",
+                  "kind": "button",
+                  "props": {
+                    "label": "替换组件区",
+                    "action": "rebuild"
+                  },
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "note",
+              "kind": "input",
+              "props": {
+                "label": "消息",
+                "value": {
+                  "$path": "/note"
+                },
+                "placeholder": "输入并提交",
+                "action": "note"
+              },
+              "children": []
+            },
+            {
+              "id": "source",
+              "kind": "text",
+              "props": {
+                "text": {
+                  "$path": "/source"
+                },
+                "tone": "muted"
+              },
+              "children": []
+            }
+          ]
+        },
+        "data": {
+          "clock": "25:00",
+          "progress": 0,
+          "button": "暂停",
+          "note": "",
+          "source": "Python 模拟业务；并非真实外心状态"
+        }
+      }
+    }
+  },
+  {
+    "id": "patch-1",
+    "method": "scene.patch",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "epoch": 1
+      },
+      "expected_revision": 3,
+      "ops": [
+        {
+          "op": "replace",
+          "node_id": "progress",
+          "node": {
+            "id": "result",
+            "kind": "badge",
+            "props": {
+              "text": "已完成",
+              "tone": "success"
+            },
+            "children": []
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "window-1",
+    "method": "window.configure",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "epoch": 1
+      },
+      "expected_revision": 4,
+      "patch": {
+        "geometry_control": "provider",
+        "position": {
+          "x": 64,
+          "y": 64
+        },
+        "click_through": false
+      }
+    }
+  }
+]

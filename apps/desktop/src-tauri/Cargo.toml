@@ -1,0 +1,17 @@
+[package]
+name = "wincraft-desktop"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+wincraft-core = { path = "../../../crates/wincraft-core" }
+wincraft-server = { path = "../../../crates/wincraft-server" }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+tokio.workspace = true

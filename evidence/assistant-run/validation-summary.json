@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-25",
+  "artifact_version": "0.1.0-alpha.1",
+  "environment": {
+    "platform": "Linux",
+    "python": "3.13.5",
+    "node": "v22.16.0",
+    "typescript": "5.8.3",
+    "cargo": null,
+    "rustc": null
+  },
+  "executed": {
+    "typescript_strict_build": {
+      "status": "PASS"
+    },
+    "node_tests": {
+      "status": "PASS",
+      "passed": 12
+    },
+    "offline_contract_checks": {
+      "status": "PASS",
+      "groups": 8
+    },
+    "chromium_dom": {
+      "status": "PASS",
+      "checks": 9,
+      "provider": "mock",
+      "module_source": "actual compiled TypeScript",
+      "loading": "in-memory blob modules; localhost navigation policy retained",
+      "native_windows": false
+    },
+    "upstream_license_blob": {
+      "status": "PASS",
+      "sha": "6e73a892c873e6244dcf669d38b5b56140b90f25"
+    }
+  },
+  "not_run": [
+    "rustfmt",
+    "cargo check",
+    "22 Rust test definitions",
+    "cargo clippy",
+    "real Axum/WebSocket end-to-end",
+    "Tauri compilation",
+    "Windows GUI",
+    "Windows release",
+    "SSH remote connection",
+    "real ExoMind Runtime",
+    "performance benchmarks",
+    "CI workflow"
+  ],
+  "not_included": [
+    "Windows executable",
+    "Cargo.lock",
+    "package-lock.json",
+    "node_modules",
+    "font files",
+    "runtime credentials"
+  ],
+  "limits": "Source prototype for local Codex validation; no native success claim"
+}

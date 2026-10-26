@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "scope": "Chromium offline DOM with compiled TypeScript modules loaded via in-memory blobs; mock provider; NOT native desktop",
+  "checks": [
+    "preview_is_explicitly_labelled",
+    "draft_and_dom_identity_survive_unrelated_updates",
+    "dynamic_component_replacement_without_world_reload",
+    "input_event_returns_through_preview_provider",
+    "provider_text_is_literal_not_html",
+    "stale_world_disables_interaction",
+    "composition_is_not_overwritten",
+    "manager_fixture_uses_same_renderer",
+    "no_browser_runtime_errors"
+  ]
+}

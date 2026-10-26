@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "scope": "offline artifact consistency only",
+  "checks": [
+    "json_parse",
+    "toml_parse",
+    "python_syntax",
+    "schemas_and_positive_fixtures",
+    "negative_schema_fixtures",
+    "declared_methods_present_in_rust_source_not_execution",
+    "no_dynamic_code_or_html_rendering",
+    "workspace_path_dependencies"
+  ]
+}

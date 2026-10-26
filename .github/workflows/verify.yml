@@ -1,0 +1,27 @@
+name: Prototype verification (not native GUI acceptance)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: npm install
+      - run: python -m pip install jsonschema
+      - run: npm run test:ui
+      - run: python scripts/check_contracts.py
+      - run: cargo fmt --all -- --check
+      - run: cargo test -p wincraft-core -p wincraft-server
+      - run: cargo clippy -p wincraft-core -p wincraft-server --all-targets -- -D warnings
+      - run: cargo check -p wincraft-desktop
