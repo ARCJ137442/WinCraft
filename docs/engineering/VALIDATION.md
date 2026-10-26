@@ -16,7 +16,7 @@
 | 真实协议 | PASS | 最新 release Host 上 `lease_probe.py` 19 项通过：严格 0.3 握手、旧 0.2 拒绝、文本选择默认/读写、认证/Origin、读写授权、动态/原子 patch、租约过期、断线 fencing、慢消费者 |
 | TrafficMonitor | PASS | 作者 V1.86 x64 Lite 隔离暂存副本经 `OnMonitorInfo` 持续发布；provider 接入当前 release，状态在线、版本 1.8.6.0、generation/revision 递增；证据不含遥测数值 |
 | Obsidian Obsidian Workspace | PASS | 只读 provider 连到当前 release；Obsidian Workspace 0.14.7 投影 5 个关注项和 4 组提醒，native report 为 applied；未写笔记/插件设置，证据不含标题 |
-| GitHub | PASS | 私有 `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；源码首个提交 `c70ba44`，随后路线图提交 `3661dce` 已在远端。当前功能改动待单独提交 |
+| GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
 | 原生人工门 | NOT_RUN | 最新 release 的文本选取鼠标手势、focus-demo 按钮回执、像素级 manager 滚动条、tooltip hover、不同 DPI/显示器、休眠恢复、IME 与 revision-conflict UI 仍需人工/专用环境验收；click-through rescue/hold 细节见本机矩阵 |
 | ExoMind | BLOCKED（用户暂缓） | 未读取连接信息、未猜端口/档案、未调用 API |

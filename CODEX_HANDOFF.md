@@ -29,7 +29,7 @@
 - 最新协议为严格 `0.3`。当前 release WebSocket 的 `lease_probe.py` 19 项通过，包含拒绝旧版本、text_selectable 默认读写、租约过期、重连 epoch fencing、原子 patch 与慢消费者。
 - 新 release 构建于 `E:\tmp\wincraft-target-text-selection-20261026\release\wincraft-desktop.exe`，SHA-256 记录在 `docs/engineering/VALIDATION.md`。它已独立运行；TrafficMonitor x64 Lite 与 Obsidian Workspace 0.14.7 只读 provider 均接入，Obsidian Workspace native report 为 applied。
 - 用户此前确认托盘图标/菜单可打开管理器，悬浮窗可见且可拖动。最新 release 的文本选择手势、像素级滚动条、click-through 救援等仍留在人工验收矩阵。ExoMind 由用户暂缓，未读取配置或调用 API。
-- WinCraft 原解压目录没有 `.git`，未丢失或恢复其他仓库历史。用户明确授权后，已在此目录新建私有 GitHub `ARCJ137442/WinCraft`，默认分支 `dev`，`origin` 指向该远端；首个源码快照提交为 `c70ba44`。新历史从该提交开始，不是外心仓库的 graft。
+- WinCraft 原解压目录没有 `.git`，未丢失或恢复其他仓库历史。已在此目录建立 GitHub `ARCJ137442/WinCraft`，默认分支 `dev`，`origin` 指向该远端；按用户最新明确决定，仓库当前为公开。首个源码快照提交为 `c70ba44`，当前功能提交为 `73c3e20`。新历史从该提交链开始，不是外心仓库的 graft。
 - 可提交摘要和当前产物哈希见 `docs/engineering/VALIDATION.md`；逐命令日志/截图留在默认忽略的 `evidence/local/`。不写入 `.runtime.json` 内容、token、笔记标题或遥测读数。
 
 ## 必须保留的设计不变量
