@@ -14,6 +14,7 @@
 | 提供者控制几何 | 接线 | 显式 provider 模式；用户默认可调整宽度的 human 模式下，provider 不得覆盖位置/尺寸 |
 | 点击穿透 | 接线 | 默认关闭；provider 可配置；全窗穿透时按钮不可点击，依赖管理器/托盘接管恢复 |
 | 悬浮面透明度 | 已有 CSS 渲染 | 默认 surface_opacity=0.8，provider 可用 window.configure 调整；OS 原生窗口背景保持透明 |
+| 默认文本选择 | 已接线 | 默认 `text_selectable=true`，provider 可读写；内容组件可用自身样式覆盖，标题栏保持不可选 |
 | 管理器超高内容 | 接线 | 标题栏、状态栏和页脚固定；manager scene 独立滚动，工具栏 sticky；窗口级滚动条隐藏 |
 | 原生执行结果 | 接线 | pending/applied/error；可能部分原生调用先成功再失败，报告而非假装回滚 |
 | 人类移动回写投影 | 接线 | 不保存磁盘；已观测几何不回声式重设造成拖动抖动 |
@@ -25,11 +26,11 @@
 
 ## 2026-10-26 本机实测摘要
 
-- `npm run desktop:build` 成功；独立 release EXE 使用显式 `--open-manager` 参数启动后，实际出现“窗构 · 世界管理器”。不带该参数时仍保持托盘优先。
-- 最新 release 接入真实 TrafficMonitor x64 Lite provider，原生世界标题为“TrafficMonitor · WinCraft”；可访问性树显示来源在线、版本 1.8.6.0 和下载/上传/CPU/内存/GPU 组件。遥测数值不写入证据。
-- `lease_probe.py` 对同一个 release Host 完成 13 项真实协议检查，包含租约过期/断线 fencing、慢消费者和正向 `scene.patch` 网络操作。
-- 当前 release 的 provider 可通过真实 WebSocket 隐藏/显示窗口而不改变 lease epoch；隐藏不销毁世界，管理器也为隐藏世界提供恢复入口。
-- 用户此前确认托盘/菜单可用，悬浮窗可见且可拖动。不同 DPI、多显示器、click-through 救援、窗口属性逐项切换和最新 release 的像素级滚动条回归仍未完成。
+- `npm run desktop:build` 成功；E: 临时 target 下的独立 release EXE 使用 `--open-manager` 启动，真实 TrafficMonitor 与 Obsidian Workspace provider 均接入该实例。不带该参数仍保持托盘优先。
+- 当前 release 接入 TrafficMonitor V1.86 x64 Lite，实际 `OnMonitorInfo` 样本持续进入原生世界；provider 报告版本 1.8.6.0、generation/revision 前进，不记录读数。
+- 当前 release 的 `lease_probe.py` 完成 19 项真实 WebSocket 检查，包含严格 0.3 握手、拒绝旧版本、`text_selectable` 默认/读写、租约过期/断线 fencing、慢消费者和正向 `scene.patch`。
+- 当前 release 的 Obsidian Obsidian Workspace provider 从明确打开的 dashboard 读取只读摘要，native report 为 applied；未写入笔记或插件设置。
+- 用户此前确认托盘/菜单可用、悬浮窗可见且可拖动。最新 release 的文本选择鼠标手势、像素级 manager 滚动条、多 DPI/显示器、click-through 救援和其他原生属性人工逐项检查仍未完成。
 
 原生资源状态与业务状态分离。收到一个版本化窗口意图后，监督循环尝试应用；失败保留错误，隔一定时间重试。窗口被操作员销毁后移除核心世界并关闭 native 资源。
 

@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
-pub const PROTOCOL: &str = "0.2";
+pub const PROTOCOL: &str = "0.3";
 pub const MAX_WORLDS: usize = 16;
 pub const LEASE_MS: u64 = 15_000;
 pub const ACTION_TIMEOUT_MS: u64 = 10_000;
@@ -70,6 +70,8 @@ pub struct WindowSpec {
     pub visible: bool,
     pub resizable: bool,
     pub title_bar_visible: bool,
+    /// Default text-selection behavior for the world; component styles may override it.
+    pub text_selectable: bool,
     pub decorations: bool,
     pub skip_taskbar: bool,
     pub click_through: bool,
@@ -88,6 +90,7 @@ impl Default for WindowSpec {
             visible: true,
             resizable: true,
             title_bar_visible: true,
+            text_selectable: true,
             decorations: false,
             skip_taskbar: true,
             click_through: false,
@@ -139,6 +142,7 @@ pub struct WindowPatch {
     pub visible: Option<bool>,
     pub resizable: Option<bool>,
     pub title_bar_visible: Option<bool>,
+    pub text_selectable: Option<bool>,
     pub decorations: Option<bool>,
     pub skip_taskbar: Option<bool>,
     pub click_through: Option<bool>,
@@ -166,6 +170,7 @@ impl WindowPatch {
             visible,
             resizable,
             title_bar_visible,
+            text_selectable,
             decorations,
             skip_taskbar,
             click_through,

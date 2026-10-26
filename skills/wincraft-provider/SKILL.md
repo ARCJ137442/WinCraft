@@ -37,7 +37,7 @@ method or field is unclear; the Rust implementation and schema are authoritative
 ### 1. Join the host
 
 Start from `examples/python/client.py`. The client reads the descriptor, checks the
-protocol (`0.2` in this prototype) and `host_id`, opens an authenticated WebSocket, sends `hello`
+protocol (`0.3` in this prototype) and `host_id`, opens an authenticated WebSocket, sends `hello`
 with the exact protocol version, and maintains its session heartbeat. Keep that order and those checks. A stale
 descriptor or mismatched host is a hard error.
 
@@ -67,6 +67,10 @@ The custom title bar is visible and fixed outside the scrollable scene by defaul
 `title_bar_visible` may hide or restore it through `window.configure`. Pointer
 click-through is disabled by default; enabling it also prevents users from clicking
 the surface, so keep the manager rescue path available and restore it deliberately.
+Window snapshots expose `text_selectable=true` by default. The writer may change it with
+`window.configure`; it controls the whole world's default text-selection behavior while
+renderer component styles can override individual elements. The title bar remains
+unselectable in either mode. Providers cannot submit CSS or scripts to create overrides.
 
 Use `protocol/examples/focus.scene.json` as the first working shape. Run
 `examples/python/focus_demo.py` to see creation, data updates, an action, and an in-place

@@ -92,6 +92,8 @@ function accept(next:Snapshot):void {
   const labels={online:'已连接',stale:'来源断开 · 保留最后状态',vacant:'等待提供者'};
   status.textContent=labels[next.status];status.dataset.state=next.status;
   frame.style.opacity=String(next.window.surface_opacity);
+  frame.style.setProperty('--world-text-selection',next.window.text_selectable?'text':'none');
+  frame.dataset.textSelectable=String(next.window.text_selectable);
   document.body.dataset.geometry=next.window.geometry_control;
   document.body.dataset.system=String(next.system);
   document.body.dataset.titleBarVisible=String(next.window.title_bar_visible);

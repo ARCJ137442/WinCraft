@@ -162,7 +162,7 @@ impl Hub {
             "native_windows":self.native_windows,"remote":"authenticated_ssh_tunnel",
             "max_worlds":MAX_WORLDS,"max_message_bytes":MAX_PAYLOAD,"lease_ms":LEASE_MS,
             "components":["stack","row","text","metric","progress","badge","button","input","key_value","divider"],
-            "window_properties":["title","width","height","position","always_on_top","visible","resizable","title_bar_visible","decorations","skip_taskbar","click_through","geometry_control","surface_opacity"],
+            "window_properties":["title","width","height","position","always_on_top","visible","resizable","title_bar_visible","text_selectable","decorations","skip_taskbar","click_through","geometry_control","surface_opacity"],
             "not_implemented":["component_leases","follow_cursor","attach_to_foreign_window","native_opacity","arbitrary_code","builtin_tls"]})
     }
     pub fn reply(&self, sid: Uuid, req: Request) -> Value {

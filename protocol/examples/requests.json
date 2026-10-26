@@ -3,7 +3,7 @@
     "id": "hello-1",
     "method": "hello",
     "params": {
-      "protocol": "0.2",
+      "protocol": "0.3",
       "provider_name": "python.example"
     }
   },
@@ -20,7 +20,8 @@
         "title": "示例世界",
         "width": 460,
         "height": 600,
-        "title_bar_visible": true
+        "title_bar_visible": true,
+        "text_selectable": true
       },
       "join_policy": "invite"
     }
@@ -194,7 +195,8 @@
           "x": 64,
           "y": 64
         },
-        "click_through": false
+        "click_through": false,
+        "text_selectable": false
       }
     }
   }

@@ -26,6 +26,15 @@ body::-webkit-scrollbar,
   overflow-y: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  user-select: var(--world-text-selection, text);
+  -webkit-user-select: var(--world-text-selection, text);
+}
+
+/* Window content follows its selectable default; the chrome remains unselectable. */
+.chrome,
+.chrome * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
 }
 
 .chrome,

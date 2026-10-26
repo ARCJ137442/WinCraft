@@ -380,6 +380,7 @@ impl Engine {
         w.window.click_through = false;
         w.window.geometry_control = GeometryControl::Human;
         w.window.title_bar_visible = true;
+        w.window.text_selectable = true;
         w.window.position = None;
         w.window.resizable = true;
         w.window.surface_opacity = 1.0;

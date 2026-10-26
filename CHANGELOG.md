@@ -10,6 +10,7 @@
 - WebView 原生右键菜单默认拦截；仅静态注册 `context_action` 的按钮/输入会向当前 provider 发送右键动作。
 - `surface_opacity` 默认 0.8 且 provider 可读写；管理器世界工作区在内容超过显示器工作区时内部滚动，保持外壳/工具栏，不显示窗口级滚动条。
 - 协议升到 0.2：标题栏默认固定显示、click-through 默认关闭，两者都可由 provider 通过 `window.configure` 配置；旧 protocol 版本仍严格拒绝。
+- 协议升到 0.3：新增 `text_selectable` 窗口默认属性，默认 true、provider 可读写；renderer 组件样式可覆盖，标题栏文字始终不可选。
 - Obsidian Workspace provider 改为从当前实际渲染的 dashboard leaf 读取，跳过空的旧 leaf；仍只读，不写笔记或插件设置。
 - 本机实测细节与未完成的人工验收见 `evidence/local/validation-matrix.md`。
 

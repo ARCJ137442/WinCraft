@@ -121,6 +121,33 @@ async def check_positive_scene_patches(
     assert patched['revision'] == initial['revision'] + 1
 
 
+async def check_legacy_protocol_rejected(client: Client) -> None:
+    """The previous wire version must fail its hello instead of being coerced."""
+    from websockets.asyncio.client import connect
+
+    socket = await connect(
+        client.url,
+        additional_headers={
+            'Authorization': f"Bearer {client.descriptor['token']}"
+        },
+        open_timeout=5,
+        ping_interval=None,
+    )
+    try:
+        try:
+            await raw_call(
+                socket,
+                'hello',
+                {'protocol': '0.2', 'provider_name': 'probe.legacy-version'},
+            )
+        except RpcError as error:
+            assert error.code == 'PROTOCOL_MISMATCH', error.code
+        else:
+            raise AssertionError('The previous protocol version unexpectedly connected')
+    finally:
+        await socket.close()
+
+
 async def wait_for_native_window_revision(
     client: Client, world_id: str, expected_revision: int
 ) -> dict[str, Any]:
@@ -130,16 +157,23 @@ async def wait_for_native_window_revision(
     while True:
         snapshot = await client.call('world.snapshot', {'world_id': world_id})
         native = snapshot['native']
-        if snapshot['window_revision'] == expected_revision and (
+        if snapshot['window_revision'] >= expected_revision and (
             not native_windows
             or (
                 native['state'] == 'applied'
-                and native['applied_window_revision'] == expected_revision
+                and native['applied_window_revision'] == snapshot['window_revision']
             )
         ):
             return snapshot
         if native['state'] == 'error' or asyncio.get_running_loop().time() >= deadline:
-            raise AssertionError('native window configuration was not applied')
+            raise AssertionError(
+                'native window configuration was not applied: '
+                f"expected_revision={expected_revision}; "
+                f"actual_revision={snapshot['window_revision']}; "
+                f"state={native['state']}; "
+                f"applied_revision={native['applied_window_revision']}; "
+                f"error_present={bool(native['error'])}"
+            )
         await asyncio.sleep(0.05)
 
 
@@ -224,7 +258,7 @@ async def probe_slow_consumer(
         ready = await raw_call(
             socket,
             'hello',
-            {'protocol': '0.2', 'provider_name': 'probe.slow-reader'},
+            {'protocol': '0.3', 'provider_name': 'probe.slow-reader'},
         )
         assert ready['host_id'] == writer.descriptor['host_id']
         await raw_call(
@@ -282,8 +316,11 @@ async def run(args: argparse.Namespace) -> None:
         default_window = created['world']['window']
         assert default_window['surface_opacity'] == 0.8
         assert default_window['title_bar_visible'] is True
+        assert default_window['text_selectable'] is True
         assert default_window['click_through'] is False
-        checks.append('default_opacity_titlebar_and_clickthrough')
+        checks.append('default_window_appearance_properties')
+        await check_legacy_protocol_rejected(a)
+        checks.append('previous_protocol_version_is_rejected')
         owner: Client | None = a
         owner_lease = original_lease
         try:
@@ -364,16 +401,13 @@ async def run(args: argparse.Namespace) -> None:
                 )
                 checks.append('human_geometry_not_silently_overwritten')
 
-                visibility = after
+                visibility = await a.call('world.snapshot', {'world_id': world_id})
                 for visible in (True, False, True):
-                    await a.call(
+                    await a.mutate(
                         'window.configure',
-                        {
-                            'world_id': world_id,
-                            'lease': original_lease,
-                            'expected_revision': visibility['revision'],
-                            'patch': {'visible': visible},
-                        },
+                        world_id,
+                        original_lease,
+                        patch={'visible': visible},
                     )
                     visibility = await wait_for_window_visibility(
                         a, world_id, visible, visibility['window_revision'] + 1
@@ -384,14 +418,11 @@ async def run(args: argparse.Namespace) -> None:
 
                 opacity = await a.call('world.snapshot', {'world_id': world_id})
                 assert abs(opacity['window']['surface_opacity'] - 0.8) < 1e-9
-                await a.call(
+                await a.mutate(
                     'window.configure',
-                    {
-                        'world_id': world_id,
-                        'lease': original_lease,
-                        'expected_revision': opacity['revision'],
-                        'patch': {'surface_opacity': 0.55},
-                    },
+                    world_id,
+                    original_lease,
+                    patch={'surface_opacity': 0.55},
                 )
                 opacity = await a.call('world.snapshot', {'world_id': world_id})
                 opacity = await wait_for_native_window_revision(
@@ -401,14 +432,11 @@ async def run(args: argparse.Namespace) -> None:
                 assert opacity['epoch'] == original_lease['epoch']
                 checks.append('provider_can_read_and_configure_surface_opacity')
 
-                await a.call(
+                await a.mutate(
                     'window.configure',
-                    {
-                        'world_id': world_id,
-                        'lease': original_lease,
-                        'expected_revision': opacity['revision'],
-                        'patch': {'title_bar_visible': False, 'click_through': True},
-                    },
+                    world_id,
+                    original_lease,
+                    patch={'title_bar_visible': False, 'click_through': True},
                 )
                 configured = await a.call('world.snapshot', {'world_id': world_id})
                 configured = await wait_for_native_window_revision(
@@ -418,14 +446,11 @@ async def run(args: argparse.Namespace) -> None:
                 assert configured['window']['click_through'] is True
                 assert configured['epoch'] == original_lease['epoch']
 
-                await a.call(
+                await a.mutate(
                     'window.configure',
-                    {
-                        'world_id': world_id,
-                        'lease': original_lease,
-                        'expected_revision': configured['revision'],
-                        'patch': {'title_bar_visible': True, 'click_through': False},
-                    },
+                    world_id,
+                    original_lease,
+                    patch={'title_bar_visible': True, 'click_through': False},
                 )
                 restored = await a.call('world.snapshot', {'world_id': world_id})
                 restored = await wait_for_native_window_revision(
@@ -435,6 +460,26 @@ async def run(args: argparse.Namespace) -> None:
                 assert restored['window']['click_through'] is False
                 assert restored['epoch'] == original_lease['epoch']
                 checks.append('provider_can_configure_titlebar_and_clickthrough')
+
+                selectable = await a.call('world.snapshot', {'world_id': world_id})
+                assert selectable['window']['text_selectable'] is True
+                await a.mutate(
+                    'window.configure',
+                    world_id,
+                    original_lease,
+                    patch={'text_selectable': False},
+                )
+                selectable = await a.call('world.snapshot', {'world_id': world_id})
+                assert selectable['window']['text_selectable'] is False
+                await a.mutate(
+                    'window.configure',
+                    world_id,
+                    original_lease,
+                    patch={'text_selectable': True},
+                )
+                selectable = await a.call('world.snapshot', {'world_id': world_id})
+                assert selectable['window']['text_selectable'] is True
+                checks.append('provider_can_read_and_configure_default_text_selection')
 
                 a.heartbeat.cancel()
                 await asyncio.gather(a.heartbeat, return_exceptions=True)

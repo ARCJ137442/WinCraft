@@ -191,14 +191,29 @@ fn human_mode_requires_explicit_handback() {
 fn operator_rescue_fences_writer_and_disables_clickthrough() {
     let (mut e, a, _, c) = setup();
     let op = e.register("host".into(), true).unwrap();
+    let lease = c.lease.unwrap();
+    let current = e.read(a, c.world.id).unwrap();
+    e.configure(
+        a,
+        c.world.id,
+        &lease,
+        current.revision,
+        &WindowPatch {
+            title_bar_visible: Some(false),
+            text_selectable: Some(false),
+            click_through: Some(true),
+            ..WindowPatch::default()
+        },
+        2,
+    )
+    .unwrap();
     let s = e.rescue(op, c.world.id).unwrap();
     assert!(!s.window.click_through);
     assert!(s.window.visible);
     assert!(s.window.title_bar_visible);
+    assert!(s.window.text_selectable);
     assert_eq!(
-        e.renew(a, c.world.id, &c.lease.unwrap(), 1)
-            .unwrap_err()
-            .code,
+        e.renew(a, c.world.id, &lease, 3).unwrap_err().code,
         "STALE_LEASE"
     );
     assert_eq!(e.rescue(a, c.world.id).unwrap_err().code, "FORBIDDEN");
@@ -346,9 +361,13 @@ fn default_window_is_human_resizable() {
     assert_eq!(window.geometry_control, GeometryControl::Human);
     assert!(window.resizable);
     assert!(window.title_bar_visible);
+    assert!(window.text_selectable);
     assert!(window.visible);
     assert!(!window.click_through);
     assert_eq!(window.surface_opacity, 0.8);
+
+    let partial: WindowSpec = serde_json::from_value(json!({"title":"Partial window"})).unwrap();
+    assert!(partial.text_selectable);
 }
 
 #[test]
@@ -375,6 +394,44 @@ fn provider_can_configure_titlebar_and_clickthrough() {
         .unwrap();
     assert!(!updated.window.title_bar_visible);
     assert!(updated.window.click_through);
+}
+
+#[test]
+fn provider_can_read_and_configure_default_text_selection() {
+    let (mut e, provider, _, created) = setup();
+    let lease = created.lease.unwrap();
+    let initial = e.read(provider, created.world.id).unwrap();
+    assert!(initial.window.text_selectable);
+
+    let updated = e
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            initial.revision,
+            &WindowPatch {
+                text_selectable: Some(false),
+                ..WindowPatch::default()
+            },
+            2,
+        )
+        .unwrap();
+    assert!(!updated.window.text_selectable);
+
+    let restored = e
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            updated.revision,
+            &WindowPatch {
+                text_selectable: Some(true),
+                ..WindowPatch::default()
+            },
+            3,
+        )
+        .unwrap();
+    assert!(restored.window.text_selectable);
 }
 
 #[test]

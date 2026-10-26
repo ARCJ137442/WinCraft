@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:wincraft:scene:0.2",
+  "$id": "urn:wincraft:scene:0.3",
   "$defs": {
     "Node": {
       "oneOf": [
@@ -1139,6 +1139,10 @@
           "type": "boolean",
           "default": true
         },
+        "text_selectable": {
+          "type": "boolean",
+          "default": true
+        },
         "decorations": {
           "type": "boolean"
         },
@@ -1200,6 +1204,9 @@
           "type": "boolean"
         },
         "title_bar_visible": {
+          "type": "boolean"
+        },
+        "text_selectable": {
           "type": "boolean"
         },
         "decorations": {

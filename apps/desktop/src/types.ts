@@ -4,7 +4,7 @@ export interface Scene { root:ComponentNode; data:unknown }
 export interface ActionState { id:string; component_id:string; action:string; status:'pending'|'ok'|'error'; message:string|null }
 export interface WindowSpec {
   title:string; width:number; height:number; position:{x:number;y:number}|null;
-  always_on_top:boolean; visible:boolean; resizable:boolean; title_bar_visible:boolean; decorations:boolean;
+  always_on_top:boolean; visible:boolean; resizable:boolean; title_bar_visible:boolean; text_selectable:boolean; decorations:boolean;
   skip_taskbar:boolean; click_through:boolean; geometry_control:'provider'|'human'; surface_opacity:number;
 }
 export interface Snapshot {

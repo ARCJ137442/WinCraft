@@ -24,7 +24,7 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 `apps/desktop/src-tauri` 负责真实窗口，将已接受的窗口意图应用到系统。它不能决定外心是否暂停。通过受限的 caller-window IPC 接收交互，不允许某个渲染器指定另一个世界的 ID。
 
-`apps/desktop/src` 只负责可信组件渲染。相同组件树在外部世界和管理器中使用相同代码。用户提供的数据不会成为 HTML、JS 或任意 CSS。
+`apps/desktop/src` 只负责可信组件渲染。相同组件树在外部世界和管理器中使用相同代码。用户提供的数据不会成为 HTML、JS 或任意 CSS。`WindowSpec.text_selectable` 随快照进入 renderer，控制整个窗口内容的默认文本选择；宿主组件样式可对单个元素覆盖，公共标题栏始终不可选。
 
 ## 四个版本号，不能混用
 
@@ -61,3 +61,5 @@ Tauri 原生窗口适配器                 内部管理提供者
 ## 重建路径
 
 提供者连接宿主 → 协商协议 → 发现/创建世界 → 取得租约 → 发送完整 Scene → 增量更新 → 断线后旧租约作废。恢复时重新加入/申请，新会话不能沿用旧 lease。若原世界仍受邀请保护，提供者需保留或重新获得加入凭证；宿主不假装记得它。
+
+窗口外观也是可重建的运行状态：provider 从快照读取 `text_selectable`，通过受 lease 与 revision 检查的 `window.configure` 更新它。Tauri renderer 将值投影为 CSS 窗口默认；组件选择器仍可针对文本组件设置明确的覆盖样式。协议不接收 provider 提交的任意 CSS。

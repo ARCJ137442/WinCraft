@@ -1,8 +1,8 @@
-# WinCraft 协议 0.2
+# WinCraft 协议 0.3
 
 此协议为本原型设计，不宣称实现 JSON-RPC 2.0、Adaptive Cards 或 A2UI。机器约束见 `protocol/request.schema.json` 与 `protocol/scene.schema.json`。Runtime 另检查节点数量、深度、重复 ID、权限和版本。
 
-当前线协议版本为 `0.2`。客户端与 host 在 `hello` 中严格比较版本；0.2 增加 provider 可配置的 `title_bar_visible` 和按钮/输入的静态 `context_action`，旧版本不兼容时会返回 `PROTOCOL_MISMATCH`。
+当前线协议版本为 `0.3`。客户端与 host 在 `hello` 中严格比较版本；0.2 增加 provider 可配置的 `title_bar_visible` 和按钮/输入的静态 `context_action`，0.3 增加可配置的 `text_selectable` 窗口默认值。旧版本不兼容时会返回 `PROTOCOL_MISMATCH`。
 
 ## 发现与传输
 
@@ -12,10 +12,10 @@
 
 `GET /v1/discovery` 和 `GET /v1/ws` 必须带 `Authorization: Bearer <token>`。首版拒绝包含 Origin 的请求，避免任意网页借访问本机服务取得权限；浏览器扩展原生接入与 origin 白名单属于后续功能。
 
-WebSocket 连上后 5 秒内发送 hello。只有 protocol=0.2 会成功；返回服务端生成的 session_id 与能力表。未支持的能力返回 false 或列在 not_implemented，不能悄悄把不支持当成功。
+WebSocket 连上后 5 秒内发送 hello。只有 protocol=0.3 会成功；返回服务端生成的 session_id 与能力表。未支持的能力返回 false 或列在 not_implemented，不能悄悄把不支持当成功。
 
 ```json
-{"id":"hello-1","method":"hello","params":{"protocol":"0.2","provider_name":"python.example"}}
+{"id":"hello-1","method":"hello","params":{"protocol":"0.3","provider_name":"python.example"}}
 ```
 
 ## 消息封套
@@ -75,6 +75,8 @@ snapshot 中 revision 对应已接受的世界投影，sequence 对应所有快�
 窗口默认 `visible=true`。设置 `visible=false` 只隐藏原生窗口，不销毁世界或撤销写租约；当前 writer 可从后续 snapshot 观察该值，并通过带 lease 与 expected_revision 的 `window.configure` 恢复 `visible=true`。本地标题栏最小化和管理器显示/隐藏操作走可信 operator 路径；关闭按钮销毁普通世界，语义不同。
 
 标题栏默认 `title_bar_visible=true`，并停留在内部滚动工作区之外；provider 可在 `window.configure` 中切换它。默认 `click_through=false`；显式启用后鼠标事件穿过窗口，按钮也无法直接点，provider 可恢复，操作员可通过管理器接管。隐藏标题栏或穿透状态下，优先用管理器“接管并找回”恢复本地操作能力。
+
+文本默认可选中：`text_selectable=true`，provider 可在 `window.configure` 中读写该窗口级默认值。设置为 false 后，窗口内容默认不可选；具体组件样式仍可显式覆盖其文本选择行为。标题栏及其子元素始终不可选中。组件协议不接受任意 CSS/脚本，覆盖规则由宿主 renderer 的组件样式实现。
 
 ## 交互
 

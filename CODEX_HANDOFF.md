@@ -24,12 +24,13 @@
 
 ## 本机验证状态（2026-10-26）
 
-- workspace debug/release 各 28 项 Rust 测试通过；fmt、workspace Clippy、`npm run check`、provider 单测和 skill 自检通过。
-- 独立 Windows release `target/release/wincraft-desktop.exe` 已构建并以 `--open-manager` 启动；默认启动行为仍是托盘优先。
-- 作者发布的 TrafficMonitor V1.86 x64 Lite 在隔离暂存目录运行；桥接现使用 `OnMonitorInfo` 回调，连续写出版本化快照；真实 Python provider 与 Tauri release 建立连接，native 世界显示在线。
-- 真实 Tauri `lease_probe.py` 的 13 项检查通过，包含动态 scene.patch 正例/原子性、租约过期、断线重连、fencing 与慢消费者。
-- 可提交的验证摘要、产物哈希和剩余 NOT_RUN 项见 `docs/engineering/VALIDATION.md`；本机逐命令日志在默认不提交的 `evidence/local/`。用户已暂缓 ExoMind；没有读取档案或调用 ExoMind API。
-- 当前解压目录及其祖先不是 Git checkout；用户已授权最终提交/推送，但需要先切换到其既有仓库/remote。不要在解压目录初始化新远程仓库。
+- 当前源码已在 Windows/MSVC 环境通过 `npm run check`（17 项 Node + 8 类离线契约）、15 项 Python provider 单测、Rust fmt、workspace Clippy 和 core/server/desktop 检查；完整 workspace optimized 测试 38 项通过。
+- Edge 离线 renderer 检查 16 项通过，覆盖窗口默认文本可选、组件样式覆盖、标题栏不可选、滚动/溢出与动态 renderer 行为；它不替代真实 Tauri 像素验收。
+- 最新协议为严格 `0.3`。当前 release WebSocket 的 `lease_probe.py` 19 项通过，包含拒绝旧版本、text_selectable 默认读写、租约过期、重连 epoch fencing、原子 patch 与慢消费者。
+- 新 release 构建于 `E:\tmp\wincraft-target-text-selection-20261026\release\wincraft-desktop.exe`，SHA-256 记录在 `docs/engineering/VALIDATION.md`。它已独立运行；TrafficMonitor x64 Lite 与 Obsidian Workspace 0.14.7 只读 provider 均接入，Obsidian Workspace native report 为 applied。
+- 用户此前确认托盘图标/菜单可打开管理器，悬浮窗可见且可拖动。最新 release 的文本选择手势、像素级滚动条、click-through 救援等仍留在人工验收矩阵。ExoMind 由用户暂缓，未读取配置或调用 API。
+- WinCraft 原解压目录没有 `.git`，未丢失或恢复其他仓库历史。用户明确授权后，已在此目录新建私有 GitHub `ARCJ137442/WinCraft`，默认分支 `dev`，`origin` 指向该远端；首个源码快照提交为 `c70ba44`。新历史从该提交开始，不是外心仓库的 graft。
+- 可提交摘要和当前产物哈希见 `docs/engineering/VALIDATION.md`；逐命令日志/截图留在默认忽略的 `evidence/local/`。不写入 `.runtime.json` 内容、token、笔记标题或遥测读数。
 
 ## 必须保留的设计不变量
 

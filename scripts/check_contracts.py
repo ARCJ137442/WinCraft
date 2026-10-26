@@ -38,7 +38,7 @@ def main() -> None:
     for bad in [
         {"id":"x","method":"world.create","params":{"window":{"width":-1}}},
         {"id":"x","method":"scene.execute_javascript","params":{}},
-        {"id":"x","method":"hello","params":{"protocol":"0.1","provider_name":"x"}},
+        {"id":"x","method":"hello","params":{"protocol":"0.2","provider_name":"x"}},
     ]:
         assert not validator.is_valid(bad), bad
     assert not Draft202012Validator(scene_schema).is_valid({"root":{"id":"button","kind":"button"}})

@@ -23,7 +23,7 @@
 |---|---|
 | 核心 | 创建/列出/加入/离开/销毁世界；窗口级独占写租约；多个快照读者；租约续期、过期、撤销编号；版本冲突检查 |
 | 声明式界面 | 10 种组件；JSON Pointer 数据绑定；运行中插入、删除、替换、移动和改属性；整批事务验证 |
-| 窗口 | 位置、尺寸、置顶、显隐、装饰、任务栏、调整大小、点击穿透、人类/提供者几何控制；屏幕内恢复 |
+| 窗口 | 位置、尺寸、置顶、显隐、装饰、任务栏、调整大小、点击穿透、人类/提供者几何控制；透明度默认 80%，文本默认可选，标题栏文字不可选；屏幕内恢复 |
 | 交互 | 组件动作回到当前写入者；等待/确认/失败/超时；拒绝过时界面的动作 |
 | 自用管理器 | 宿主内部提供者生成的管理与设置世界；共享同一组件树和渲染器；明确的本地接管/解除接管/关闭 |
 | 网络 | 统一健康检查与鉴权发现、协议握手、双向 WebSocket；非本机提供者可通过 SSH 隧道接入 |
@@ -71,6 +71,7 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 
 为 WinCraft 接入自动化程序或 Agent，从 [`skills/wincraft-provider/SKILL.md`](skills/wincraft-provider/SKILL.md) 开始。教程按“加入世界 → 搭建声明式场景 → 动态更新 → 回执动作 → 租约恢复”逐步讲解，并链接到真实 Python 示例。
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
+Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
 
 ## 单独看前端
 

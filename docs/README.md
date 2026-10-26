@@ -18,6 +18,7 @@
 | Windows 验收步骤 | [engineering/ACCEPTANCE.md](engineering/ACCEPTANCE.md) |
 | 风险与修订优先级 | [engineering/KNOWN_LIMITS.md](engineering/KNOWN_LIMITS.md) |
 | 外心迁移和桥接 | [integration-exomind.md](integration-exomind.md) |
+| Obsidian Obsidian Workspace 仪表盘只读投影 | [integration-obsidian.md](integration-obsidian.md) |
 | 非本机提供者 | [remote.md](remote.md) |
 | 后续演进 | [roadmap.md](roadmap.md) |
 | 决策理由 | [adr/0001-window-world-and-leases.md](adr/0001-window-world-and-leases.md)、[adr/0002-projection-not-business-storage.md](adr/0002-projection-not-business-storage.md)、[adr/0003-transport-and-self-provider.md](adr/0003-transport-and-self-provider.md) |

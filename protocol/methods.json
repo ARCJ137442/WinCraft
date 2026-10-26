@@ -1,5 +1,5 @@
 {
-  "protocol": "0.2",
+  "protocol": "0.3",
   "methods": [
     "hello",
     "session.ping",

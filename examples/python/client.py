@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-PROTOCOL_VERSION = "0.2"
+PROTOCOL_VERSION = "0.3"
 
 class RpcError(RuntimeError):
     def __init__(self, error: dict[str, Any]):

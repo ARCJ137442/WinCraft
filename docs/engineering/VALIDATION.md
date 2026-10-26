@@ -4,21 +4,24 @@
 
 ## 本机 Windows 验证摘要（2026-10-26）
 
-以下结果来自本机解压目录中的实际执行；原始制作环境记录保留在本文件下文，不再代表当前状态。
+以下结果来自当前 WinCraft 工作目录中的实际执行；原始制作环境记录保留在本文件下文，不再代表当前状态。
 
 | 范围 | 状态 | 已证明的范围 |
 |---|---|---|
-| UI/离线契约 | PASS | `npm run check`：17 项 Node 测试与 8 类离线契约检查；Edge smoke 10 项为 mock-provider 浏览器验证，不代替原生窗口 |
-| Rust workspace | PASS | workspace check、fmt、debug/release workspace 各 28 项测试、workspace Clippy `-D warnings` |
-| Tauri release | PASS | `npm run desktop:build` 成功；独立运行 `target/release/wincraft-desktop.exe --open-manager` 后 manager 和 provider 世界可见；无参数默认仍 tray-only |
-| Windows descriptor ACL | PASS（单文件、单账户） | 从 manager 实际显示路径定位当前 descriptor；只读 Get-Acl 确认 owner 为当前用户且没有 Everyone/Authenticated Users/Users/Guests broad-read grant；没有读取文件内容 |
-| 真实协议 | PASS | release Host 上 `lease_probe.py` 13 项通过：认证/Origin、读写授权、正向与原子 scene.patch、租约过期、断线 fencing、慢消费者 |
-| TrafficMonitor | PASS | 作者 V1.86 x64 Lite 包 SHA-256 `d9774a64268f952b5cb88a1eead399f863f7d4ab64e945f19c096fed89cc1145`；隔离暂存副本经 `OnMonitorInfo` 持续发布快照，Python provider 更新真实 Tauri 原生世界，版本标记 1.8.6.0 |
-| 用户观察 | PASS | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；它们属于用户观察 |
-| 原生人工门 | NOT_RUN | 最新 release 的 focus-demo 按钮驱动结构替换/动作回执、像素级滚动条、托盘 tooltip hover、不同 DPI/显示器、休眠恢复、跨账户 ACL、IME 与 revision-conflict UI 仍需人工/专用环境验收；click-through rescue/hold 自动操作的 `BLOCKED` 细节见本机矩阵 |
-| ExoMind | BLOCKED（用户暂缓） | 未读取用户连接信息、未猜端口/档案、未调用 API |
+| UI/离线契约 | PASS | `npm run check`：17 项 Node 测试、8 类离线契约；Edge smoke 16 项 mock-provider DOM 检查，含 `text_selectable` 默认、局部样式覆盖与标题栏不可选，不代替原生输入验收 |
+| Python provider/Agent skill | PASS | 15 项 Python provider 单测；provider skill 自检 12 个仓库引用；真实 TrafficMonitor 与 Obsidian Workspace provider 启动/读取链路分开记录 |
+| Rust workspace | PASS | rustfmt、core/server/desktop 检查、workspace Clippy `-D warnings`；debug core/server 30 项、workspace optimized 38 项测试通过 |
+| Tauri release | PASS | `npm run desktop:build` 成功；独立执行 `E:\tmp\wincraft-target-text-selection-20261026\release\wincraft-desktop.exe --open-manager`，真实 TrafficMonitor 与 Obsidian provider 接入；不经 Vite 代理 |
+| 当前 descriptor ACL | PASS（单文件、单账户） | 从当前宿主输出的路径对 ACL 元数据执行只读检查：owner 是当前用户，没有 Everyone/Authenticated Users/Users/Guests broad-read grant；没有读取文件内容 |
+| 真实协议 | PASS | 最新 release Host 上 `lease_probe.py` 19 项通过：严格 0.3 握手、旧 0.2 拒绝、文本选择默认/读写、认证/Origin、读写授权、动态/原子 patch、租约过期、断线 fencing、慢消费者 |
+| TrafficMonitor | PASS | 作者 V1.86 x64 Lite 隔离暂存副本经 `OnMonitorInfo` 持续发布；provider 接入当前 release，状态在线、版本 1.8.6.0、generation/revision 递增；证据不含遥测数值 |
+| Obsidian Obsidian Workspace | PASS | 只读 provider 连到当前 release；Obsidian Workspace 0.14.7 投影 5 个关注项和 4 组提醒，native report 为 applied；未写笔记/插件设置，证据不含标题 |
+| GitHub | PASS | 私有 `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；源码首个提交 `c70ba44`，随后路线图提交 `3661dce` 已在远端。当前功能改动待单独提交 |
+| 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
+| 原生人工门 | NOT_RUN | 最新 release 的文本选取鼠标手势、focus-demo 按钮回执、像素级 manager 滚动条、tooltip hover、不同 DPI/显示器、休眠恢复、IME 与 revision-conflict UI 仍需人工/专用环境验收；click-through rescue/hold 细节见本机矩阵 |
+| ExoMind | BLOCKED（用户暂缓） | 未读取连接信息、未猜端口/档案、未调用 API |
 
-独立 release 当前字节数为 11,197,440，SHA-256 为 `fa9978ef12760214f43063542ccb11300d11cd593f4f3a532e39e04e37723372`。具体命令/退出码和脱敏状态在本机 `evidence/local/`；该目录按设计不进入提交，未记录 `.runtime.json` 内容、token、Obsidian 标题或 TrafficMonitor 遥测值。
+独立 release 为 11,218,432 字节，SHA-256：`b04beafe2ffd4320373e4a750c4fc6d0b78e74f9808ae1d802faf98089945e38`。实际命令/退出码和脱敏状态在本机 `evidence/local/`；该目录按设计不进入提交，不记录 `.runtime.json` 内容、token、Obsidian 标题或 TrafficMonitor 遥测值。
 
 ## 已实际执行
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:wincraft:protocol:0.2",
-  "title": "WinCraft 0.2 provider requests",
+  "$id": "urn:wincraft:protocol:0.3",
+  "title": "WinCraft 0.3 provider requests",
   "$defs": {
     "Node": {
       "oneOf": [
@@ -1140,6 +1140,10 @@
           "type": "boolean",
           "default": true
         },
+        "text_selectable": {
+          "type": "boolean",
+          "default": true
+        },
         "decorations": {
           "type": "boolean"
         },
@@ -1201,6 +1205,9 @@
           "type": "boolean"
         },
         "title_bar_visible": {
+          "type": "boolean"
+        },
+        "text_selectable": {
           "type": "boolean"
         },
         "decorations": {
@@ -1343,7 +1350,7 @@
           "type": "object",
           "properties": {
             "protocol": {
-              "const": "0.2"
+              "const": "0.3"
             },
             "provider_name": {
               "type": "string",
