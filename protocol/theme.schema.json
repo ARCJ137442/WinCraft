@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:theme:0.3",
+  "title": "WinCraft scene theme tokens",
+  "description": "Restricted visual tokens only; trusted host chrome, CSS, scripts and remote assets are not part of this interface.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "background": {
+      "type": "string",
+      "pattern": "^#[A-Fa-f0-9]{6}$"
+    },
+    "foreground": {
+      "type": "string",
+      "pattern": "^#[A-Fa-f0-9]{6}$"
+    },
+    "accent": {
+      "type": "string",
+      "pattern": "^#[A-Fa-f0-9]{6}$"
+    },
+    "font_scale": {
+      "type": "number",
+      "minimum": 0.9,
+      "maximum": 2.0
+    },
+    "radius_px": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32
+    },
+    "spacing_px": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 32
+    }
+  },
+  "required": [
+    "background",
+    "foreground",
+    "accent",
+    "font_scale",
+    "radius_px",
+    "spacing_px"
+  ]
+}

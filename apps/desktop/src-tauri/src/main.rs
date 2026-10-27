@@ -1,17 +1,39 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod windows;
 use serde_json::Value;
-use std::{net::SocketAddr, sync::Mutex};
-use tauri::{LogicalSize, Manager, PhysicalPosition, WebviewWindow};
+use std::{
+    fs,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
 use uuid::Uuid;
-use wincraft_core::{Fault, GeometryControl, Snapshot};
+use wincraft_core::{EventSource, Fault, GeometryControl, InteractionSource, Snapshot};
 use wincraft_server::{self_provider::ManagerProvider, Hub, RunningServer};
 
 pub struct DesktopState {
     pub hub: Hub,
     pub manager: ManagerProvider,
+    pub tray_visibility: windows::TrayVisibilityState,
+    locale_path: PathBuf,
     // Keeps the descriptor guard alive. It removes only this host's credential file on normal exit.
     pub server: Mutex<Option<RunningServer>>,
+}
+fn load_locale(path: &Path) -> String {
+    match fs::read_to_string(path)
+        .map(|value| value.trim().to_owned())
+        .as_deref()
+    {
+        Ok("en-US") => "en-US".into(),
+        _ => "zh-CN".into(),
+    }
+}
+fn save_locale(path: &Path, locale: &str) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, format!("{locale}\n"))
 }
 fn caller_world(window: &WebviewWindow) -> Result<Uuid, Fault> {
     window
@@ -28,20 +50,71 @@ fn surface_snapshot(
     state.hub.renderer_snapshot(caller_world(&window)?)
 }
 #[tauri::command]
+fn surface_locale_get(state: tauri::State<'_, DesktopState>) -> String {
+    state.hub.locale()
+}
+#[tauri::command]
+fn surface_locale_set(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, DesktopState>,
+    locale: String,
+) -> Result<(), Fault> {
+    let world_id = caller_world(&window)?;
+    if !state.hub.renderer_snapshot(world_id)?.system {
+        return Err(Fault::new(
+            "FORBIDDEN",
+            "only the internal manager can change host display language",
+        ));
+    }
+    state.hub.set_locale(&locale)?;
+    save_locale(&state.locale_path, &locale)
+        .map_err(|error| Fault::new("PREFERENCE_WRITE_FAILED", error.to_string()))?;
+    app.emit("host/locale", locale)
+        .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod locale_tests {
+    use super::{load_locale, save_locale};
+    use uuid::Uuid;
+
+    #[test]
+    fn local_locale_preference_is_validated_and_rebuildable() {
+        let path = std::env::temp_dir()
+            .join(format!("wincraft-locale-{}", Uuid::new_v4()))
+            .join("ui-locale.txt");
+        assert_eq!(load_locale(&path), "zh-CN");
+        save_locale(&path, "en-US").expect("locale preference saves");
+        assert_eq!(load_locale(&path), "en-US");
+        save_locale(&path, "fr-FR").expect("malformed preference fixture writes");
+        assert_eq!(load_locale(&path), "zh-CN");
+        let _ = std::fs::remove_file(&path);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
+    }
+}
+#[tauri::command]
 fn surface_interact(
     window: WebviewWindow,
     state: tauri::State<'_, DesktopState>,
     node_id: String,
     value: Value,
-    context_action: bool,
+    source: InteractionSource,
     expected_revision: u64,
 ) -> Result<Uuid, Fault> {
-    state.hub.interact(
+    state.hub.interact_with_source_with_native_window_action(
         caller_world(&window)?,
         &node_id,
         value,
-        context_action,
+        source,
         expected_revision,
+        |target| {
+            windows::perform_external_window_action(target)
+                .map_err(|message| Fault::new("NATIVE_ERROR", message))
+        },
     )
 }
 #[tauri::command]
@@ -63,9 +136,10 @@ fn surface_close(
     if id == state.manager.world_id {
         state
             .hub
-            .lock()
-            .operator_visibility(state.manager.session, id, false)?;
-        state.hub.changed(id);
+            .apply_state_change(id, EventSource::Human, None, |core| {
+                core.operator_visibility(state.manager.session, id, false)?;
+                Ok(true)
+            })?;
     } else {
         let members = state
             .hub
@@ -84,9 +158,10 @@ fn surface_minimize(
     let id = caller_world(&window)?;
     state
         .hub
-        .lock()
-        .operator_visibility(state.manager.session, id, false)?;
-    state.hub.changed(id);
+        .apply_state_change(id, EventSource::Human, None, |core| {
+            core.operator_visibility(state.manager.session, id, false)?;
+            Ok(true)
+        })?;
     Ok(())
 }
 
@@ -96,16 +171,19 @@ fn surface_content_height(
     state: tauri::State<'_, DesktopState>,
     content_fit: tauri::State<'_, windows::ContentFitState>,
     height: f64,
+    force: bool,
 ) -> Result<(), Fault> {
     let id = caller_world(&window)?;
-    if !height.is_finite() || !(80.0..=10_000.0).contains(&height) {
+    if !height.is_finite() || !(50.0..=10_000.0).contains(&height) {
         return Err(Fault::new(
             "INVALID_CONTENT_SIZE",
             "content height outside safe bounds",
         ));
     }
     let snapshot = state.hub.renderer_snapshot(id)?;
-    if snapshot.window.geometry_control != GeometryControl::Human || !content_fit.enabled(id) {
+    if snapshot.window.geometry_control != GeometryControl::Human
+        || (!force && !content_fit.enabled(id))
+    {
         return Ok(());
     }
 
@@ -162,6 +240,8 @@ fn main() {
     let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             surface_snapshot,
+            surface_locale_get,
+            surface_locale_set,
             surface_interact,
             surface_drag,
             surface_close,
@@ -169,11 +249,15 @@ fn main() {
             surface_content_height
         ])
         .setup(move |app| {
-            let runtime_dir = app.path().app_local_data_dir()?.join("runtime");
+            let app_local_data = app.path().app_local_data_dir()?;
+            let runtime_dir = app_local_data.join("runtime");
+            let locale_path = app_local_data.join("ui-locale.txt");
             let bind: SocketAddr = std::env::var("WINCRAFT_BIND")
                 .unwrap_or_else(|_| "127.0.0.1:0".into())
                 .parse()?;
-            let hub = Hub::new(true);
+            let hub = Hub::new(cfg!(target_os = "windows"));
+            hub.set_locale(&load_locale(&locale_path))
+                .map_err(std::io::Error::other)?;
             let (server, manager) = tauri::async_runtime::block_on(async {
                 let server = wincraft_server::start(hub.clone(), bind, &runtime_dir).await?;
                 let manager = ManagerProvider::install(&hub).map_err(std::io::Error::other)?;
@@ -183,21 +267,25 @@ fn main() {
             app.manage(DesktopState {
                 hub: hub.clone(),
                 manager: manager.clone(),
+                tray_visibility: windows::TrayVisibilityState::default(),
+                locale_path,
                 server: Mutex::new(Some(server)),
             });
             let content_fit = windows::ContentFitState::default();
             app.manage(content_fit.clone());
+            let tray_visibility = app.state::<DesktopState>().tray_visibility.clone();
             windows::install_tray(app.handle())?;
-            if open_manager_on_start {
-                let _ = manager.show(&hub);
-            }
             windows::supervise(
                 app.handle().clone(),
-                hub,
-                manager,
+                hub.clone(),
+                manager.clone(),
                 runtime_dir.join("native.log"),
                 content_fit,
+                tray_visibility.clone(),
             );
+            if open_manager_on_start {
+                windows::activate_manager(app.handle().clone(), hub, manager, tray_visibility);
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

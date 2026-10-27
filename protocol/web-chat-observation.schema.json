@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:web-chat-observation:0.1",
+  "title": "WinCraft web chat semantic observation draft",
+  "type": "object",
+  "properties": {
+    "source_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "tab_instance_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "conversation_id": {"type": ["string", "null"], "maxLength": 256},
+    "page_lifecycle": {"type": "string", "enum": ["active", "navigated", "closed", "unknown"]},
+    "mode": {"type": "string", "enum": ["readonly_summary", "send_preview", "send_result"]},
+    "summary": {"type": ["string", "null"], "maxLength": 8192},
+    "outbound_preview": {"type": ["string", "null"], "maxLength": 8192},
+    "send_state": {"type": "string", "enum": ["not_requested", "awaiting_user_confirmation", "sent", "failed", "unknown"]},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "freshness": {"type": "string", "enum": ["fresh", "stale", "disconnected", "unknown"]},
+    "user_confirmation": {"type": "boolean"}
+  },
+  "required": ["source_id", "tab_instance_id", "conversation_id", "page_lifecycle", "mode", "summary", "outbound_preview", "send_state", "observed_at", "freshness", "user_confirmation"],
+  "additionalProperties": false
+}

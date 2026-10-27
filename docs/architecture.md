@@ -22,9 +22,19 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 `wincraft-server` 给核心增加连接身份、JSON 消息、鉴权、限额、事件和提供者通道。headless 使用同一个核心，而不是 Python/JS 重写模型。
 
+状态变更通过 per-world latest-value watch 推送完整快照，几何/逻辑显隐的类型订阅从相邻快照计算并允许合并；交互和删除等 occurrence 走独立有界广播，队列滞后时显式重同步并断开。订阅只对本连接已加入的世界有效，不授予写租约，断线即清理。
+
 `apps/desktop/src-tauri` 负责真实窗口，将已接受的窗口意图应用到系统。它不能决定外心是否暂停。通过受限的 caller-window IPC 接收交互，不允许某个渲染器指定另一个世界的 ID。
 
+托盘全局 hide/show 是独立于每个 `WindowSpec.visible` 的临时 host overlay：hide 时记住逻辑可见的 world IDs，native windows 隐藏但 scene、lease 和 provider 偏好不变；show 只恢复这些仍保持 `visible=true` 的世界。单窗最小化仍通过 `visible` 进入快照，provider 可观察和恢复。标题栏点击折叠只影响 renderer 展示高度，不触碰 Rust 世界状态。
+
+Tauri tray Exit 与 headless Ctrl+C 共用 `RunningServer::shutdown()`：停止接受新连接，向 WebSocket 客户端发送关闭信号，撤销并断开普通 provider session，停止 housekeeping/listener 任务，再删除当前宿主拥有的 runtime descriptor。`Drop` 保留 abort 兜底；异常强杀仍可能留下一份失效 descriptor，不能把它当作正在运行的 host。
+
 `apps/desktop/src` 只负责可信组件渲染。相同组件树在外部世界和管理器中使用相同代码。用户提供的数据不会成为 HTML、JS 或任意 CSS。`WindowSpec.text_selectable` 随快照进入 renderer，控制整个窗口内容的默认文本选择；宿主组件样式可对单个元素覆盖，公共标题栏始终不可选。
+
+`Scene.theme` 是经能力表声明的可选 token 对象；Rust 验证格式、边界和颜色对比度，renderer 只将安全值应用到内容容器。自定义标题栏、Provider 身份、连接状态、权限提示与接管入口保持 host-controlled。系统 forced-colors/reduced-motion 和本机字号缩放优先于 Provider theme；任意 stylesheet、远程资源与脚本不进入协议。
+
+宿主 chrome 与内部管理器的静态文案使用共享 `zh-CN` / `en-US` key catalog。语言是本机 host UI 偏好，不是线协议字段；管理器通过普通内部提供者动作切换，偏好写入仅包含 locale ID 的本机 `ui-locale.txt`，其他打开的 WebView 接收 `host/locale` 更新。外部 Provider 的题面、选项、消息与业务数据保持来源语言，Renderer 不自动翻译这些值。
 
 ## 四个版本号，不能混用
 

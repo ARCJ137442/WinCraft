@@ -1,13 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>WinCraft · 窗构原型</title><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./fit.css"></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title data-i18n="app.title">WinCraft · 窗构原型</title><link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./fit.css"></head>
 <body>
-  <aside id="preview" class="preview-banner" hidden>浏览器预览 · 模拟提供者数据 · 非原生窗口验收</aside>
-  <main id="world" class="world" tabindex="0" aria-label="WinCraft 悬浮世界；内容溢出时可滚动">
-    <header class="chrome"><div id="drag" class="drag"><span class="brand-mark" aria-hidden="true">▦</span><span id="title">启动中</span></div><button id="minimize" class="minimize" type="button" aria-label="最小化窗口" title="最小化窗口">−</button><button id="close" class="close" type="button" aria-label="关闭此世界" title="关闭此世界">×</button></header>
-    <div class="status-line"><span class="status-dot"></span><span id="status">等待宿主就绪</span></div>
-    <section id="scene" class="scene" aria-label="世界组件" tabindex="0"></section>
-    <p id="error" class="error" role="alert" hidden></p><p id="action-status" class="action-status" aria-live="polite"></p>
+  <aside id="preview" class="preview-banner" data-i18n="preview.banner" hidden>浏览器预览 · 模拟提供者数据 · 非原生窗口验收</aside>
+  <main id="world" class="world" aria-describedby="accessibility-hint" aria-keyshortcuts="Control+Shift+Equal Control+Minus Control+0" data-i18n-aria-label="world.aria" aria-label="WinCraft 悬浮世界；内容溢出时可滚动">
+    <header class="chrome"><div id="drag" class="drag" role="button" tabindex="0" aria-expanded="true" aria-controls="status-line scene error action-status footer"><span class="brand-mark" aria-hidden="true">▦</span><span id="title">启动中</span></div><button id="minimize" class="minimize" type="button" data-i18n-aria-label="window.minimize" data-i18n-title="window.minimize" aria-label="最小化窗口" title="最小化窗口">−</button><button id="close" class="close" type="button" data-i18n-aria-label="window.close" data-i18n-title="window.close" aria-label="关闭此世界" title="关闭此世界">×</button></header>
+    <div id="status-line" class="status-line"><span class="status-dot" aria-hidden="true"></span><span id="status" role="status" aria-live="polite" aria-atomic="true" data-i18n="status.startup">等待宿主就绪</span></div>
+    <section id="scene" class="scene" data-i18n-aria-label="world.components" aria-label="世界组件" tabindex="0"></section>
+    <p id="error" class="error" role="alert" hidden></p><p id="action-status" class="action-status" aria-live="polite"></p><p id="accessibility-hint" class="sr-only" data-i18n="accessibility.zoom_hint">使用 Ctrl+Shift+加号/减号调整字体缩放，Ctrl+0恢复来源主题设置。</p><p id="accessibility-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <footer><span id="revision">r0</span><span>WINCRAFT / 0.1</span></footer>
   </main>
   <script type="module" src="./main.js"></script>

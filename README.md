@@ -2,7 +2,7 @@
 
 **版本：0.1.0-alpha.1 / 原型源码交接，非已验收发行版。**
 
-本机 release 与真实 TrafficMonitor provider 已完成联调；可提交的验证摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，逐项本机记录（若存在）位于默认不提交的 `evidence/local/`。这仍是本地原型验证，不代表对外发行或安全认证。
+本机 lifecycle release 已与真实 TrafficMonitor x64 provider、Obsidian Obsidian Workspace 只读 provider 联调；可提交的验证摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，逐项本机记录位于默认不提交的 `evidence/local/`。TrafficMonitor 桥接已从当前源码重编并实测报告 1.8.6.0；这仍是本地原型验证，不代表对外发行或安全认证。
 
 让已有应用、自动化脚本与 Agent 通过声明式协议，获得可搭建、可交互、可操控的桌面窗口。世界就是窗口；宿主是托盘进程；提供者是加入世界的参与者；组件是可以持续增删重组的方块。
 

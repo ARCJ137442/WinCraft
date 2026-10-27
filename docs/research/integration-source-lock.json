@@ -1,0 +1,94 @@
+{
+  "checked_at": "2026-10-26",
+  "repository_baseline": "6929056700b1ba6702288534579debc8a502c139",
+  "protocol": "0.3",
+  "sources": [
+    {
+      "id": "W-BASELINE",
+      "status": "VERIFIED_LOCAL",
+      "identity": "ARCJ137442/WinCraft dev",
+      "version_or_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "evidence": "read-only local git baseline check"
+    },
+    {
+      "id": "P-POPUP",
+      "status": "OBSERVED_LOCAL_RESTRICTED",
+      "identity": "popup-ask structured runtime skill",
+      "version_or_commit": "unversioned local installation; handoff blob 796bf688e86bfb30132c1d1088f95adb6429dde6",
+      "evidence": "local SKILL.md and popup_ask.py read; locator omitted from public repository",
+      "supported_contract": [
+        "1-4 questions with stable ids",
+        "2-5 authored options; transport injects Other and supports notes",
+        "window close, cancel button, and Escape have distinct cancellation reasons",
+        "default stable text summary; explicit --json structured result",
+        "user-language text must not be changed to work around encoding"
+      ]
+    },
+    {
+      "id": "P-TOUCH",
+      "status": "REFERENCE_ONLY",
+      "identity": "TouchAI repository reference from the supplied handoff",
+      "version_or_commit": "not independently rechecked in this worktree"
+    },
+    {
+      "id": "X-DSH",
+      "status": "REFERENCE_ONLY",
+      "identity": "DeepSeek Harness architecture reference from the supplied handoff",
+      "version_or_commit": "not independently rechecked in this worktree"
+    },
+    {
+      "id": "X-CODEX",
+      "status": "REFERENCE_ONLY",
+      "identity": "Codex App Server reference from the supplied handoff",
+      "version_or_commit": "not independently rechecked in this worktree"
+    },
+    {
+      "id": "X-CLAUDE",
+      "status": "REFERENCE_ONLY",
+      "identity": "Claude Code Hooks reference from the supplied handoff",
+      "version_or_commit": "not independently rechecked in this worktree"
+    },
+    {
+      "id": "X-OPENCODE",
+      "status": "REFERENCE_ONLY",
+      "identity": "OpenCode server/plugin references from the supplied handoff",
+      "version_or_commit": "not independently rechecked in this worktree"
+    },
+    {
+      "id": "P-SYSTORCH-LOCAL",
+      "status": "LOCAL_UNRELEASED_CANDIDATE",
+      "identity": "SysTorch (formerly Jev Switch), local M1 decision subsystem",
+      "version_or_commit": "11253af121c0e9f800b544af6c95cd6e4f613e1a",
+      "working_tree": "dirty; relevant M1 decision module, store and contract are untracked relative to HEAD",
+      "evidence": "read-only project instructions/README, CodeGraph route trace, current local HTTP contract and decision storage source",
+      "verified_contract": {
+        "create": "POST /v1/systorch/decisions",
+        "read": "GET /v1/systorch/decisions/{id}",
+        "result": "GET /v1/systorch/decisions/{id}/result",
+        "cancel": "POST /v1/systorch/decisions/{id}/cancel",
+        "answer": "POST /v1/systorch/decisions/{id}/answers"
+      },
+      "permission_boundary": "Managed caller token can create/read/cancel only its own tasks. Only local-owner can answer; a caller/admin token is not answer permission. WinCraft provider must not transmit an answer.",
+      "transport_boundary": "No base URL or port is guessed. Local plaintext is loopback only; remote use requires HTTPS or an authenticated tunnel.",
+      "runtime_state": "No live endpoint was contacted; no token, owner key or business task was read or changed.",
+      "source_file_sha256": {
+        "rs/crates/systorch-daemon/src/decisions/mod.rs": "458fe34e56361c8abddd588babd9911b8d2832abfb7ae634c0e649e38b358df4",
+        "rs/crates/systorch-daemon/src/decisions/store.rs": "96a1fc8a1ba0c24b65c2e229239cc3508dd4404da744d3e65197f51f606641ea",
+        "docs/contracts/08-持久Choice契约.md": "1819bef10cbf8a1dbb8df7acc1bc8fee92b25cbc9ffe9e2d4ac3272ffc9daa5a"
+      }
+    }
+  ],
+  "unresolved": [
+    {
+      "name": "SysTorch live integration",
+      "status": "BLOCKED",
+      "reason": "The API source is an uncommitted/unreleased local M1 candidate; B03-02 is still a prerequisite, and no explicit runtime URL or managed caller token was supplied."
+    },
+    {
+      "name": "TeamSense",
+      "status": "BLOCKED",
+      "reason": "actual source identity and API were not established"
+    }
+  ],
+  "integration_claims": "No third-party live integration is established. SysTorch source and current candidate contract were inspected locally only; no runtime call was made."
+}

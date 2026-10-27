@@ -1,0 +1,21 @@
+{
+  "kind": "wincraft.activity.draft",
+  "schema_version": "draft-2026-10-26",
+  "source_type": "fixture",
+  "device_id": "pc-fixture",
+  "provider_id": "fixture.board",
+  "mapping_version": "1",
+  "source_instance_id": "fixture-codex-1",
+  "session_id": "session-demo",
+  "parent_session_id": null,
+  "task_id": "task-demo",
+  "source_status": "fixture.needs_input",
+  "status": "waiting_input",
+  "observed_at": "2026-10-26T12:00:00Z",
+  "expires_at": "2026-10-26T12:01:00Z",
+  "source_sequence": 7,
+  "freshness": "fresh",
+  "title": "合成示例：等待你选择方案",
+  "control_capabilities": [],
+  "provenance": "synthetic"
+}

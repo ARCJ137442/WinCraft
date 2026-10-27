@@ -1,0 +1,52 @@
+{
+  "executed_at_date": "2026-10-26",
+  "scope": "handoff-only; synthetic planning and maintenance tooling",
+  "python": "3.13.5",
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "jsonschema": "4.26.0",
+  "commands": [
+    {
+      "command": "python scripts/render_plan.py --date 2026-10-26",
+      "exit_code": 0,
+      "scope": "generated plan maintenance"
+    },
+    {
+      "command": "python scripts/validate_handoff.py --output evidence/package-validation.json",
+      "exit_code": 0,
+      "scope": "links/metadata/requirements/dependencies/schemas/locales"
+    },
+    {
+      "command": "python -m unittest discover -s tests -v",
+      "exit_code": 0,
+      "tests_run": 34,
+      "scope": "planner, positive/negative contracts, synthetic maintenance checks"
+    },
+    {
+      "command": "python examples/adapter/adaptive_plan.py --pack examples/packs/workday.pack.json --inventory examples/inventory/full.json --now 2026-10-26T12:00:10Z",
+      "exit_code": 0,
+      "scope": "synthetic ready plan"
+    },
+    {
+      "command": "python examples/adapter/adaptive_plan.py --pack examples/packs/workday.pack.json --inventory examples/inventory/optional-missing.json --now 2026-10-26T12:00:10Z",
+      "exit_code": 0,
+      "scope": "synthetic degraded plan"
+    },
+    {
+      "command": "python examples/adapter/adaptive_plan.py --pack examples/packs/workday.pack.json --inventory examples/inventory/required-missing.json --now 2026-10-26T12:00:10Z",
+      "exit_code": 3,
+      "scope": "expected blocked result"
+    }
+  ],
+  "not_executed": [
+    "WinCraft latest runtime build/test",
+    "Windows native release tests",
+    "real Popup bridge",
+    "browser or third-party account integration",
+    "Harness control",
+    "Android notifications and transport",
+    "GitHub writes"
+  ],
+  "new_product_acceptance_status": "all 143 NOT_RUN",
+  "repository_baseline": "6929056700b1ba6702288534579debc8a502c139",
+  "important": "Maintenance tests use temporary synthetic directories/Git repositories, never the user WinCraft checkout."
+}

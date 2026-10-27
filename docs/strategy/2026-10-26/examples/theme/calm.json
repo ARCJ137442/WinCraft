@@ -1,0 +1,18 @@
+{
+  "kind": "wincraft.theme.draft",
+  "schema_version": "draft-2026-10-26",
+  "id": "wincraft.calm",
+  "title": {
+    "zh-CN": "沉静",
+    "en-US": "Calm"
+  },
+  "tokens": {
+    "background": "#111827",
+    "foreground": "#F9FAFB",
+    "accent": "#67E8F9",
+    "font_scale": 1,
+    "radius_px": 12,
+    "spacing_px": 12
+  },
+  "trusted_chrome": "host-controlled"
+}

@@ -3,7 +3,7 @@
 //! operator actions (rescue/destroy) have extra authority.
 use crate::{Hub, Notice};
 use serde_json::{json, Value};
-use std::time::Duration;
+use std::{sync::OnceLock, time::Duration};
 use uuid::Uuid;
 use wincraft_core::*;
 
@@ -19,6 +19,34 @@ struct Settings {
     always_on_top: bool,
     pending_close: Option<Uuid>,
 }
+fn manager_text(locale: &str, key: &str) -> String {
+    static ZH: OnceLock<Value> = OnceLock::new();
+    static EN: OnceLock<Value> = OnceLock::new();
+    let (slot, source) = if locale == "en-US" {
+        (
+            &EN,
+            include_str!("../../../apps/desktop/src/locales/en-US.json"),
+        )
+    } else {
+        (
+            &ZH,
+            include_str!("../../../apps/desktop/src/locales/zh-CN.json"),
+        )
+    };
+    let catalog = slot.get_or_init(|| serde_json::from_str(source).unwrap_or(Value::Null));
+    catalog
+        .get(key)
+        .and_then(Value::as_str)
+        .or_else(|| {
+            let fallback = ZH.get_or_init(|| {
+                serde_json::from_str(include_str!("../../../apps/desktop/src/locales/zh-CN.json"))
+                    .unwrap_or(Value::Null)
+            });
+            fallback.get(key).and_then(Value::as_str)
+        })
+        .unwrap_or(key)
+        .to_owned()
+}
 fn node(id: impl Into<String>, kind: Kind, props: Value, children: Vec<Node>) -> Node {
     Node::new(&id.into(), kind, props, children)
 }
@@ -26,8 +54,9 @@ impl ManagerProvider {
     pub fn install(hub: &Hub) -> Result<Self> {
         let mut e = hub.lock();
         let session = e.register("host.manager".into(), true)?;
+        let locale = hub.locale();
         let window = WindowSpec {
-            title: "窗构 · 世界管理器".into(),
+            title: manager_text(&locale, "manager.window_title"),
             width: 620.0,
             height: 700.0,
             always_on_top: false,
@@ -42,31 +71,32 @@ impl ManagerProvider {
         })
     }
     pub fn show(&self, hub: &Hub) -> Result<()> {
-        hub.lock()
-            .operator_visibility(self.session, self.world_id, true)?;
-        hub.changed(self.world_id);
+        hub.apply_state_change(self.world_id, EventSource::Human, None, |core| {
+            core.operator_visibility(self.session, self.world_id, true)?;
+            Ok(true)
+        })?;
         Ok(())
     }
     pub fn rescue_all(&self, hub: &Hub) {
         let ids: Vec<_> = hub.lock().worlds.keys().copied().collect();
         for id in ids {
-            if hub.lock().rescue(self.session, id).is_ok() {
-                hub.changed(id);
-            }
+            let _ = hub.apply_state_change(id, EventSource::Human, None, |core| {
+                core.rescue(self.session, id).map(|_| true)
+            });
         }
     }
     pub fn blank(&self, hub: &Hub) -> Result<Value> {
         hub.dispatch(
             self.session,
             "world.create",
-            json!({"window":{"title":"空白世界"},"join_policy":"open_authenticated","claim":false}),
+            json!({"window":{"title":manager_text(&hub.locale(),"manager.default_world")},"join_policy":"open_authenticated","claim":false}),
         )
     }
     pub fn spawn(&self, hub: Hub, descriptor_path: String) {
         let manager = self.clone();
         tokio::spawn(async move {
             let mut settings = Settings {
-                title: "空白世界".into(),
+                title: manager_text(&hub.locale(), "manager.default_world"),
                 always_on_top: true,
                 pending_close: None,
             };
@@ -106,37 +136,77 @@ impl ManagerProvider {
             }
             "refresh" => {}
             "settings.title" => {
-                s.title = event
+                let value = event
                     .value
                     .as_str()
-                    .unwrap_or("空白世界")
-                    .chars()
-                    .take(100)
-                    .collect();
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| manager_text(&hub.locale(), "manager.default_world"));
+                s.title = value.chars().take(100).collect();
             }
             "settings.top" => {
                 s.always_on_top = !s.always_on_top;
             }
+            "settings.locale" => {
+                let old_locale = hub.locale();
+                let new_locale = if old_locale == "zh-CN" {
+                    "en-US"
+                } else {
+                    "zh-CN"
+                };
+                if s.title == manager_text(&old_locale, "manager.default_world") {
+                    s.title = manager_text(new_locale, "manager.default_world");
+                }
+                hub.set_locale(new_locale)?;
+                let snapshot = hub.renderer_snapshot(self.world_id)?;
+                hub.dispatch(
+                    self.session,
+                    "window.configure",
+                    json!({"world_id":self.world_id,"lease":self.lease,"expected_revision":snapshot.revision,
+                        "patch":{"title":manager_text(new_locale,"manager.window_title")}}),
+                )?;
+            }
             "close_cancel" => s.pending_close = None,
             a if a.starts_with("rescue:") => {
                 let id = parse_id(a, "rescue:")?;
-                hub.lock().rescue(self.session, id)?;
-                hub.changed(id);
+                hub.apply_state_change(
+                    id,
+                    EventSource::Operator,
+                    Some(event.id.to_string()),
+                    |core| core.rescue(self.session, id).map(|_| true),
+                )?;
             }
             a if a.starts_with("release_hold:") => {
                 let id = parse_id(a, "release_hold:")?;
-                hub.lock().operator_release_hold(self.session, id)?;
-                hub.changed(id);
+                hub.apply_state_change(
+                    id,
+                    EventSource::Operator,
+                    Some(event.id.to_string()),
+                    |core| core.operator_release_hold(self.session, id).map(|_| true),
+                )?;
             }
             a if a.starts_with("visibility_show:") => {
                 let id = parse_id(a, "visibility_show:")?;
-                hub.lock().operator_visibility(self.session, id, true)?;
-                hub.changed(id);
+                hub.apply_state_change(
+                    id,
+                    EventSource::Operator,
+                    Some(event.id.to_string()),
+                    |core| {
+                        core.operator_visibility(self.session, id, true)?;
+                        Ok(true)
+                    },
+                )?;
             }
             a if a.starts_with("visibility_hide:") => {
                 let id = parse_id(a, "visibility_hide:")?;
-                hub.lock().operator_visibility(self.session, id, false)?;
-                hub.changed(id);
+                hub.apply_state_change(
+                    id,
+                    EventSource::Operator,
+                    Some(event.id.to_string()),
+                    |core| {
+                        core.operator_visibility(self.session, id, false)?;
+                        Ok(true)
+                    },
+                )?;
             }
             a if a.starts_with("close_request:") => {
                 s.pending_close = Some(parse_id(a, "close_request:")?)
@@ -166,18 +236,19 @@ impl ManagerProvider {
         Ok(())
     }
     fn refresh(&self, hub: &Hub, settings: &Settings, descriptor: &str) -> Result<()> {
+        let locale = hub.locale();
         let summaries = hub.lock().list(self.session)?;
         let mut rows = vec![
             node(
                 "hero",
                 Kind::Text,
-                json!({"text":"让程序长出可组合的窗口","size":"title"}),
+                json!({"text":manager_text(&locale,"manager.hero"),"size":"title"}),
                 vec![],
             ),
             node(
                 "sub",
                 Kind::Text,
-                json!({"text":"世界即窗口 · 一个写入者，多个快照观察者","tone":"muted"}),
+                json!({"text":manager_text(&locale,"manager.subtitle"),"tone":"muted"}),
                 vec![],
             ),
             node(
@@ -188,13 +259,19 @@ impl ManagerProvider {
                     node(
                         "new",
                         Kind::Button,
-                        json!({"label":"新建空白世界","action":"new_world","tone":"accent"}),
+                        json!({"label":manager_text(&locale,"manager.new_world"),"action":"new_world","tone":"accent"}),
                         vec![],
                     ),
                     node(
                         "refresh",
                         Kind::Button,
-                        json!({"label":"刷新","action":"refresh"}),
+                        json!({"label":manager_text(&locale,"manager.refresh"),"action":"refresh"}),
+                        vec![],
+                    ),
+                    node(
+                        "locale",
+                        Kind::Button,
+                        json!({"label":manager_text(&locale,"manager.language_toggle"),"action":"settings.locale"}),
                         vec![],
                     ),
                 ],
@@ -202,32 +279,32 @@ impl ManagerProvider {
             node(
                 "stats",
                 Kind::Metric,
-                json!({"label":"开放的世界","value":summaries.iter().filter(|w|!w.system).count(),"unit":"个","caption":"管理器自身也是内部提供者构建的世界"}),
+                json!({"label":manager_text(&locale,"manager.open_worlds"),"value":summaries.iter().filter(|w|!w.system).count(),"unit":manager_text(&locale,"manager.worlds_unit"),"caption":manager_text(&locale,"manager.manager_caption")}),
                 vec![],
             ),
             node("settings-line", Kind::Divider, json!({}), vec![]),
             node(
                 "settings-label",
                 Kind::Text,
-                json!({"text":"本次会话的默认设置","size":"heading"}),
+                json!({"text":manager_text(&locale,"manager.settings"),"size":"heading"}),
                 vec![],
             ),
             node(
                 "default-title",
                 Kind::Input,
-                json!({"label":"新世界名称","value":settings.title,"action":"settings.title","placeholder":"输入后按 Enter 提交"}),
+                json!({"label":manager_text(&locale,"manager.new_world_name"),"value":settings.title,"action":"settings.title","placeholder":manager_text(&locale,"manager.name_placeholder")}),
                 vec![],
             ),
             node(
                 "default-top",
                 Kind::Button,
-                json!({"label":if settings.always_on_top{"默认置顶：开启"}else{"默认置顶：关闭"},"action":"settings.top"}),
+                json!({"label":manager_text(&locale,if settings.always_on_top{"manager.top_enabled"}else{"manager.top_disabled"}),"action":"settings.top"}),
                 vec![],
             ),
             node(
                 "descriptor",
                 Kind::KeyValue,
-                json!({"items":[{"key":"连接描述文件","value":descriptor},{"key":"保存策略","value":"不保存业务状态、借用关系与设置；重启可重建"}]}),
+                json!({"items":[{"key":manager_text(&locale,"manager.descriptor"),"value":descriptor},{"key":manager_text(&locale,"manager.save_policy_key"),"value":manager_text(&locale,"manager.save_policy")}]}),
                 vec![],
             ),
             node("worlds-line", Kind::Divider, json!({}), vec![]),
@@ -238,7 +315,7 @@ impl ManagerProvider {
             let mut controls = vec![node(
                 format!("r-{id}"),
                 Kind::Button,
-                json!({"label":"接管并找回","action":format!("rescue:{id}")}),
+                json!({"label":manager_text(&locale,"manager.rescue"),"action":format!("rescue:{id}")}),
                 vec![],
             )];
             let visible = snap.window.visible;
@@ -246,7 +323,7 @@ impl ManagerProvider {
                 format!("visibility-{id}"),
                 Kind::Button,
                 json!({
-                    "label": if visible { "隐藏窗口" } else { "显示窗口" },
+                    "label": manager_text(&locale,if visible { "manager.hide" } else { "manager.show" }),
                     "action": format!("visibility_{}:{id}", if visible { "hide" } else { "show" })
                 }),
                 vec![],
@@ -255,39 +332,40 @@ impl ManagerProvider {
                 controls.push(node(
                     format!("unhold-{id}"),
                     Kind::Button,
-                    json!({"label":"解除接管","action":format!("release_hold:{id}")}),
+                    json!({"label":manager_text(&locale,"manager.release_hold"),"action":format!("release_hold:{id}")}),
                     vec![],
                 ));
             }
             if settings.pending_close == Some(w.id) {
-                controls.push(node(format!("yes-{id}"),Kind::Button,json!({"label":"确认关闭","action":format!("close_confirm:{id}"),"tone":"danger"}),vec![]));
+                controls.push(node(format!("yes-{id}"),Kind::Button,json!({"label":manager_text(&locale,"manager.confirm_close"),"action":format!("close_confirm:{id}"),"tone":"danger"}),vec![]));
                 controls.push(node(
                     format!("no-{id}"),
                     Kind::Button,
-                    json!({"label":"取消","action":"close_cancel"}),
+                    json!({"label":manager_text(&locale,"manager.cancel"),"action":"close_cancel"}),
                     vec![],
                 ));
             } else {
                 controls.push(node(
                     format!("c-{id}"),
                     Kind::Button,
-                    json!({"label":"关闭世界","action":format!("close_request:{id}")}),
+                    json!({"label":manager_text(&locale,"manager.close_world"),"action":format!("close_request:{id}")}),
                     vec![],
                 ));
             }
             rows.push(node(format!("w-{id}"),Kind::Stack,json!({"gap":10}),vec![
                 node(format!("t-{id}"),Kind::Text,json!({"text":w.title,"size":"heading"}),vec![]),
-                node(format!("b-{id}"),Kind::Badge,json!({"text":format!("{} · {}",w.status,w.writer_name.unwrap_or_else(||"无写入者".into())),"tone":if w.status=="online"{"success"}else{"muted"}}),vec![]),
-                node(format!("v-{id}"),Kind::Text,json!({"text":format!("窗口：{} · 标题栏：{}",if snap.window.visible{"显示"}else{"隐藏"},if snap.window.title_bar_visible{"显示"}else{"隐藏"}),"tone":"muted"}),vec![]),
+                node(format!("b-{id}"),Kind::Badge,json!({"text":format!("{} · {}",manager_text(&locale,&format!("manager.world_status.{}",w.status)),w.writer_name.unwrap_or_else(||manager_text(&locale,"manager.no_writer"))),"tone":if w.status=="online"{"success"}else{"muted"}}),vec![]),
+                node(format!("v-{id}"),Kind::Text,json!({"text":format!("{}: {} · {}: {}",manager_text(&locale,"manager.window"),manager_text(&locale,if snap.window.visible{"manager.window_visible"}else{"manager.window_hidden"}),manager_text(&locale,"manager.titlebar"),manager_text(&locale,if snap.window.title_bar_visible{"manager.titlebar_visible"}else{"manager.titlebar_hidden"})),"tone":"muted"}),vec![]),
                 node(format!("i-{id}"),Kind::Text,json!({"text":format!("ID {id}"),"tone":"muted"}),vec![]),
-                node(format!("n-{id}"),Kind::Text,json!({"text":format!("原生窗口：{}{}",snap.native.state,snap.native.error.map(|e|format!(" · {e}")).unwrap_or_default()),"tone":"muted"}),vec![]),
+                node(format!("n-{id}"),Kind::Text,json!({"text":format!("{}: {}{}",manager_text(&locale,"manager.native_state"),manager_text(&locale,&format!("native.{}",snap.native.state)),snap.native.error.map(|e|format!(" · {e}")).unwrap_or_default()),"tone":"muted"}),vec![]),
                 node(format!("controls-{id}"),Kind::Row,json!({"gap":8}),controls),
                 node(format!("d-{id}"),Kind::Divider,json!({}),vec![]),
             ]));
         }
         let scene = Scene {
             root: node("root", Kind::Stack, json!({"gap":16}), rows),
-            data: json!({}),
+            data: json!({"host_locale":locale}),
+            theme: None,
         };
         let snapshot = hub.lock().read(self.session, self.world_id)?;
         if scene != snapshot.scene {
@@ -341,7 +419,7 @@ mod tests {
             .renderer_snapshot(manager.world_id)
             .expect("manager snapshot exists");
         let scene = serde_json::to_string(&manager_snapshot.scene).expect("scene serializes");
-        assert!(scene.contains("窗口：隐藏 · 标题栏：显示"));
+        assert!(scene.contains("窗口: 窗口隐藏 · 标题栏: 标题栏显示"));
         assert!(scene.contains(&format!("visibility_show:{world_id}")));
 
         manager
@@ -365,5 +443,120 @@ mod tests {
             .expect("hidden world remains alive");
         assert!(restored.window.visible);
         assert_eq!(restored.window.title, "hidden fixture");
+    }
+
+    #[test]
+    fn manager_lists_an_invite_popup_world_without_changing_its_writer() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let popup = {
+            let mut core = hub.lock();
+            let provider = core
+                .register("popup-ask.synthetic".into(), false)
+                .expect("provider registers");
+            core.create(
+                provider,
+                wincraft_core::WindowSpec {
+                    title: "Popup-Ask synthetic fixture".into(),
+                    ..Default::default()
+                },
+                wincraft_core::JoinPolicy::Invite,
+                true,
+                false,
+                hub.now(),
+            )
+            .expect("invite popup world creates")
+        };
+        let before = hub
+            .renderer_snapshot(popup.world.id)
+            .expect("provider snapshot exists");
+        let settings = Settings {
+            title: "fixture".into(),
+            always_on_top: true,
+            pending_close: None,
+        };
+
+        manager
+            .refresh(&hub, &settings, "<descriptor>")
+            .expect("manager refreshes");
+        let manager_snapshot = hub
+            .renderer_snapshot(manager.world_id)
+            .expect("manager snapshot exists");
+        let manager_scene =
+            serde_json::to_string(&manager_snapshot.scene).expect("manager scene serializes");
+        assert!(manager_scene.contains("Popup-Ask synthetic fixture"));
+        assert!(manager_scene.contains(&format!("visibility_hide:{}", popup.world.id)));
+
+        let after = hub
+            .renderer_snapshot(popup.world.id)
+            .expect("popup provider snapshot remains");
+        assert_eq!(after.epoch, before.epoch);
+        assert_eq!(after.writer, before.writer);
+        assert!(after.window.visible);
+    }
+
+    #[test]
+    fn manager_language_toggle_localizes_internal_world_and_host_preference() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let mut settings = Settings {
+            title: "空白世界".into(),
+            always_on_top: true,
+            pending_close: None,
+        };
+        manager
+            .refresh(&hub, &settings, "<descriptor>")
+            .expect("manager refreshes");
+        let initial = hub
+            .renderer_snapshot(manager.world_id)
+            .expect("manager snapshot exists");
+        assert_eq!(initial.scene.data["host_locale"], "zh-CN");
+        assert_eq!(
+            initial
+                .scene
+                .root
+                .find("locale")
+                .and_then(|node| node.props.get("action"))
+                .and_then(Value::as_str),
+            Some("settings.locale")
+        );
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &UiEvent {
+                    id: Uuid::new_v4(),
+                    world_id: manager.world_id,
+                    component_id: "locale".into(),
+                    action: "settings.locale".into(),
+                    value: Value::Null,
+                    lease_epoch: initial.epoch,
+                    revision: initial.revision,
+                },
+            )
+            .expect("language toggles through the internal provider");
+        manager
+            .refresh(&hub, &settings, "<descriptor>")
+            .expect("English manager refreshes");
+
+        let english = hub
+            .renderer_snapshot(manager.world_id)
+            .expect("manager snapshot exists");
+        let scene = serde_json::to_string(&english.scene).expect("scene serializes");
+        assert_eq!(hub.locale(), "en-US");
+        assert_eq!(english.scene.data["host_locale"], "en-US");
+        assert_eq!(english.window.title, "WinCraft · World Manager");
+        assert!(scene.contains("Build windows from composable pieces"));
+        assert!(scene.contains("Display language: 中文"));
+        assert_eq!(
+            english
+                .scene
+                .root
+                .find("locale")
+                .and_then(|node| node.props.get("action"))
+                .and_then(Value::as_str),
+            Some("settings.locale")
+        );
     }
 }

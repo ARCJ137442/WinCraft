@@ -2,7 +2,7 @@
 //! See reference/exomind/PROVENANCE.md and the retained CCOPL-1.0 license.
 use crate::DesktopState;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     io::Write,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -15,9 +15,178 @@ use tauri::{
 use uuid::Uuid;
 use wincraft_core::{
     geometry::{self, Rect},
-    GeometryControl, NativeReport, Position, Snapshot,
+    EventSource, GeometryControl, NativeReport, NativeWindowAction, NativeWindowApplication,
+    NativeWindowOperation, Position, Snapshot, WorkAreaAnchor,
 };
 use wincraft_server::{self_provider::ManagerProvider, Hub};
+
+#[derive(Clone, Default)]
+pub struct TrayVisibilityState {
+    inner: Arc<Mutex<TrayVisibilityInner>>,
+}
+
+#[derive(Default)]
+struct TrayVisibilityInner {
+    hide_all_active: bool,
+    restore_visible: BTreeSet<Uuid>,
+    force_visible: BTreeSet<Uuid>,
+}
+
+impl TrayVisibilityState {
+    fn begin_hide_all(&self, ids: impl IntoIterator<Item = Uuid>) {
+        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        inner.hide_all_active = true;
+        inner.restore_visible.extend(ids);
+        inner.force_visible.clear();
+    }
+
+    fn restore_ids(&self) -> BTreeSet<Uuid> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .restore_visible
+            .clone()
+    }
+
+    fn finish_show_all(&self) {
+        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        inner.hide_all_active = false;
+        inner.restore_visible.clear();
+        inner.force_visible.clear();
+    }
+
+    pub fn hide_all(&self, app: &AppHandle, hub: &Hub) -> Result<usize, String> {
+        let ids: BTreeSet<_> = hub
+            .snapshots()
+            .into_iter()
+            .filter(|snapshot| snapshot.window.visible)
+            .map(|snapshot| snapshot.id)
+            .collect();
+        self.begin_hide_all(ids.iter().copied());
+
+        let mut hidden = 0;
+        let mut errors = Vec::new();
+        for id in ids {
+            if let Some(window) = app.get_webview_window(&format!("world-{id}")) {
+                match window.hide() {
+                    Ok(()) => hidden += 1,
+                    Err(error) => errors.push(format!("world {id}: {error}")),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return Err(errors.join("; "));
+        }
+        Ok(hidden)
+    }
+
+    pub fn show_all(&self, app: &AppHandle, hub: &Hub) -> Result<usize, String> {
+        let active = self
+            .inner
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .hide_all_active;
+        let restore = if active {
+            self.restore_ids()
+        } else {
+            hub.snapshots()
+                .into_iter()
+                .filter(|snapshot| snapshot.window.visible)
+                .map(|snapshot| snapshot.id)
+                .collect()
+        };
+        self.finish_show_all();
+
+        let mut shown = 0;
+        let mut errors = Vec::new();
+        for id in &restore {
+            let Ok(snapshot) = hub.renderer_snapshot(*id) else {
+                continue;
+            };
+            if !snapshot.window.visible {
+                continue;
+            }
+            if let Some(window) = app.get_webview_window(&format!("world-{id}")) {
+                if let Err(error) = window.unminimize() {
+                    errors.push(format!("world {id} unminimize: {error}"));
+                    continue;
+                }
+                match window.show() {
+                    Ok(()) => shown += 1,
+                    Err(error) => errors.push(format!("world {id} show: {error}")),
+                }
+            }
+        }
+        if !errors.is_empty() {
+            return Err(errors.join("; "));
+        }
+        Ok(shown)
+    }
+
+    fn make_manager_visible(&self, id: Uuid) {
+        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        if inner.hide_all_active {
+            inner.restore_visible.insert(id);
+            inner.force_visible.insert(id);
+        }
+    }
+
+    fn should_temporarily_hide(&self, id: Uuid, logical_visible: bool) -> bool {
+        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        if !inner.hide_all_active {
+            return false;
+        }
+        if logical_visible {
+            inner.restore_visible.insert(id);
+        } else {
+            inner.restore_visible.remove(&id);
+            inner.force_visible.remove(&id);
+        }
+        !inner.force_visible.contains(&id)
+    }
+
+    fn forget(&self, id: Uuid) {
+        let mut inner = self.inner.lock().unwrap_or_else(|error| error.into_inner());
+        inner.restore_visible.remove(&id);
+        inner.force_visible.remove(&id);
+    }
+}
+
+#[cfg(test)]
+mod tray_visibility_tests {
+    use super::TrayVisibilityState;
+    use uuid::Uuid;
+
+    #[test]
+    fn temporary_hide_restores_only_logically_visible_worlds_and_manager_can_override() {
+        let state = TrayVisibilityState::default();
+        let first = Uuid::new_v4();
+        let hidden_by_provider = Uuid::new_v4();
+        let manager = Uuid::new_v4();
+
+        state.begin_hide_all([first, hidden_by_provider]);
+        assert!(state.should_temporarily_hide(first, true));
+        assert!(state.should_temporarily_hide(hidden_by_provider, false));
+        state.make_manager_visible(manager);
+        assert!(!state.should_temporarily_hide(manager, true));
+
+        let restore = state.restore_ids();
+        assert!(restore.contains(&first));
+        assert!(!restore.contains(&hidden_by_provider));
+        assert!(restore.contains(&manager));
+    }
+
+    #[test]
+    fn provider_show_and_hide_changes_are_remembered_while_all_windows_are_hidden() {
+        let state = TrayVisibilityState::default();
+        let id = Uuid::new_v4();
+        state.begin_hide_all([id]);
+        assert!(state.should_temporarily_hide(id, false));
+        assert!(!state.restore_ids().contains(&id));
+        assert!(state.should_temporarily_hide(id, true));
+        assert!(state.restore_ids().contains(&id));
+    }
+}
 
 #[derive(Clone, Default)]
 pub struct ContentFitState {
@@ -129,8 +298,24 @@ impl ContentFitState {
 }
 
 pub fn bounded_content_height(requested: f64, screen_height: f64) -> f64 {
-    let maximum = screen_height.clamp(80.0, 1800.0);
-    requested.clamp(80.0, maximum)
+    let maximum = screen_height.clamp(50.0, 1800.0);
+    requested.clamp(50.0, maximum)
+}
+
+fn physical_work_area_anchor(
+    anchor: WorkAreaAnchor,
+    work_area: Rect,
+    window_size: tauri::PhysicalSize<u32>,
+    scale_factor: f64,
+) -> Result<Position, String> {
+    geometry::resolve_work_area_anchor(
+        anchor,
+        work_area,
+        window_size.width,
+        window_size.height,
+        scale_factor,
+    )
+    .map_err(|error| error.to_string())
 }
 
 fn tray_tooltip() -> String {
@@ -141,13 +326,283 @@ fn tray_tooltip() -> String {
     )
 }
 
+fn executable_name_for_application(application: NativeWindowApplication) -> &'static str {
+    match application {
+        NativeWindowApplication::Obsidian => "obsidian.exe",
+        NativeWindowApplication::TrafficMonitor => "TrafficMonitor.exe",
+    }
+}
+
+fn normalized_title_filter(value: Option<&str>) -> String {
+    value.unwrap_or_default().trim().to_lowercase()
+}
+
+fn title_matches_filter(title: &str, normalized_filter: &str) -> bool {
+    normalized_filter.is_empty() || title.to_lowercase().contains(normalized_filter)
+}
+
+fn select_external_window_match_index(
+    match_count: usize,
+    foreground_index: Option<usize>,
+) -> Result<usize, String> {
+    match match_count {
+        0 => Err("No existing application window matched the configured title filter".into()),
+        1 => Ok(0),
+        _ => foreground_index
+            .filter(|index| *index < match_count)
+            .ok_or_else(|| {
+                "Multiple existing application windows matched; provide a narrower title filter"
+                    .into()
+            }),
+    }
+}
+
+#[cfg(test)]
+mod native_window_action_tests {
+    use super::{
+        executable_name_for_application, normalized_title_filter,
+        select_external_window_match_index, title_matches_filter,
+    };
+    use wincraft_core::NativeWindowApplication;
+
+    #[test]
+    fn application_ids_map_only_to_registered_process_images() {
+        assert_eq!(
+            executable_name_for_application(NativeWindowApplication::Obsidian),
+            "obsidian.exe"
+        );
+        assert_eq!(
+            executable_name_for_application(NativeWindowApplication::TrafficMonitor),
+            "TrafficMonitor.exe"
+        );
+    }
+
+    #[test]
+    fn title_filter_is_case_insensitive_and_empty_filter_matches_any_title() {
+        let filter = normalized_title_filter(Some("  Obsidian Workspace  "));
+        assert!(title_matches_filter("Obsidian Workspace · Personal vault", &filter));
+        assert!(!title_matches_filter(
+            "Daily note · Personal vault",
+            &filter
+        ));
+        assert!(title_matches_filter(
+            "Any existing title",
+            &normalized_title_filter(None)
+        ));
+        assert!(title_matches_filter(
+            "Any existing title",
+            &normalized_title_filter(Some("  "))
+        ));
+    }
+
+    #[test]
+    fn ambiguous_external_windows_are_never_chosen_by_enumeration_order() {
+        assert_eq!(select_external_window_match_index(1, None), Ok(0));
+        assert_eq!(select_external_window_match_index(3, Some(1)), Ok(1));
+        assert!(select_external_window_match_index(0, None)
+            .unwrap_err()
+            .contains("No existing application window matched"));
+        assert!(select_external_window_match_index(3, None)
+            .unwrap_err()
+            .contains("narrower title filter"));
+        assert!(select_external_window_match_index(3, Some(3))
+            .unwrap_err()
+            .contains("narrower title filter"));
+    }
+}
+
+#[cfg(windows)]
+struct ExternalWindowSearch {
+    executable_name: String,
+    title_filter: String,
+    matches: Vec<windows_sys::Win32::Foundation::HWND>,
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn collect_external_window(
+    hwnd: windows_sys::Win32::Foundation::HWND,
+    parameter: windows_sys::Win32::Foundation::LPARAM,
+) -> i32 {
+    use windows_sys::Win32::{
+        Foundation::CloseHandle,
+        System::Threading::{
+            OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION,
+        },
+        UI::WindowsAndMessaging::{
+            GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible,
+        },
+    };
+
+    if hwnd.is_null() || unsafe { IsWindowVisible(hwnd) } == 0 {
+        return 1;
+    }
+    let title_length = unsafe { GetWindowTextLengthW(hwnd) };
+    if title_length <= 0 {
+        return 1;
+    }
+    let mut title_buffer = vec![0u16; (title_length as usize + 1).min(32_768)];
+    let copied =
+        unsafe { GetWindowTextW(hwnd, title_buffer.as_mut_ptr(), title_buffer.len() as i32) };
+    if copied <= 0 {
+        return 1;
+    }
+    let title = String::from_utf16_lossy(&title_buffer[..copied as usize]);
+    let search = unsafe { &mut *(parameter as *mut ExternalWindowSearch) };
+    if !title_matches_filter(&title, &search.title_filter) {
+        return 1;
+    }
+
+    let mut process_id = 0u32;
+    unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
+    if process_id == 0 {
+        return 1;
+    }
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, process_id) };
+    if process.is_null() {
+        return 1;
+    }
+    let mut image_buffer = vec![0u16; 32_768];
+    let mut image_length = image_buffer.len() as u32;
+    let image_ok = unsafe {
+        QueryFullProcessImageNameW(process, 0, image_buffer.as_mut_ptr(), &mut image_length)
+    } != 0;
+    unsafe { CloseHandle(process) };
+    if !image_ok {
+        return 1;
+    }
+    let image = String::from_utf16_lossy(&image_buffer[..image_length as usize]);
+    if image
+        .rsplit(['\\', '/'])
+        .next()
+        .is_some_and(|name| name.eq_ignore_ascii_case(&search.executable_name))
+    {
+        search.matches.push(hwnd);
+    }
+    1
+}
+
+#[cfg(windows)]
+fn perform_window_action(action: &NativeWindowAction) -> Result<(), String> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        BringWindowToTop, EnumWindows, GetForegroundWindow, IsIconic, IsWindow, IsZoomed,
+        SetForegroundWindow, ShowWindow, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
+    };
+
+    let foreground = unsafe { GetForegroundWindow() };
+    let mut search = ExternalWindowSearch {
+        executable_name: executable_name_for_application(action.application).into(),
+        title_filter: normalized_title_filter(action.title_contains.as_deref()),
+        matches: Vec::new(),
+    };
+    unsafe {
+        EnumWindows(
+            Some(collect_external_window),
+            &mut search as *mut ExternalWindowSearch as isize,
+        );
+    }
+    let foreground_index = search
+        .matches
+        .iter()
+        .position(|window| *window == foreground);
+    let selected_index =
+        select_external_window_match_index(search.matches.len(), foreground_index)?;
+    let hwnd = search.matches[selected_index];
+    unsafe {
+        if IsWindow(hwnd) == 0 {
+            return Err(
+                "The matching application window closed before the action completed".into(),
+            );
+        }
+        match action.operation {
+            NativeWindowOperation::Activate => {
+                if IsIconic(hwnd) != 0 {
+                    ShowWindow(hwnd, SW_RESTORE);
+                }
+                BringWindowToTop(hwnd);
+                if SetForegroundWindow(hwnd) == 0 && GetForegroundWindow() != hwnd {
+                    return Err(
+                        "Windows did not allow activating the matching application window".into(),
+                    );
+                }
+            }
+            NativeWindowOperation::Maximize => {
+                ShowWindow(hwnd, SW_MAXIMIZE);
+                if IsZoomed(hwnd) == 0 {
+                    return Err("Windows did not maximize the matching application window".into());
+                }
+            }
+            NativeWindowOperation::Restore => {
+                ShowWindow(hwnd, SW_RESTORE);
+                if IsIconic(hwnd) != 0 {
+                    return Err("Windows did not restore the matching application window".into());
+                }
+            }
+            NativeWindowOperation::Minimize => {
+                ShowWindow(hwnd, SW_MINIMIZE);
+                if IsIconic(hwnd) == 0 {
+                    return Err("Windows did not minimize the matching application window".into());
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn perform_external_window_action(action: &NativeWindowAction) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        perform_window_action(action)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = action;
+        Err("Native external window actions are unsupported on this platform".into())
+    }
+}
+
+pub fn activate_manager(
+    app: AppHandle,
+    hub: Hub,
+    manager: ManagerProvider,
+    tray_visibility: TrayVisibilityState,
+) {
+    if let Err(error) = manager.show(&hub) {
+        eprintln!("could not show manager world: {error}");
+        return;
+    }
+    tray_visibility.make_manager_visible(manager.world_id);
+    let label = format!("world-{}", manager.world_id);
+    tauri::async_runtime::spawn(async move {
+        for _ in 0..40 {
+            if let Some(window) = app.get_webview_window(&label) {
+                if let Err(error) = window.unminimize() {
+                    eprintln!("could not unminimize manager window: {error}");
+                }
+                if let Err(error) = window.show() {
+                    eprintln!("could not show manager window: {error}");
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                if let Err(error) = window.set_focus() {
+                    eprintln!("could not focus manager window: {error}");
+                }
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        eprintln!("manager world became visible but its native window was not created");
+    });
+}
+
 pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
     use tauri::{
         menu::{Menu, MenuItem},
         tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     };
-    let open = MenuItem::with_id(app, "manager", "打开世界管理器", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "manager", "显示世界管理器", true, None::<&str>)?;
     let new = MenuItem::with_id(app, "new", "新建空白世界", true, None::<&str>)?;
+    let hide_all = MenuItem::with_id(app, "hide-all", "暂时隐藏全部窗口", true, None::<&str>)?;
+    let show_all = MenuItem::with_id(app, "show-all", "显示全部窗口", true, None::<&str>)?;
     let rescue = MenuItem::with_id(
         app,
         "rescue",
@@ -156,7 +611,7 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
         None::<&str>,
     )?;
     let exit = MenuItem::with_id(app, "exit", "退出", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &new, &rescue, &exit])?;
+    let menu = Menu::with_items(app, &[&open, &new, &hide_all, &show_all, &rescue, &exit])?;
     TrayIconBuilder::with_id("wincraft-tray")
         .icon(tauri::image::Image::from_bytes(include_bytes!(
             "../icons/32x32.png"
@@ -168,16 +623,41 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
             let state = app.state::<DesktopState>();
             match event.id.as_ref() {
                 "manager" => {
-                    let _ = state.manager.show(&state.hub);
+                    activate_manager(
+                        app.clone(),
+                        state.hub.clone(),
+                        state.manager.clone(),
+                        state.tray_visibility.clone(),
+                    );
                 }
                 "new" => {
                     let _ = state.manager.blank(&state.hub);
                 }
-                "rescue" => state.manager.rescue_all(&state.hub),
+                "hide-all" => {
+                    if let Err(error) = state.tray_visibility.hide_all(app, &state.hub) {
+                        eprintln!("hide all windows: {error}");
+                    }
+                }
+                "show-all" => {
+                    if let Err(error) = state.tray_visibility.show_all(app, &state.hub) {
+                        eprintln!("show all windows: {error}");
+                    }
+                }
+                "rescue" => {
+                    if let Err(error) = state.tray_visibility.show_all(app, &state.hub) {
+                        eprintln!("restore windows before rescue: {error}");
+                    }
+                    state.manager.rescue_all(&state.hub);
+                }
                 "exit" => {
-                    // Drop current credential file before asking the process to exit.
-                    let _ = state.server.lock().map(|mut guard| guard.take());
-                    app.exit(0);
+                    let server = state.server.lock().ok().and_then(|mut guard| guard.take());
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Some(server) = server {
+                            server.shutdown().await;
+                        }
+                        app.exit(0);
+                    });
                 }
                 _ => {}
             }
@@ -193,7 +673,12 @@ pub fn install_tray(app: &AppHandle) -> tauri::Result<()> {
             ) {
                 let app = tray.app_handle();
                 let state = app.state::<DesktopState>();
-                let _ = state.manager.show(&state.hub);
+                activate_manager(
+                    app.clone(),
+                    state.hub.clone(),
+                    state.manager.clone(),
+                    state.tray_visibility.clone(),
+                );
             }
         })
         .build(app)?;
@@ -237,8 +722,10 @@ fn make_window(
         tauri::WindowEvent::CloseRequested { api, .. } => {
             api.prevent_close();
             if id == manager.world_id {
-                let _ = hub.lock().operator_visibility(manager.session, id, false);
-                hub.changed(id);
+                let _ = hub.apply_state_change(id, EventSource::Human, None, |core| {
+                    core.operator_visibility(manager.session, id, false)?;
+                    Ok(true)
+                });
             } else if let Ok(members) = hub.lock().operator_destroy(manager.session, id) {
                 hub.deleted(id, members);
             }
@@ -264,15 +751,19 @@ fn make_window(
                 handle.inner_size(),
                 handle.scale_factor(),
             ) {
-                let changed = hub.lock().observe_geometry(
-                    id,
-                    Position { x: p.x, y: p.y },
-                    f64::from(size.width) / scale,
-                    f64::from(size.height) / scale,
-                );
-                if changed {
-                    hub.changed(id);
-                }
+                let source = if matches!(event, tauri::WindowEvent::ScaleFactorChanged { .. }) {
+                    EventSource::System
+                } else {
+                    EventSource::Human
+                };
+                let _ = hub.apply_state_change(id, source, None, |core| {
+                    Ok(core.observe_geometry(
+                        id,
+                        Position { x: p.x, y: p.y },
+                        f64::from(size.width) / scale,
+                        f64::from(size.height) / scale,
+                    ))
+                });
             }
         }
         _ => {}
@@ -282,6 +773,52 @@ fn make_window(
 fn place_visible(app: &AppHandle, w: &WebviewWindow, s: &Snapshot) -> Result<(), String> {
     let size = w.inner_size().map_err(|e| e.to_string())?;
     let monitors = app.available_monitors().map_err(|e| e.to_string())?;
+    if let Some(anchor) = s.window.anchor {
+        let current_monitor = w.current_monitor().map_err(|error| error.to_string())?;
+        let positioned_monitor = if let Some(position) = &s.window.position {
+            monitors.iter().find(|monitor| {
+                let area = monitor.work_area();
+                geometry::intersects(
+                    Rect {
+                        x: position.x,
+                        y: position.y,
+                        width: size.width,
+                        height: size.height,
+                    },
+                    Rect {
+                        x: area.position.x,
+                        y: area.position.y,
+                        width: area.size.width,
+                        height: area.size.height,
+                    },
+                )
+            })
+        } else {
+            None
+        };
+        let monitor = current_monitor
+            .or_else(|| positioned_monitor.cloned())
+            .or(app.primary_monitor().map_err(|error| error.to_string())?)
+            .or_else(|| monitors.first().cloned());
+        if let Some(monitor) = monitor {
+            let work = monitor.work_area();
+            let position = physical_work_area_anchor(
+                anchor,
+                Rect {
+                    x: work.position.x,
+                    y: work.position.y,
+                    width: work.size.width,
+                    height: work.size.height,
+                },
+                size,
+                monitor.scale_factor(),
+            )?;
+            return w
+                .set_position(PhysicalPosition::new(position.x, position.y))
+                .map_err(|error| error.to_string());
+        }
+        return Err("No monitor is available to resolve the work-area anchor".into());
+    }
     if let Some(p) = &s.window.position {
         let rect = Rect {
             x: p.x,
@@ -334,6 +871,7 @@ fn apply(
     w: &WebviewWindow,
     s: &Snapshot,
     content_fit: &ContentFitState,
+    tray_visibility: &TrayVisibilityState,
 ) -> Result<(), String> {
     macro_rules! native {
         ($e:expr) => {
@@ -351,9 +889,12 @@ fn apply(
     native!(w.set_size(LogicalSize::new(s.window.width, s.window.height)));
     place_visible(app, w, s)?;
     native!(w.set_ignore_cursor_events(s.window.click_through));
-    if s.window.visible {
+    if s.window.visible && !tray_visibility.should_temporarily_hide(s.id, true) {
         native!(w.show());
     } else {
+        if !s.window.visible {
+            tray_visibility.should_temporarily_hide(s.id, false);
+        }
         native!(w.hide());
     }
     Ok(())
@@ -371,6 +912,7 @@ pub fn supervise(
     manager: ManagerProvider,
     log: PathBuf,
     content_fit: ContentFitState,
+    tray_visibility: TrayVisibilityState,
 ) {
     tauri::async_runtime::spawn(async move {
         let mut entries: BTreeMap<Uuid, Entry> = BTreeMap::new();
@@ -388,6 +930,7 @@ pub fn supervise(
                 if let Some(entry) = entries.remove(&id) {
                     let _ = entry.window.destroy();
                 }
+                tray_visibility.forget(id);
                 content_fit.unregister(id);
                 failed_create.remove(&id);
             }
@@ -433,7 +976,7 @@ pub fn supervise(
                 {
                     entry.last_attempt = Instant::now();
                     entry.attempted = s.window_revision;
-                    match apply(&app, &entry.window, &s, &content_fit) {
+                    match apply(&app, &entry.window, &s, &content_fit, &tray_visibility) {
                         Ok(()) => {
                             entry.applied = s.window_revision;
                             let report = NativeReport {
@@ -441,10 +984,9 @@ pub fn supervise(
                                 applied_window_revision: Some(s.window_revision),
                                 error: None,
                             };
-                            let changed = hub.lock().native_report(s.id, s.window_revision, report);
-                            if changed {
-                                hub.changed(s.id);
-                            }
+                            let _ = hub.apply_state_change(s.id, EventSource::Host, None, |core| {
+                                Ok(core.native_report(s.id, s.window_revision, report))
+                            });
                         }
                         Err(error) => record_failure(&hub, &s, &log, &error),
                     }
@@ -468,10 +1010,9 @@ fn record_failure(hub: &Hub, s: &Snapshot, log: &PathBuf, error: &str) {
         applied_window_revision: None,
         error: Some(error.into()),
     };
-    let changed = hub.lock().native_report(s.id, s.window_revision, report);
-    if changed {
-        hub.changed(s.id);
-    }
+    let _ = hub.apply_state_change(s.id, EventSource::Host, None, |core| {
+        Ok(core.native_report(s.id, s.window_revision, report))
+    });
     if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -534,7 +1075,8 @@ mod content_fit_tests {
         assert_eq!(bounded_content_height(900.0, 800.0), 800.0);
         assert_eq!(bounded_content_height(500.0, 800.0), 500.0);
         assert_eq!(bounded_content_height(2_000.0, 3_000.0), 1_800.0);
-        assert_eq!(bounded_content_height(100.0, 60.0), 80.0);
+        assert_eq!(bounded_content_height(51.0, 60.0), 51.0);
+        assert_eq!(bounded_content_height(20.0, 600.0), 50.0);
     }
 
     #[test]

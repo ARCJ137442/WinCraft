@@ -1,0 +1,28 @@
+[
+  {
+    "source_id": "synthetic.web-chat",
+    "tab_instance_id": "tab-a",
+    "conversation_id": "conversation-a",
+    "page_lifecycle": "active",
+    "mode": "readonly_summary",
+    "summary": "合成会话摘要",
+    "outbound_preview": null,
+    "send_state": "not_requested",
+    "observed_at": "2026-10-27T12:00:00Z",
+    "freshness": "fresh",
+    "user_confirmation": false
+  },
+  {
+    "source_id": "synthetic.web-chat",
+    "tab_instance_id": "tab-b",
+    "conversation_id": "conversation-b",
+    "page_lifecycle": "navigated",
+    "mode": "send_preview",
+    "summary": null,
+    "outbound_preview": "用户确认前的合成文本",
+    "send_state": "awaiting_user_confirmation",
+    "observed_at": "2026-10-27T12:00:00Z",
+    "freshness": "stale",
+    "user_confirmation": false
+  }
+]

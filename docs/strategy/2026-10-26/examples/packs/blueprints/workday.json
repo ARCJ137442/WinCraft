@@ -1,0 +1,19 @@
+{
+  "kind": "wincraft.blueprint.draft",
+  "schema_version": "draft-2026-10-26",
+  "id": "workday",
+  "worlds": [
+    {
+      "id": "desk",
+      "title": {
+        "zh-CN": "我的工作台",
+        "en-US": "My desk"
+      },
+      "binding_slots": [
+        "agents",
+        "metrics"
+      ],
+      "layout_hint": "stack"
+    }
+  ]
+}

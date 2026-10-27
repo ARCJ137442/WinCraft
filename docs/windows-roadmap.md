@@ -8,11 +8,31 @@ WinCraft 不需要把整个 Win32 API 暴露给提供者。Windows 负责执行�
 
 产品不变量继续适用：世界就是窗口；业务真相归提供者；连接和订阅可重建；默认单写者与多快照读者；人类可本地接管；原生操作返回明确结果；高权限能力须由宿主授权并可撤销。原生窗口当前接线和验收状态见 [windows.md](windows.md)，协议当前行为见 [protocol.md](protocol.md)。
 
-## 当前基线：有状态推送，尚无注册式事件反应
+## 当前基线：有状态推送和受限状态订阅，尚无注册式事件反应
 
 协议 0.3 已有 `window.configure`、`visible` 等窗口状态、版本化快照和 WebSocket `world.snapshot` 推送。宿主也观察人类移动/缩放并更新快照。因此，提供者不是只能轮询。
 
-尚未形成的是一套可注册、可撤销、按类型筛选的窗口事件订阅，以及可声明的“事件发生后请求某种宿主动作”模型。现有全量快照推送不等于已经支持“窗口最小化时自动把另一个应用带回前台”。
+2026-10-27 已在协议 0.3 增加连接级 `event.subscribe` / `event.unsubscribe`，按 `window.geometry_changed`、`window.visibility_changed` 筛选已加入世界的状态变化。它建立在当前 snapshot sequence/window_revision 上，可随断线清理；状态事件允许合并，慢消费者仍会 resync/disconnect。它不提供焦点、原生最小化等事件，也没有“事件发生后请求某种宿主动作”的规则引擎，因此仍不支持“窗口最小化时自动把另一个应用带回前台”。
+
+2026-10-27 新增的 `native_window_action` 是一个有限的用户交互入口：按钮收到本地点击后，原生宿主按 allowlist 操作已存在的 Obsidian 或 TrafficMonitor 窗口，支持 activate/maximize/restore/minimize。它是可扩展的宿主窗口服务，不为单个世界写专属 Win32 分支；新应用必须由宿主登记，新操作必须是类型化且有限的。本轮新增最大化，并收紧多窗口选择：单一匹配直接执行，多匹配仅使用当前前台匹配窗口，否则失败并要求更窄的标题筛选；不再按枚举顺序盲选。真实原生点击路径仍需用户验收。目前不订阅最小化/焦点事件，也不自动触发动作；后续事件响应需要独立的订阅权限与撤销语义。
+
+### 通用宿主能力的分层
+
+这两类 API 要保持清楚的职责边界：
+
+- `window.configure` 修改当前 world 所拥有窗口的属性，例如尺寸、透明度、显隐、标题栏和穿透。
+- `native_window_action` 让用户点击 world 中的声明式控件后，请宿主操作另一款已登记应用的现存窗口。它不把另一个应用纳入当前 world，也不把业务状态转给 WinCraft。
+- 托盘菜单的“暂时隐藏/显示全部”属于本地宿主的全局救援动作，不要求任何 provider 租约，也不改各 world 的逻辑可见状态。
+
+沿这个模型，值得逐步加入的通用能力按依赖和风险排序：
+
+1. **原生状态事件**：订阅显示/隐藏、最小化/恢复、焦点、几何与显示器/DPI 变化。先做会话级订阅、取消、合并与慢消费者处理，再讨论自动响应；不能订阅一次就获得动作权。
+2. **语义位置和尺寸**：以当前显示器工作区角落、边缘偏移和受限锚点为主，宿主处理 DPI 与屏幕边界；不让 provider 每帧发送原始坐标。协议 0.3 当前加入 `anchor` 首项，只在 provider geometry control 下可用；角落相对解析时所选 monitor 的 work area，逻辑边距乘该 monitor scale factor，窗口被夹在 work area 内。人类控制时拒绝锚点，本地 rescue 清除锚点。Tauri 只公开 ScaleFactorChanged，不提供显示器拔插事件；拔屏迁移仍属 NOT_RUN。
+3. **Shell 曝光与桌面范围**：分别建模置顶、任务栏、Alt+Tab、虚拟桌面可见性；不压成一个 `always_on_top` 开关，也不把平台 no-op 当成功。
+4. **用户建立的窗口组**：托盘或管理器可批量显隐/排列独立 world；每个 world 仍保有自己的提供者、lease、撤销和本地接管。
+5. **外部应用适配**：若将来要移动、置顶或附着其他应用窗口，先设计用户批准的应用登记与窗口身份生命周期，不能把任意 HWND、进程路径、关闭/启动指令暴露给 provider。
+
+前两项可沿当前协议和 Rust 宿主渐进扩展；Shell、虚拟桌面和附着需要单独的 Windows 原生 POC 与版本矩阵。破坏性关闭、启动进程、任意脚本/消息和无人确认的焦点抢占不作为普通 provider 能力。
 
 后续应把类型事件建立在现有 `sequence` 与 `window_revision` 顺序上，而不是另建第二份窗口真相。可供讨论的事件类别包括：
 
@@ -38,7 +58,7 @@ WinCraft 不需要把整个 Win32 API 暴露给提供者。Windows 负责执行�
 
 响应仍是另一项明确、类型化的请求，走宿主授权、版本检查与原生回执。不能因订阅一个事件就授予聚焦其他应用、注册全局热键或读取麦克风的权力。事件触发频率、循环因果、过期订阅和慢消费者需要明确的界限。
 
-**用户故事：**林遥专注写笔记时把悬浮计时器最小化。已接入的 Obsidian 提供者收到“窗口已隐藏”事件，向 WinCraft 请求“将用户已选定的 Obsidian 应用切到前台”。宿主只解析用户允许的应用身份，不把任意 HWND 交给提供者。Windows 若拒绝前台切换，宿主回报受阻，再用用户选定的提醒方式提示；它不伪造成功，也不绕过系统焦点限制。微软明确允许系统拒绝 `SetForegroundWindow`，所以协议应提供“请求聚焦”，不能承诺“强制抢焦点”。[SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)
+**候选用户故事（未实现）：**林遥专注写笔记时把悬浮计时器最小化。Obsidian 提供者订阅到“窗口已隐藏”事件，向 WinCraft 请求激活用户允许的 Obsidian 窗口。宿主只解析白名单应用身份，不把任意 HWND 交给提供者。Windows 若拒绝前台切换，宿主回报受阻；不能伪造成功或绕过焦点限制。微软明确允许系统拒绝 `SetForegroundWindow`，所以协议应表达激活请求，不能承诺“强制抢焦点”。[SetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setforegroundwindow)
 
 ## 从 Windows 原生能力导出的路线
 

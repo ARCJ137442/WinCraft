@@ -16,7 +16,9 @@
     "scene.patch",
     "data.replace",
     "window.configure",
-    "action.result"
+    "action.result",
+    "event.subscribe",
+    "event.unsubscribe"
   ],
   "components": [
     "stack",
@@ -27,7 +29,10 @@
     "badge",
     "button",
     "input",
+    "textarea",
     "key_value",
+    "icon",
+    "bar_chart",
     "divider"
   ],
   "limits": {
@@ -37,5 +42,19 @@
     "max_message_bytes": 262144,
     "lease_ms": 15000,
     "max_session_messages_per_second": 120
-  }
+  },
+  "keyboard_shortcuts": [
+    "escape",
+    "ctrl_enter"
+  ],
+  "button_features": [
+    "selection_groups",
+    "appearance_variants",
+    "key_value_actions",
+    "external_window_actions"
+  ],
+  "scene_features": [
+    "theme_tokens",
+    "rich_key_value"
+  ]
 }

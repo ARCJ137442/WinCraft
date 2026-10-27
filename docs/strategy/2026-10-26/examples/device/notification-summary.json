@@ -1,0 +1,17 @@
+{
+  "kind": "wincraft.device-message.draft",
+  "schema_version": "draft-2026-10-26",
+  "message_id": "message-fixture-1",
+  "origin_device_id": "phone-fixture",
+  "origin_source_id": "summary-fixture",
+  "source_sequence": 10,
+  "emitted_at": "2026-10-26T12:00:00Z",
+  "expires_at": "2026-10-26T12:10:00Z",
+  "payload_type": "notification-summary",
+  "summary": "合成数据：有一条协作开发消息待查看。",
+  "source_refs": [
+    "notification-fixture"
+  ],
+  "classification": "synthetic",
+  "retracts": null
+}

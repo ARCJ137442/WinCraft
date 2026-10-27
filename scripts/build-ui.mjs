@@ -4,6 +4,8 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const tsc=process.env.TSC_JS || path.join(root,'node_modules/typescript/bin/tsc');
+const localeResult=spawnSync(process.execPath,[path.join(root,'scripts/generate_locales.mjs')],{stdio:'inherit'});
+if(localeResult.status!==0)process.exit(localeResult.status??1);
 if(!existsSync(tsc)){console.error('TypeScript is missing. Run npm install in the repository root.');process.exit(1);}
 const result=spawnSync(process.execPath,[tsc,'-p',path.join(root,'apps/desktop/tsconfig.json')],{stdio:'inherit'});
 if(result.status!==0)process.exit(result.status??1);

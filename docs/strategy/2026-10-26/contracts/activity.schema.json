@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:activity:draft-2026-10-26",
+  "title": "跨Harness活动投影提案",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.activity.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "source_type": {
+      "enum": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "deepseek-harness",
+        "omp",
+        "fixture"
+      ]
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "provider_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "mapping_version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_instance_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "parent_session_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_status": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "status": {
+      "enum": [
+        "idle",
+        "running",
+        "waiting_input",
+        "waiting_approval",
+        "completed",
+        "failed",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "freshness": {
+      "enum": [
+        "fresh",
+        "stale",
+        "disconnected",
+        "unknown"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 256
+    },
+    "control_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 64
+    },
+    "provenance": {
+      "enum": [
+        "synthetic",
+        "official-api",
+        "explicit-hook",
+        "approved-log"
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "source_type",
+    "device_id",
+    "provider_id",
+    "mapping_version",
+    "source_instance_id",
+    "session_id",
+    "parent_session_id",
+    "task_id",
+    "source_status",
+    "status",
+    "observed_at",
+    "expires_at",
+    "source_sequence",
+    "freshness",
+    "title",
+    "control_capabilities",
+    "provenance"
+  ]
+}

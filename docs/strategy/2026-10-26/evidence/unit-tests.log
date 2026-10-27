@@ -1,0 +1,39 @@
+test_all_positive_and_negative_fixtures (test_handoff.ContractTests.test_all_positive_and_negative_fixtures) ... ok
+test_complete_handoff_crosslinks (test_handoff.ContractTests.test_complete_handoff_crosslinks) ... ok
+test_duplicate_question_rejected (test_handoff.ContractTests.test_duplicate_question_rejected) ... ok
+test_other_not_author_supplied (test_handoff.ContractTests.test_other_not_author_supplied) ... ok
+test_path_traversal_rejected (test_handoff.ContractTests.test_path_traversal_rejected) ... ok
+test_recommended_only_first (test_handoff.ContractTests.test_recommended_only_first) ... ok
+test_changed_criterion_invalidates_old_result (test_handoff.MaintenanceTests.test_changed_criterion_invalidates_old_result) ... ok
+test_explicit_reset_invalidates_results (test_handoff.MaintenanceTests.test_explicit_reset_invalidates_results) ... ok
+test_nongit_baseline_check_is_readonly (test_handoff.MaintenanceTests.test_nongit_baseline_check_is_readonly) ... ok
+test_renderer_preserves_unchanged_synthetic_case_result (test_handoff.MaintenanceTests.test_renderer_preserves_unchanged_synthetic_case_result) ... ok
+test_synthetic_git_missing_baseline_does_not_reset (test_handoff.MaintenanceTests.test_synthetic_git_missing_baseline_does_not_reset) ... ok
+test_ambiguous_does_not_choose_first (test_handoff.PlannerTests.test_ambiguous_does_not_choose_first) ... ok
+test_deterministic_digest (test_handoff.PlannerTests.test_deterministic_digest) ... ok
+test_duplicate_binding_rejected (test_handoff.PlannerTests.test_duplicate_binding_rejected) ... ok
+test_duplicate_instance_rejected (test_handoff.PlannerTests.test_duplicate_instance_rejected) ... ok
+test_expired_inventory_blocks (test_handoff.PlannerTests.test_expired_inventory_blocks) ... ok
+test_explicit_selection (test_handoff.PlannerTests.test_explicit_selection) ... ok
+test_external_adapter_never_executed (test_handoff.PlannerTests.test_external_adapter_never_executed) ... ok
+test_full_inventory_ready (test_handoff.PlannerTests.test_full_inventory_ready) ... ok
+test_future_clock_is_not_silently_fresh (test_handoff.PlannerTests.test_future_clock_is_not_silently_fresh) ... ok
+test_input_not_mutated (test_handoff.PlannerTests.test_input_not_mutated) ... ok
+test_invalid_explicit_selection_blocks (test_handoff.PlannerTests.test_invalid_explicit_selection_blocks) ... ok
+test_naive_time_rejected (test_handoff.PlannerTests.test_naive_time_rejected) ... ok
+test_no_host_mutations (test_handoff.PlannerTests.test_no_host_mutations) ... ok
+test_offline_provider_not_used (test_handoff.PlannerTests.test_offline_provider_not_used) ... ok
+test_optional_missing_degrades (test_handoff.PlannerTests.test_optional_missing_degrades) ... ok
+test_permission_is_not_capability (test_handoff.PlannerTests.test_permission_is_not_capability) ... ok
+test_plan_expiry_bounded_by_source (test_handoff.PlannerTests.test_plan_expiry_bounded_by_source) ... ok
+test_plan_matches_schema (test_handoff.PlannerTests.test_plan_matches_schema) ... ok
+test_provider_version_checked (test_handoff.PlannerTests.test_provider_version_checked) ... ok
+test_required_missing_blocks (test_handoff.PlannerTests.test_required_missing_blocks) ... ok
+test_stale_source_cannot_fill_required (test_handoff.PlannerTests.test_stale_source_cannot_fill_required) ... ok
+test_top_level_secret_field_rejected (test_handoff.PlannerTests.test_top_level_secret_field_rejected) ... ok
+test_unknown_binding_rejected (test_handoff.PlannerTests.test_unknown_binding_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 3.896s
+
+OK

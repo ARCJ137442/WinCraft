@@ -1,0 +1,31 @@
+[
+  {
+    "event": "window.event",
+    "data": {
+      "event_id": "c9b449b8-8d77-4d9e-9c64-50015e749a3d",
+      "subscription_id": "ec53e758-c394-4e73-ac53-ff918fd919c8",
+      "world_id": "734bd91a-cb01-4b41-9445-fb9ca3c32189",
+      "type": "window.geometry_changed",
+      "delivery": "state",
+      "source": "human",
+      "sequence": 12,
+      "window_revision": 4,
+      "payload": {"position": null, "anchor": {"corner": "bottom_right", "margin_x": 24, "margin_y": 24}, "width": 420, "height": 300}
+    }
+  },
+  {
+    "event": "window.event",
+    "data": {
+      "event_id": "77d2f9a0-bab4-4c7c-845d-27c5c41bd4eb",
+      "subscription_id": "ec53e758-c394-4e73-ac53-ff918fd919c8",
+      "world_id": "734bd91a-cb01-4b41-9445-fb9ca3c32189",
+      "type": "window.visibility_changed",
+      "delivery": "state",
+      "source": "provider",
+      "cause_id": "request-visibility-4",
+      "sequence": 13,
+      "window_revision": 5,
+      "payload": {"visible": false}
+    }
+  }
+]

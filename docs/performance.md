@@ -1,28 +1,36 @@
-# 性能设计与测量方案
+---
+title: WinCraft performance measurement protocol
+updated_at: 2026-10-27
+last_verified_at: 2026-10-27
+protocol_baseline: 0.3
+status: measurement-protocol
+audience: maintainer, release-validator
+---
 
-## 可以确认的实现选择
+# Performance measurement protocol
 
-同一宿主维护多个世界；不为每个提供者创建 WebView。数据更新不改变 window_revision，因此不会每秒重设原生位置。DOM 按组件 ID 复用，避免普通更新重建整树或覆盖输入。系统窗口与业务状态更新分开。
+This document defines how B11-01 measurements must be collected. It intentionally contains no promotional performance numbers. A result is valid only when the machine, OS build, Rust/Node/Python versions, commit, release artifact hash, provider fixture, world count, message rate, run duration and power/sleep state are recorded.
 
-## 不能宣称的结果
+## Required measurements
 
-没有实际 Windows 内存/CPU/GPU/延迟/功耗数据；没有证明 Tauri 比某一具体 Electron 方案快；也没有证明 WS 一定是极限性能通路。安装包大小、语言名称和截图都不能替代运行测量。
+- process tree and handle count for host/WebView/native helper processes;
+- private bytes, working set, CPU and thread count;
+- provider-to-host request latency and tail percentiles under a fixed synthetic load;
+- world create/destroy and reconnect latency;
+- long-running idle and refresh runs;
+- cleanup after provider crash, host shutdown and sleep/wake.
 
-## 已知首版开销
+## Current evidence boundary
 
-完整 Scene/Snapshot 克隆和序列化；共享 Engine Mutex；200ms 过期检查；50ms native 监督循环；750ms 管理器刷新；WebSocket 广播缓冲可能被高频更新填满。它们是为了验证语义的朴素实现，不是假装生产最优。
+Rust, Node, Python and protocol correctness checks pass, but the repository has not run a controlled long-running performance campaign, process-handle audit, sleep/wake run or threshold-setting ADR. Therefore no CPU, memory, latency, throughput or leak claim is made. The current release remains `NOT_RUN` for B11-01-A1/A2 and `PASS` only for A3's rule that unmeasured performance must not be advertised.
 
-Renderer 对 key_value 使用局部行重建，其他组件有 ID 复用；变化不涉及输入草稿时不会重置它。高频图表、视频、大图片不属于首批组件。
+## Reproduction entry points
 
-## 本地基线矩阵（待测）
+```powershell
+cargo test --workspace --no-fail-fast
+npm run check
+python -m unittest discover -s tests -v
+python scripts/check_contracts.py
+```
 
-| 情况 | 记录 |
-|---|---|
-| 仅托盘，无可见世界 | 全进程树 RSS/私有工作集、CPU、句柄、唤醒 |
-| 1/4/8 个世界，空闲 | 增量内存、WebView2 进程数量 |
-| 每世界 20/100/256 节点 | 布局/绘制时间、输入延迟 |
-| 1/10/30Hz 提供者更新 | p50/p95 接受→渲染延迟、丢弃/断开次数、CPU |
-| 写入者 + 4 快照读者 | 序列化和广播开销 |
-| 销毁与重新创建 100 次 | 资源回收、窗口/句柄泄漏 |
-
-先测量，之后再选择增量数据补丁、合并最新快照、每世界事件队列、批量 native 调用、传输升级或局部原生渲染。不要在没有数据时把共享内存和多通道协商塞入首版。
+These commands validate correctness and contracts; they do not substitute for the native measurement campaign. A future campaign must use an isolated release target, synthetic providers, an explicit stop time, and redacted evidence. It must not include runtime descriptors, tokens, note bodies or live business telemetry.

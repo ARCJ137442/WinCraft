@@ -4,6 +4,8 @@ mod engine;
 pub mod geometry;
 mod model;
 mod scene;
+pub mod shortcuts;
 pub use engine::*;
 pub use model::*;
 pub use scene::*;
+pub use shortcuts::*;

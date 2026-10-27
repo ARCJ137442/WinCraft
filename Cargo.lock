@@ -4160,6 +4160,7 @@ dependencies = [
  "uuid",
  "wincraft-core",
  "wincraft-server",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4171,6 +4172,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tokio-tungstenite",
  "uuid",
  "wincraft-core",
 ]

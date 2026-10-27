@@ -12,3 +12,6 @@ uuid.workspace = true
 tokio.workspace = true
 axum.workspace = true
 futures-util.workspace = true
+
+[dev-dependencies]
+tokio-tungstenite = "0.29.0"

@@ -1,6 +1,6 @@
 # ADR-0001：世界就是窗口；首版窗口级独占写租约
 
-状态：用户确认方向，首版已实现；core/server/真实 WS/release provider 部分已验证，剩余原生人工用例见 `evidence/local/validation-matrix.md`。
+状态：用户确认方向，首版已实现；core/server/真实 WS/release provider 部分已验证，剩余原生人工用例见 [`docs/engineering/VALIDATION.md`](../engineering/VALIDATION.md)。
 
 选择：一个世界一个 UUID，一份场景，一个活动写租约；多个读取会话得到不可变快照。资源生命周期由宿主控制；写权限有会话、随机 lease ID、epoch 和时限。
 

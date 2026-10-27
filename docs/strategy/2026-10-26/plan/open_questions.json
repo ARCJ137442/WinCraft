@@ -1,0 +1,75 @@
+{
+  "updated_at": "2026-10-26",
+  "policy": "可查的先本地查；非阻断项用明示默认，不重复向用户问已决定事项。",
+  "items": [
+    {
+      "id": "Q01",
+      "question": "SysTorch现行仓库/端口是什么",
+      "method": "本地项目搜索与用户已有资料",
+      "blocks": [
+        "B03-03真实适配"
+      ],
+      "does_not_block": [
+        "通用Popup",
+        "合成端口"
+      ]
+    },
+    {
+      "id": "Q02",
+      "question": "TeamSense现行API/额度来源与账号范围",
+      "method": "读取实际项目源码和配置契约，不读密钥内容",
+      "blocks": [
+        "B05-02真实数据"
+      ],
+      "does_not_block": [
+        "浏览器桥接",
+        "合成投影"
+      ]
+    },
+    {
+      "id": "Q03",
+      "question": "本地五类Harness版本和获准会话",
+      "method": "明确安装清单/API能力查询",
+      "blocks": [
+        "对应真实adapter"
+      ],
+      "does_not_block": [
+        "统一模型",
+        "合成fixture"
+      ]
+    },
+    {
+      "id": "Q04",
+      "question": "Android通知权限与现有transport可用通道",
+      "method": "当前AndroMorph能力账本+显式真机授权",
+      "blocks": [
+        "B09-02真机"
+      ],
+      "does_not_block": [
+        "信封和去重测试"
+      ]
+    },
+    {
+      "id": "Q05",
+      "question": "兼容窗口/性能预算/发布平台",
+      "method": "首轮实测和维护者ADR",
+      "blocks": [
+        "正式发布承诺"
+      ],
+      "does_not_block": [
+        "原型与测量"
+      ]
+    },
+    {
+      "id": "Q06",
+      "question": "最终中文品牌与治理角色",
+      "method": "未来维护者决定",
+      "blocks": [
+        "正式品牌/权限变更"
+      ],
+      "does_not_block": [
+        "WinCraft工作名下研发"
+      ]
+    }
+  ]
+}

@@ -26,12 +26,12 @@ export function demoSnapshot(manager=false):Snapshot {
     node('meta','key_value',{items:[{key:'窗口策略',value:'人类可拖动 · 托盘可找回'},{key:'写入模型',value:'窗口级独占租约'},{key:'演示边界',value:'无 Rust 服务、无原生窗口控制'}]})
   ]),data:{clock:'24:18',done:7,progress:58,button:'暂停',note:''}};
   return {id:manager?'preview-manager':'preview-world',revision:1,sequence:1,window_revision:1,epoch:1,system:manager,writer:'demo',status:'online',
-    window:{title:manager?'窗构 · 世界管理器':'专注与后台任务',width:620,height:700,position:null,always_on_top:true,visible:true,resizable:true,title_bar_visible:true,text_selectable:true,decorations:false,skip_taskbar:true,click_through:false,geometry_control:'human',surface_opacity:0.8},
+    window:{title:manager?'窗构 · 世界管理器':'专注与后台任务',width:620,height:700,position:null,anchor:null,always_on_top:true,visible:true,resizable:true,title_bar_visible:true,background_drag_enabled:true,text_selectable:true,decorations:false,skip_taskbar:true,click_through:false,geometry_control:'human',surface_opacity:0.8},
     scene,native:{state:'preview',applied_window_revision:null,error:null},actions:[]};
 }
-export function previewController(snapshot:Snapshot,accept:(s:Snapshot)=>void):(id:string,value:unknown)=>Promise<string> {
+export function previewController(snapshot:Snapshot,accept:(s:Snapshot)=>void):(id:string,value:unknown,source:'click'|'context_menu'|'escape'|'control_enter')=>Promise<string> {
   let current=snapshot;
-  return async(id,value)=>{
+  return async(id,value,source)=>{
     current=structuredClone(current);current.sequence++;current.revision++;
     const data=current.scene.data as Record<string,unknown>;
     if(id==='pause'){data.button=data.button==='暂停'?'继续':'暂停';}
@@ -43,7 +43,10 @@ export function previewController(snapshot:Snapshot,accept:(s:Snapshot)=>void):(
       if(index>=0)root.children[index]=node('result','badge',{text:'结果区已动态替换 · 无需重启窗口',tone:'success'});
     }
     const actionId=`preview-${current.sequence}`;
-    current.actions.push({id:actionId,component_id:id,action:'preview',status:'ok',message:'仅浏览器演示'});
+    const findNode=(currentNode:ComponentNode):ComponentNode|null=>currentNode.id===id?currentNode:currentNode.children.map(findNode).find(Boolean)??null;
+    const target=findNode(current.scene.root);
+    const action=source==='escape'||source==='control_enter'?target?.props.shortcut_action:source==='context_menu'?target?.props.context_action:target?.props.action;
+    current.actions.push({id:actionId,component_id:id,action:typeof action==='string'?action:'preview',status:'ok',message:'仅浏览器演示'});
     accept(current);
     return actionId;
   };

@@ -1,0 +1,60 @@
+{
+  "root": {
+    "id": "root",
+    "kind": "stack",
+    "props": {
+      "gap": 8
+    },
+    "children": [
+      {
+        "id": "choice-a",
+        "kind": "button",
+        "props": {
+          "label": "选择 A",
+          "action": "select:a",
+          "selection_group": "q0",
+          "selection_mode": "single",
+          "pressed": true
+        },
+        "children": []
+      },
+      {
+        "id": "choice-b",
+        "kind": "button",
+        "props": {
+          "label": "选择 B",
+          "action": "select:b",
+          "selection_group": "q0",
+          "selection_mode": "single",
+          "pressed": false
+        },
+        "children": []
+      },
+      {
+        "id": "notes",
+        "kind": "textarea",
+        "props": {
+          "label": "备注",
+          "value": "第一行\n第二行",
+          "action": "notes.save",
+          "submit_label": "保存备注",
+          "shortcut": "ctrl_enter",
+          "shortcut_action": "submit"
+        },
+        "children": []
+      },
+      {
+        "id": "cancel",
+        "kind": "button",
+        "props": {
+          "label": "取消",
+          "action": "cancel.button",
+          "shortcut": "escape",
+          "shortcut_action": "cancel.escape"
+        },
+        "children": []
+      }
+    ]
+  },
+  "data": {}
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:events:0.3",
+  "title": "WinCraft 0.3 typed state events",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "event": {"const": "window.event"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "event_id": {"type": "string", "format": "uuid"},
+            "subscription_id": {"type": "string", "format": "uuid"},
+            "world_id": {"type": "string", "format": "uuid"},
+            "type": {"const": "window.geometry_changed"},
+            "delivery": {"const": "state"},
+            "source": {"type": "string", "enum": ["provider", "operator", "human", "host", "system"]},
+            "cause_id": {"type": "string", "maxLength": 80},
+            "sequence": {"type": "integer", "minimum": 0},
+            "window_revision": {"type": "integer", "minimum": 0},
+            "payload": {
+              "type": "object",
+              "properties": {
+                "position": {
+                  "anyOf": [
+                    {"type": "null"},
+                    {
+                      "type": "object",
+                      "properties": {"x": {"type": "integer"}, "y": {"type": "integer"}},
+                      "required": ["x", "y"],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "anchor": {
+                  "anyOf": [
+                    {"type": "null"},
+                    {"$ref": "urn:wincraft:scene:0.3#/$defs/WorkAreaAnchor"}
+                  ]
+                },
+                "width": {"type": "number", "minimum": 0},
+                "height": {"type": "number", "minimum": 0}
+              },
+              "required": ["position", "width", "height"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["event_id", "subscription_id", "world_id", "type", "delivery", "source", "sequence", "window_revision", "payload"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "event": {"const": "window.event"},
+        "data": {
+          "type": "object",
+          "properties": {
+            "event_id": {"type": "string", "format": "uuid"},
+            "subscription_id": {"type": "string", "format": "uuid"},
+            "world_id": {"type": "string", "format": "uuid"},
+            "type": {"const": "window.visibility_changed"},
+            "delivery": {"const": "state"},
+            "source": {"type": "string", "enum": ["provider", "operator", "human", "host", "system"]},
+            "cause_id": {"type": "string", "maxLength": 80},
+            "sequence": {"type": "integer", "minimum": 0},
+            "window_revision": {"type": "integer", "minimum": 0},
+            "payload": {
+              "type": "object",
+              "properties": {"visible": {"type": "boolean"}},
+              "required": ["visible"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["event_id", "subscription_id", "world_id", "type", "delivery", "source", "sequence", "window_revision", "payload"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["event", "data"],
+      "additionalProperties": false
+    }
+  ]
+}

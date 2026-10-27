@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:blueprint:draft-2026-10-26",
+  "title": "配置蓝图示例",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.blueprint.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "worlds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+          },
+          "title": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 16,
+            "propertyNames": {
+              "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "binding_slots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+            },
+            "uniqueItems": true,
+            "maxItems": 64
+          },
+          "layout_hint": {
+            "enum": [
+              "stack",
+              "row",
+              "compact"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "binding_slots",
+          "layout_hint"
+        ]
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "id",
+    "worlds"
+  ]
+}

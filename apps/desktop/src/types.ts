@@ -1,10 +1,15 @@
-export type Kind = 'stack'|'row'|'text'|'metric'|'progress'|'badge'|'button'|'input'|'key_value'|'divider';
+export type Kind = 'stack'|'row'|'text'|'metric'|'progress'|'badge'|'button'|'input'|'textarea'|'key_value'|'icon'|'bar_chart'|'divider';
 export interface ComponentNode { id:string; kind:Kind; props:Record<string,unknown>; children:ComponentNode[] }
-export interface Scene { root:ComponentNode; data:unknown }
+export interface ThemeTokens {
+  background:string; foreground:string; accent:string; font_scale:number; radius_px:number; spacing_px:number;
+}
+export interface Scene { root:ComponentNode; data:unknown; theme?:ThemeTokens }
 export interface ActionState { id:string; component_id:string; action:string; status:'pending'|'ok'|'error'; message:string|null }
+export type WorkAreaCorner = 'top_left'|'top_right'|'bottom_left'|'bottom_right';
+export interface WorkAreaAnchor { corner:WorkAreaCorner; margin_x:number; margin_y:number }
 export interface WindowSpec {
-  title:string; width:number; height:number; position:{x:number;y:number}|null;
-  always_on_top:boolean; visible:boolean; resizable:boolean; title_bar_visible:boolean; text_selectable:boolean; decorations:boolean;
+  title:string; width:number; height:number; position:{x:number;y:number}|null; anchor:WorkAreaAnchor|null;
+  always_on_top:boolean; visible:boolean; resizable:boolean; title_bar_visible:boolean; background_drag_enabled:boolean; text_selectable:boolean; decorations:boolean;
   skip_taskbar:boolean; click_through:boolean; geometry_control:'provider'|'human'; surface_opacity:number;
 }
 export interface Snapshot {

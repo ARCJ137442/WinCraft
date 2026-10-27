@@ -1,5 +1,12 @@
 # 变更记录
 
+## Unreleased — 原生窗口动作与 Obsidian Workspace 交互（2026-10-27）
+
+- 增加 Tauri-only、能力门控的 `native_window_action`：仅 `obsidian`、`traffic_monitor` 白名单应用和 `activate`、`restore`、`minimize` 枚举动作；用户触发后由宿主在同一 revision/lease 验证下执行，不开放 shell、AHK 或任意进程路径。
+- Obsidian Workspace 标题可激活已有 Obsidian 窗口，可选按标题子串筛选；接入 Obsidian 暗紫主题、SVG 图标、状态颜色和仅统计可见前五项的分布图，关闭健康连接噪音与默认文本选择。
+- 对齐 `appearance`、`icon`、`bar_chart`、嵌套 JSON Pointer 绑定的 JSON Schema 与 Rust 校验；补充 Agent 提供者 Skill 原生窗口动作教程和 synthetic 协议样例。
+- Popup-Ask provider 增加跨进程单槽互斥；第二个同时调用在连 Host/创建世界前返回 busy，并引导用户到世界管理器找到现有请求，避免重复 Popup 与抢焦点。
+
 ## Unreleased — 本机联调（2026-10-26）
 
 - TrafficMonitor 桥接切换为消费官方 V1.86 `OnMonitorInfo` 回调；增加本地状态侧文件诊断，不写遥测值。
@@ -12,7 +19,7 @@
 - 协议升到 0.2：标题栏默认固定显示、click-through 默认关闭，两者都可由 provider 通过 `window.configure` 配置；旧 protocol 版本仍严格拒绝。
 - 协议升到 0.3：新增 `text_selectable` 窗口默认属性，默认 true、provider 可读写；renderer 组件样式可覆盖，标题栏文字始终不可选。
 - Obsidian Workspace provider 改为从当前实际渲染的 dashboard leaf 读取，跳过空的旧 leaf；仍只读，不写笔记或插件设置。
-- 本机实测细节与未完成的人工验收见 `evidence/local/validation-matrix.md`。
+- 可提交的实测摘要与未完成的人工验收见 `docs/engineering/VALIDATION.md`；脱敏命令日志与机器专属证据保存在默认忽略的 `evidence/local/nextgen-2026-10-26/`。
 
 ## 0.1.0-alpha.1 — 2026-10-25
 

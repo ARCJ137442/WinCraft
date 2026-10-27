@@ -21,8 +21,13 @@
 | Obsidian Obsidian Workspace 仪表盘只读投影 | [integration-obsidian.md](integration-obsidian.md) |
 | 非本机提供者 | [remote.md](remote.md) |
 | 后续演进 | [roadmap.md](roadmap.md) |
+| 2026-10-26 平台演进交接包、需求追踪与状态 | [strategy/2026-10-26/START_HERE.md](strategy/2026-10-26/START_HERE.md) |
 | 决策理由 | [adr/0001-window-world-and-leases.md](adr/0001-window-world-and-leases.md)、[adr/0002-projection-not-business-storage.md](adr/0002-projection-not-business-storage.md)、[adr/0003-transport-and-self-provider.md](adr/0003-transport-and-self-provider.md) |
 | 来源与对应关系 | [research/SOURCES.md](research/SOURCES.md) |
+| 下一世代集成来源锁与局部阻塞 | [research/integration-source-lock.json](research/integration-source-lock.json) |
+| Host UI 中英文资源 | [apps/desktop/src/locales/zh-CN.json](../apps/desktop/src/locales/zh-CN.json)、[en-US.json](../apps/desktop/src/locales/en-US.json) |
 | Agent 提供者入门与 TrafficMonitor 接入 | [skills/wincraft-provider/SKILL.md](../skills/wincraft-provider/SKILL.md)、[references/trafficmonitor.md](../skills/wincraft-provider/references/trafficmonitor.md) |
+| 宿主原生窗口动作 allowlist | [references/native-window-actions.md](../skills/wincraft-provider/references/native-window-actions.md) |
+| Popup-Ask 到临时 WinCraft 世界的可选传输 | [references/popup-ask.md](../skills/wincraft-provider/references/popup-ask.md) |
 | 可提交的本机验收摘要 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |
 | 本机逐命令补充证据 | `evidence/local/`（默认不提交，路径与实时数据需脱敏） |

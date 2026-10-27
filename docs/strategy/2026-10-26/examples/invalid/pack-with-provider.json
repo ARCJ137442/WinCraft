@@ -1,0 +1,45 @@
+{
+  "kind": "wincraft.pack.draft",
+  "schema_version": "draft-2026-10-26",
+  "id": "wincraft.workday",
+  "version": "0.1.0-draft",
+  "title": {
+    "zh-CN": "开发工作台（配置示例）",
+    "en-US": "Development desk (configuration example)"
+  },
+  "bindings": [
+    {
+      "id": "agents",
+      "required": true,
+      "provider_types": [
+        "agent-board"
+      ],
+      "capabilities": [
+        "activity.read"
+      ],
+      "permissions": [
+        "activity.read"
+      ],
+      "min_adapter_contract": 1
+    },
+    {
+      "id": "metrics",
+      "required": false,
+      "provider_types": [
+        "metrics"
+      ],
+      "capabilities": [
+        "metrics.read"
+      ],
+      "permissions": [
+        "metrics.read"
+      ],
+      "min_adapter_contract": 1
+    }
+  ],
+  "blueprint": "blueprints/workday.json",
+  "theme_id": "wincraft.calm",
+  "fallback_policy": "explain_missing",
+  "adapter": null,
+  "providers_binary": "bundled.exe"
+}

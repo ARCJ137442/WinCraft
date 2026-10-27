@@ -32,7 +32,7 @@ class TrafficMonitorProviderTests(unittest.TestCase):
             snapshot = read_metrics(path)
         self.assertEqual(snapshot, payload)
         view = make_view_data(snapshot, now_ms=1_800_000_001_000)
-        self.assertEqual(view["status"], "TrafficMonitor 在线")
+        self.assertEqual(view["status"], "")
         self.assertEqual(view["download"], "0 KB/s")
         self.assertEqual(view["gpu"], "—")
 

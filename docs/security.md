@@ -8,7 +8,7 @@
 
 随机宿主 token、预升级鉴权、拒绝浏览器 Origin、5 秒 hello 时限、协议版本、每会话 120 消息/秒、单消息 256 KiB、最大 64 会话/16 世界/256 节点/深度 16、有限动作队列与超时、随机世界加入凭证、会话绑定写租约、epoch 撤销、系统世界保护、旧界面动作版本检查。
 
-宿主 token 的比较避免直接逐字节遇错提前返回，但这不是形式化侧信道审计。连接描述文件在 Unix 以 0600 创建；Windows 依赖 app-local-data 的用户 ACL，不能把文件位置本身当作权限保证。2026-10-26 对当前 Tauri release descriptor 做了只读 ACL 检查：owner 为当前用户，未发现 Everyone/Authenticated Users/Users/Guests broad-read 授权；这仍不是完整安全审计或跨账户测试。
+宿主 token 的比较避免直接逐字节遇错提前返回，但这不是形式化侧信道审计。连接描述文件在 Unix 以 0600 创建；Windows 依赖 app-local-data 的用户 ACL，不能把文件位置本身当作权限保证。2026-10-26 对此前 locale-enabled Tauri build 的单份 descriptor 做过只读 ACL 检查：owner 为当前用户，未发现 Everyone/Authenticated Users/Users/Guests broad-read 授权；当前 lifecycle release 的 descriptor ACL 未检查，旧 build 结果不能外推。以上都不是完整安全审计或跨账户测试。
 
 ## 两层认证
 
@@ -19,6 +19,10 @@ host token 仍是粗粒度接入凭证，不是成熟多租户身份体系。持
 ## 数据与执行隔离
 
 客户端不知道宿主函数名就能任意执行的模式不存在。组件 action 是不透明业务标识，仅回传对应提供者。提供者业务执行的安全由提供者处理，宿主 action.result 不能证明业务 exactly-once。
+
+跨应用原生窗口操作走单独的 `native_window_action` 白名单：当前只允许宿主登记的 Obsidian 与 TrafficMonitor 窗口，以及激活、最大化、恢复、最小化四个枚举操作，且只能由用户点击触发。Rust/Tauri 宿主校验已接受场景、revision、写者状态、组件 disabled 状态和窗口标题筛选，然后在宿主进程中调用原生 API；headless host 拒绝执行。协议不携带进程路径、shell 命令、AHK 源码或任意代码。关闭、启动进程、原始坐标/句柄和自动动作不属于此 allowlist。
+
+窗口状态订阅按 WebSocket session 绑定，只能订阅已加入世界的有限类型，并只发出最小状态。读者订阅不授予写权；leave/destroy/disconnect 清理订阅。窗口状态事件不会自动触发本地动作；订阅与动作授权分离。
 
 Renderer 使用 textContent/DOM 原语，禁用 HTML 和脚本注入。JSON Pointer 不穿越 prototype/constructor。CSP 禁止外部框架、iframe 和任意脚本；样式只使用宿主选定属性及有限数值。
 

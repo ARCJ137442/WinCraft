@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:resolution-plan:draft-2026-10-26",
+  "title": "仅供审阅的配置解析计划",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.plan.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "pack_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "inventory_generation": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "input_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "degraded",
+        "blocked"
+      ]
+    },
+    "mutates_host": {
+      "const": false
+    },
+    "requires_confirmation": {
+      "const": true
+    },
+    "bindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "binding_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+          },
+          "provider_instance_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "selected",
+              "missing",
+              "ambiguous",
+              "blocked"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "binding_id",
+          "provider_instance_id",
+          "status",
+          "reason"
+        ]
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "pack_id",
+    "inventory_generation",
+    "input_digest",
+    "created_at",
+    "expires_at",
+    "status",
+    "mutates_host",
+    "requires_confirmation",
+    "bindings",
+    "blockers",
+    "warnings"
+  ]
+}

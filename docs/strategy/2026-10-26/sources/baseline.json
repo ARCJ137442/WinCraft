@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-10-26",
+  "repository": "ARCJ137442/WinCraft",
+  "branch_observed": "dev",
+  "commit": "6929056700b1ba6702288534579debc8a502c139",
+  "protocol": "0.3",
+  "product_version": "0.1.0-alpha.1",
+  "observation": "connector reads; no local clone/build of current runtime",
+  "files": [
+    {
+      "path": "docs/engineering/VALIDATION.md",
+      "blob": "8da884b36796ccbbd5ff5db3792171b090faaa78"
+    },
+    {
+      "path": "crates/wincraft-core/src/model.rs",
+      "blob": "b605170c875b3e846d8fd94114d8723210d995b6"
+    },
+    {
+      "path": "crates/wincraft-server/src/transport.rs",
+      "blob": "91ed48f7e93e850c531ef60b58b6c4674f50d6cb"
+    },
+    {
+      "path": "skills/wincraft-provider/SKILL.md",
+      "blob": "149d3b40ab21057693344bc70392bb505af782fa"
+    },
+    {
+      "path": "AGENTS.md",
+      "blob": "7c9f35af99fb0f279ece4323ad042dc026d4fd45"
+    }
+  ],
+  "native_tests_in_this_package": "NOT_RUN",
+  "upstream_result_status": "REPO_REPORTED"
+}

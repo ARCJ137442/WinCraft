@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:theme:draft-2026-10-26",
+  "title": "受限主题token提案",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.theme.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "title": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "background": {
+          "type": "string",
+          "pattern": "^#[A-Fa-f0-9]{6}$"
+        },
+        "foreground": {
+          "type": "string",
+          "pattern": "^#[A-Fa-f0-9]{6}$"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[A-Fa-f0-9]{6}$"
+        },
+        "font_scale": {
+          "type": "number",
+          "minimum": 0.9,
+          "maximum": 2.0
+        },
+        "radius_px": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "spacing_px": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        }
+      },
+      "required": [
+        "background",
+        "foreground",
+        "accent",
+        "font_scale",
+        "radius_px",
+        "spacing_px"
+      ]
+    },
+    "trusted_chrome": {
+      "const": "host-controlled"
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "id",
+    "title",
+    "tokens",
+    "trusted_chrome"
+  ]
+}

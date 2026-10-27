@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:device-message:draft-2026-10-26",
+  "title": "传输无关设备摘要信封",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.device-message.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "origin_device_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "origin_source_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "source_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload_type": {
+      "enum": [
+        "notification-summary",
+        "actionable-inbox",
+        "retraction"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 64
+    },
+    "classification": {
+      "enum": [
+        "synthetic",
+        "private",
+        "redacted"
+      ]
+    },
+    "retracts": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "message_id",
+    "origin_device_id",
+    "origin_source_id",
+    "source_sequence",
+    "emitted_at",
+    "expires_at",
+    "payload_type",
+    "summary",
+    "source_refs",
+    "classification",
+    "retracts"
+  ]
+}

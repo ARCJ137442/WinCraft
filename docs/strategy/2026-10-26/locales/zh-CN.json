@@ -1,0 +1,14 @@
+{
+  "world.create": "新建世界",
+  "provider.disconnected": "来源已断开",
+  "request.cancelled": "已取消",
+  "request.waiting": "等待你的选择",
+  "inventory.missing": "缺少来源：{name}",
+  "plan.degraded": "部分功能不可用",
+  "permission.request": "请求权限：{capability}",
+  "action.pending": "正在处理",
+  "action.unknown": "结果暂不确定",
+  "source.identity": "来源：{source}",
+  "tutorial.exit": "退出教程",
+  "operator.takeover": "接管并找回"
+}

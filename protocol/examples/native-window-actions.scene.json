@@ -1,0 +1,50 @@
+{
+  "root": {
+    "id": "root",
+    "kind": "stack",
+    "props": {"gap": 8},
+    "children": [
+      {
+        "id": "activate-obsidian",
+        "kind": "button",
+        "props": {
+          "label": "回到 Obsidian 仪表盘",
+          "action": "dashboard.focus",
+          "native_window_action": {
+            "application": "obsidian",
+            "operation": "activate",
+            "title_contains": "Obsidian Workspace"
+          }
+        },
+        "children": []
+      },
+      {
+        "id": "minimize-traffic-monitor",
+        "kind": "button",
+        "props": {
+          "label": "最小化 TrafficMonitor",
+          "action": "traffic_monitor.minimize",
+          "native_window_action": {
+            "application": "traffic_monitor",
+            "operation": "minimize"
+          }
+        },
+        "children": []
+      },
+      {
+        "id": "maximize-traffic-monitor",
+        "kind": "button",
+        "props": {
+          "label": "最大化 TrafficMonitor",
+          "action": "traffic_monitor.maximize",
+          "native_window_action": {
+            "application": "traffic_monitor",
+            "operation": "maximize"
+          }
+        },
+        "children": []
+      }
+    ]
+  },
+  "data": {}
+}

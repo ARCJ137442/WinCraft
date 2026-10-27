@@ -1,0 +1,362 @@
+{
+  "schema_version": "1",
+  "checked_at": "2026-10-26",
+  "sources": [
+    {
+      "id": "U-LATEST",
+      "title": "用户最新反馈及本会话已批准方向",
+      "url": null,
+      "checked_at": "2026-10-26",
+      "kind": "user-instruction",
+      "version_or_blob": "2026-10-26",
+      "visibility": "conversation",
+      "supported_claim": "以最后一轮反馈为最高优先级，既有同意意见在不冲突时保留。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-BASELINE",
+      "title": "WinCraft dev 固定提交",
+      "url": "https://github.com/ARCJ137442/WinCraft/commit/6929056700b1ba6702288534579debc8a502c139",
+      "checked_at": "2026-10-26",
+      "kind": "repository-observation",
+      "version_or_blob": "6929056700b1ba6702288534579debc8a502c139",
+      "visibility": "public",
+      "supported_claim": "本轮读取的远端基线；执行时重新核对本地与远端差异。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-TREE",
+      "title": "WinCraft 文件树",
+      "url": "https://github.com/ARCJ137442/WinCraft/tree/6929056700b1ba6702288534579debc8a502c139",
+      "checked_at": "2026-10-26",
+      "kind": "repository-observation",
+      "version_or_blob": "6929056700b1ba6702288534579debc8a502c139",
+      "visibility": "public",
+      "supported_claim": "确认 crates、desktop、protocol、examples、skills、docs 的现行目录。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-VALIDATION",
+      "title": "本机验证摘要",
+      "url": "https://github.com/ARCJ137442/WinCraft/blob/6929056700b1ba6702288534579debc8a502c139/docs/engineering/VALIDATION.md",
+      "checked_at": "2026-10-26",
+      "kind": "repository-reported",
+      "version_or_blob": "8da884b36796ccbbd5ff5db3792171b090faaa78",
+      "visibility": "public",
+      "supported_claim": "仓库报告的 0.3 协议、Rust、Tauri、TrafficMonitor、Obsidian Workspace 验收；原生人工门仍有未执行项。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-MODEL",
+      "title": "Rust 公共模型",
+      "url": "https://github.com/ARCJ137442/WinCraft/blob/6929056700b1ba6702288534579debc8a502c139/crates/wincraft-core/src/model.rs",
+      "checked_at": "2026-10-26",
+      "kind": "source-observed",
+      "version_or_blob": "b605170c875b3e846d8fd94114d8723210d995b6",
+      "visibility": "public",
+      "supported_claim": "协议0.3；租期15秒、普通动作回执10秒；WindowSpec和未知字段策略。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-TRANSPORT",
+      "title": "网络传输",
+      "url": "https://github.com/ARCJ137442/WinCraft/blob/6929056700b1ba6702288534579debc8a502c139/crates/wincraft-server/src/transport.rs",
+      "checked_at": "2026-10-26",
+      "kind": "source-observed",
+      "version_or_blob": "91ed48f7e93e850c531ef60b58b6c4674f50d6cb",
+      "visibility": "public",
+      "supported_claim": "仅回环监听；Bearer鉴权；拒绝带Origin请求；descriptor含秘密不得分发。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-PROVIDER",
+      "title": "Provider Skill",
+      "url": "https://github.com/ARCJ137442/WinCraft/blob/6929056700b1ba6702288534579debc8a502c139/skills/wincraft-provider/SKILL.md",
+      "checked_at": "2026-10-26",
+      "kind": "source-observed",
+      "version_or_blob": "149d3b40ab21057693344bc70392bb505af782fa",
+      "visibility": "public",
+      "supported_claim": "公共Provider流程、0.3握手、租约/交互/重建与验证分层。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "W-AGENTS",
+      "title": "现有工程合同",
+      "url": "https://github.com/ARCJ137442/WinCraft/blob/6929056700b1ba6702288534579debc8a502c139/AGENTS.md",
+      "checked_at": "2026-10-26",
+      "kind": "source-observed",
+      "version_or_blob": "7c9f35af99fb0f279ece4323ad042dc026d4fd45",
+      "visibility": "public",
+      "supported_claim": "保留Rust/Tauri与所有权；本地验证与公开操作授权分离。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "P-POPUP",
+      "title": "团队 Popup-Ask 运行契约",
+      "checked_at": "2026-10-26",
+      "kind": "private-source-observed",
+      "version_or_blob": "796bf688e86bfb30132c1d1088f95adb6429dde6",
+      "visibility": "restricted-team",
+      "supported_claim": "1–4题、2–5预设选项、自动Other/notes、中文不因编码降级、关闭即取消、默认摘要/显式JSON、阻塞等待。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "P-TOUCH",
+      "title": "TouchAI 官方仓库说明",
+      "url": "https://github.com/TouchAI-org/TouchAI/blob/main/README.md",
+      "checked_at": "2026-10-26",
+      "kind": "source-observed",
+      "version_or_blob": "1af13496475e1bec0c8028c56cc710f3cd5f9f02",
+      "visibility": "public",
+      "supported_claim": "Alt+Space、键盘流程、上下文与工具能力说明；不据此声称WinCraft已等价实现。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-DSH",
+      "title": "DeepSeek Harness 架构",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": "2026-10-26 live read; README blob 7941e30f7bdca9391befe39b9115d211157fa42d",
+      "visibility": "public",
+      "supported_claim": "Cordis服务、类型事件、可撤销效果与分层配置；仅借鉴生命周期，不移植全部运行时或Electron。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-DSH-STATUS",
+      "title": "DeepSeek Harness README",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/blob/master/README.md",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": "7941e30f7bdca9391befe39b9115d211157fa42d",
+      "visibility": "public",
+      "supported_claim": "项目明确为开发预览且会破坏兼容；适配器需固定上游版本。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "VS-MANIFEST",
+      "title": "VS Code Extension Manifest",
+      "url": "https://code.visualstudio.com/api/references/extension-manifest",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "贡献、兼容版本、依赖与extensionPack语义；WinCraft配置包不复制其自动安装扩展语义。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "VS-CONTRIB",
+      "title": "VS Code Contribution Points",
+      "url": "https://code.visualstudio.com/api/references/contribution-points",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "声明式贡献点可供命令、视图、主题等扩展设计参考。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "VS-HOST",
+      "title": "VS Code Extension Host",
+      "url": "https://code.visualstudio.com/api/advanced-topics/extension-host",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "扩展承载位置与运行环境分层参考，不宣称其默认提供能力级安全沙箱。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "VS-TRUST",
+      "title": "VS Code Workspace Trust",
+      "url": "https://code.visualstudio.com/api/extension-guides/workspace-trust",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "受限与受信上下文的明确表达；信任不能替代WinCraft路由授权。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "VS-I18N",
+      "title": "VS Code API/l10n",
+      "url": "https://code.visualstudio.com/api/references/vscode-api",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "用户可见字符串本地化与API语言分离的参考。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "OBS-SEC",
+      "title": "Obsidian Plugin Security",
+      "url": "https://obsidian.md/help/plugin-security",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "限制模式停止第三方插件；插件权限不能被误当作细粒度沙箱。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "RUST-BORROW",
+      "title": "Rust 引用与借用",
+      "url": "https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "共享引用与可变引用规则；网络快照/租约不是Rust引用本身。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "RUST-ARC",
+      "title": "Rust Arc",
+      "url": "https://doc.rust-lang.org/std/sync/struct.Arc.html",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "共享所有权不自动提供内部可变数据的同步。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "RUST-MUTEX",
+      "title": "Rust Mutex",
+      "url": "https://doc.rust-lang.org/std/sync/struct.Mutex.html",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "互斥访问本地数据；不能把它直接当远程锁或等待人类时持有。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "CHROME-NATIVE",
+      "title": "Chrome Native Messaging",
+      "url": "https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "扩展与受注册原生宿主交换结构化消息，限定扩展来源；仍需WinCraft侧授权。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-CODEX",
+      "title": "Codex App Server",
+      "url": "https://learn.chatgpt.com/docs/app-server",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "结构化应用集成与批准通路参考；不据此保证任意已有CLI会话都可发现或控制。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-CODEX-ORIGIN",
+      "title": "Codex Harness 官方说明",
+      "url": "https://openai.com/index/unlocking-the-codex-harness/",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "官方App Server定位与使用边界参考。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-CLAUDE",
+      "title": "Claude Code Hooks",
+      "url": "https://code.claude.com/docs/en/hooks",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "用显式事件钩子观察生命周期；事件与版本能力需要适配器测试。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-OPENCODE",
+      "title": "OpenCode Server",
+      "url": "https://opencode.ai/docs/server/",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "服务与事件接口参考，不能把文档声明当本地实际连接。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-OPENCODE-PLUGIN",
+      "title": "OpenCode Plugins",
+      "url": "https://opencode.ai/docs/plugins/",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "插件注册与生命周期事件参考。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "X-OMP",
+      "title": "oh-my-pi",
+      "url": "https://github.com/can1357/oh-my-pi",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "本轮定位的omp参考仓库；本地二进制/版本/SDK/RPC能力须核对，不假定所有fork相同。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "TAURI-CAP",
+      "title": "Tauri Capabilities",
+      "url": "https://v2.tauri.app/security/capabilities/",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "窗口/WebView的能力授权基础；不自动构成Provider级权限检查。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "TAURI-KEY",
+      "title": "Tauri Global Shortcut",
+      "url": "https://v2.tauri.app/plugin/global-shortcut/",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "原生快捷键插件入口；实际依赖版本、OS支持和冲突必须验证。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "ANDROID-NOTIFY",
+      "title": "Android NotificationListenerService",
+      "url": "https://developer.android.com/reference/android/service/notification/NotificationListenerService",
+      "checked_at": "2026-10-26",
+      "kind": "official-primary",
+      "version_or_blob": null,
+      "visibility": "public",
+      "supported_claim": "平台通知监听接口存在，需用户授权；不证明AndroMorph已具备外部通知读取。",
+      "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
+    },
+    {
+      "id": "P-SYSTORCH-LOCAL",
+      "title": "SysTorch local M1 decision API candidate",
+      "url": null,
+      "checked_at": "2026-10-26",
+      "kind": "local-source-observed",
+      "version_or_blob": "Jev-Switch HEAD 11253af121c0e9f800b544af6c95cd6e4f613e1a; decision module and contract are untracked in its working tree",
+      "visibility": "local-only",
+      "supported_claim": "Current local M1 candidate registers /v1/systorch identity, create/list/read/result, answer, cancel, revise and clarify operations; managed caller tokens create/read/cancel own tasks, while only local-owner can answer.",
+      "limitation": "This candidate is uncommitted and unreleased. Source inspection does not establish a stable release API or live runtime integration; no endpoint was contacted and no credential was read.",
+      "source_file_sha256": {
+        "rs/crates/systorch-daemon/src/decisions/mod.rs": "458fe34e56361c8abddd588babd9911b8d2832abfb7ae634c0e649e38b358df4",
+        "rs/crates/systorch-daemon/src/decisions/store.rs": "96a1fc8a1ba0c24b65c2e229239cc3508dd4404da744d3e65197f51f606641ea",
+        "docs/contracts/08-持久Choice契约.md": "1819bef10cbf8a1dbb8df7acc1bc8fee92b25cbc9ffe9e2d4ac3272ffc9daa5a"
+      }
+    }
+  ]
+}

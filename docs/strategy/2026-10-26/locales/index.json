@@ -1,0 +1,17 @@
+{
+  "updated_at": "2026-10-26",
+  "source_locale": "zh-CN",
+  "supported_example_locales": [
+    "zh-CN",
+    "en-US"
+  ],
+  "coverage": "12 demonstration strings; not production i18n coverage",
+  "translations": [
+    {
+      "document": "docs/en/START_HERE.md",
+      "source": "EXECUTIVE_SUMMARY.md",
+      "source_sha256": "ac521d40ef9d1a6f321142cee760edaa6274f29c325eef03ad3c73fbed9b344c",
+      "status": "current"
+    }
+  ]
+}

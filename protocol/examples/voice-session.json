@@ -1,0 +1,24 @@
+[
+  {
+    "session_id": "synthetic-voice-1",
+    "mode": "asr",
+    "authorization": "not_requested",
+    "state": "idle",
+    "language": "zh-CN",
+    "transcript": null,
+    "user_confirmed": false,
+    "expires_at": null,
+    "observed_at": "2026-10-27T12:00:00Z"
+  },
+  {
+    "session_id": "synthetic-voice-2",
+    "mode": "asr",
+    "authorization": "granted",
+    "state": "awaiting_confirmation",
+    "language": "zh-CN",
+    "transcript": "合成转写文本",
+    "user_confirmed": false,
+    "expires_at": "2026-10-27T12:01:00Z",
+    "observed_at": "2026-10-27T12:00:30Z"
+  }
+]

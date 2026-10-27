@@ -24,13 +24,15 @@
 
 ## 本机验证状态（2026-10-26）
 
-- 当前源码已在 Windows/MSVC 环境通过 `npm run check`（17 项 Node + 8 类离线契约）、15 项 Python provider 单测、Rust fmt、workspace Clippy 和 core/server/desktop 检查；完整 workspace optimized 测试 38 项通过。
-- Edge 离线 renderer 检查 16 项通过，覆盖窗口默认文本可选、组件样式覆盖、标题栏不可选、滚动/溢出与动态 renderer 行为；它不替代真实 Tauri 像素验收。
-- 最新协议为严格 `0.3`。当前 release WebSocket 的 `lease_probe.py` 19 项通过，包含拒绝旧版本、text_selectable 默认读写、租约过期、重连 epoch fencing、原子 patch 与慢消费者。
-- 新 release 构建于 `E:\tmp\wincraft-target-text-selection-20261026\release\wincraft-desktop.exe`，SHA-256 记录在 `docs/engineering/VALIDATION.md`。它已独立运行；TrafficMonitor x64 Lite 与 Obsidian Workspace 0.14.7 只读 provider 均接入，Obsidian Workspace native report 为 applied。
-- 用户此前确认托盘图标/菜单可打开管理器，悬浮窗可见且可拖动。最新 release 的文本选择手势、像素级滚动条、click-through 救援等仍留在人工验收矩阵。ExoMind 由用户暂缓，未读取配置或调用 API。
+- 当前源码在 Windows/MSVC 环境通过 `npm run check`（24 项 Node 测试 + 10 项离线契约检查）、44 项 Python provider 单测、Rust fmt/check、workspace Clippy `-D warnings` 和 58 项 workspace release 测试。
+- Edge 离线 renderer 检查 27 项通过，覆盖默认文本选择与组件覆盖、标题栏不可选、标题栏点击折叠与拖动阈值、在线状态隐藏、动态组件身份、键盘/IME 状态、主题和可访问性；它不替代真实 Tauri 像素验收。
+- 协议为严格 `0.3`。`lease_probe.py` 对当前 lifecycle Tauri host 的真实 Rust WebSocket 完成 28 项，覆盖旧版本拒绝、鉴权与 Origin、world.list 隔离、动态原子 patch、窗口属性、租约过期/重连 fencing 和慢消费者；宿主 `native_windows=true`，但该探针不等于人工像素/鼠标验收。
+- lifecycle release 位于 `E:\tmp\wincraft-nextgen-lifecycle-20261026\release\wincraft-desktop.exe`，11,438,080 字节，SHA-256 `6216eaedb720e8fe5e710baaf9539dc1925fe6cde102f62c2e71876a228d7403`。本轮它在独立进程中启动并运行管理器。
+- TrafficMonitor 1.8.6.0 x64 新建临时副本使用 fresh config 和本地只读桥接；桥接 DLL 已从当前仓库源码重编，provider 在线并在 snapshot 与窗口中报告 1.8.6.0，采样/scene revision 增长。Obsidian 明确选择 `Obsidian Workspace` vault，Obsidian Workspace Tools 0.14.7 投影 5 条关注项和 4 组提醒，自动刷新活动，native report 为 applied。真实标题与遥测值不写入证据。
+- 用户确认先前版本托盘图标/菜单可用，悬浮窗可见且可拖动。最新 release 的托盘 Exit、UIA/键盘/IME/读屏、实际点击穿透救援、多 DPI/多屏、五课完整交互与 Popup 键盘流仍在人工验收矩阵中。`focus_demo.py` 当前可用于测试动态替换和动作回执；本代理没有代替用户点击。
+- ExoMind 由用户暂缓；未读取其连接配置、未猜端口或 profile、未调用 API。曾为清理错误 vault 临时世界强制停止一次本地宿主；本机策略拒绝了 runtime descriptor 删除命令，失效文件可能残留，其内容未读或写入证据。
 - WinCraft 原解压目录没有 `.git`，未丢失或恢复其他仓库历史。已在此目录建立 GitHub `ARCJ137442/WinCraft`，默认分支 `dev`，`origin` 指向该远端；按用户最新明确决定，仓库当前为公开。首个源码快照提交为 `c70ba44`，当前功能提交为 `73c3e20`。新历史从该提交链开始，不是外心仓库的 graft。
-- 可提交摘要和当前产物哈希见 `docs/engineering/VALIDATION.md`；逐命令日志/截图留在默认忽略的 `evidence/local/`。不写入 `.runtime.json` 内容、token、笔记标题或遥测读数。
+- 可提交摘要和当前产物哈希见 `docs/engineering/VALIDATION.md`；逐命令日志/截图留在默认忽略的 `evidence/local/`。不写入 `.runtime.json` 内容、token、笔记标题或遥测读数。源码当前的提交/推送状态应以 `git status` 和 `git log` 实查为准，不由这份原型交接说明授权。
 
 ## 必须保留的设计不变量
 

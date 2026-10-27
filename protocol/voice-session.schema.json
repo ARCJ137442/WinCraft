@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:voice-session:0.1",
+  "title": "WinCraft one-shot voice session draft",
+  "type": "object",
+  "properties": {
+    "session_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "mode": {"type": "string", "enum": ["asr", "tts"]},
+    "authorization": {"type": "string", "enum": ["not_requested", "granted", "revoked"]},
+    "state": {"type": "string", "enum": ["idle", "recording", "processing", "awaiting_confirmation", "speaking", "cancelled", "completed", "device_error", "unknown"]},
+    "language": {"type": ["string", "null"], "maxLength": 32},
+    "transcript": {"type": ["string", "null"], "maxLength": 32768},
+    "user_confirmed": {"type": "boolean"},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "observed_at": {"type": "string", "format": "date-time"}
+  },
+  "required": ["session_id", "mode", "authorization", "state", "language", "transcript", "user_confirmed", "expires_at", "observed_at"],
+  "additionalProperties": false
+}

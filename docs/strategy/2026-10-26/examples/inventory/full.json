@@ -1,0 +1,41 @@
+{
+  "kind": "wincraft.inventory.draft",
+  "schema_version": "draft-2026-10-26",
+  "generation": 8,
+  "observed_at": "2026-10-26T12:00:00Z",
+  "valid_for_seconds": 60,
+  "providers": [
+    {
+      "id": "fixture.agent-board",
+      "instance_id": "board-1",
+      "provider_type": "agent-board",
+      "display_name": "合成 Agent 面板",
+      "adapter_contract": 1,
+      "state": "online",
+      "capabilities": [
+        "activity.read"
+      ],
+      "grants": [
+        "activity.read"
+      ],
+      "source_updated_at": "2026-10-26T12:00:00Z",
+      "fresh_for_seconds": 60
+    },
+    {
+      "id": "fixture.metrics",
+      "instance_id": "metrics-1",
+      "provider_type": "metrics",
+      "display_name": "合成监控来源",
+      "adapter_contract": 1,
+      "state": "online",
+      "capabilities": [
+        "metrics.read"
+      ],
+      "grants": [
+        "metrics.read"
+      ],
+      "source_updated_at": "2026-10-26T12:00:00Z",
+      "fresh_for_seconds": 60
+    }
+  ]
+}

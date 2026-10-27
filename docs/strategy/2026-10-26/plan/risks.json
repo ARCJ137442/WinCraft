@@ -1,0 +1,101 @@
+{
+  "updated_at": "2026-10-26",
+  "risks": [
+    {
+      "id": "K01",
+      "risk": "协议破坏兼容",
+      "owner_task": "B01-01",
+      "trigger": "新字段被0.3 deny_unknown_fields拒绝",
+      "mitigation": "保留兼容入口与固定旧客户端fixture",
+      "status": "OPEN"
+    },
+    {
+      "id": "K02",
+      "risk": "问题超时语义错误",
+      "owner_task": "B03-01",
+      "trigger": "把10秒ack当人类超时",
+      "mitigation": "分离请求生命周期和局部交互ack",
+      "status": "OPEN"
+    },
+    {
+      "id": "K03",
+      "risk": "包变成任意执行入口",
+      "owner_task": "B06-01",
+      "trigger": "import调用脚本/install hook",
+      "mitigation": "导入只解析；适配代码单独授权",
+      "status": "OPEN"
+    },
+    {
+      "id": "K04",
+      "risk": "多写者越权",
+      "owner_task": "B07-02",
+      "trigger": "结构move和共享data跨边界",
+      "mitigation": "资源树/命名空间/服务端过滤及事务验证",
+      "status": "OPEN"
+    },
+    {
+      "id": "K05",
+      "risk": "假新鲜度",
+      "owner_task": "B08-01",
+      "trigger": "断线仍显示运行中",
+      "mitigation": "连接状态、source状态与freshness分离",
+      "status": "OPEN"
+    },
+    {
+      "id": "K06",
+      "risk": "通知或网页指令注入",
+      "owner_task": "B09-03",
+      "trigger": "内容被当命令/批准",
+      "mitigation": "不可信数据与控制信道分离",
+      "status": "OPEN"
+    },
+    {
+      "id": "K07",
+      "risk": "原生行为跨平台误宣",
+      "owner_task": "B11-03",
+      "trigger": "Tauri可编译即称全部支持",
+      "mitigation": "每OS能力和实测矩阵",
+      "status": "OPEN"
+    },
+    {
+      "id": "K08",
+      "risk": "范围膨胀",
+      "owner_task": "B00-04",
+      "trigger": "先造市场/Mod/网络/桌宠业务",
+      "mitigation": "最小纵向闭环与明确非目标",
+      "status": "OPEN"
+    },
+    {
+      "id": "K09",
+      "risk": "私有资料公开",
+      "owner_task": "B11-04",
+      "trigger": "技能全文/日志/用户标题入仓",
+      "mitigation": "公开审核与最小证据",
+      "status": "OPEN"
+    },
+    {
+      "id": "K10",
+      "risk": "来源身份错误",
+      "owner_task": "B00-03",
+      "trigger": "同名SysTorch/omp被误接",
+      "mitigation": "用户项目和官方入口核验",
+      "status": "OPEN"
+    },
+    {
+      "id": "K11",
+      "risk": "权限模型停在UI",
+      "owner_task": "B01-03",
+      "trigger": "隐藏按钮但服务端不检查",
+      "mitigation": "路由执行逐scope授权",
+      "status": "OPEN"
+    },
+    {
+      "id": "K12",
+      "risk": "长期维护不可承受",
+      "owner_task": "B11-01",
+      "trigger": "小字段变更强迫所有Provider升级",
+      "mitigation": "兼容窗口/弃用期/能力协商和测试",
+      "status": "OPEN"
+    }
+  ]
+}

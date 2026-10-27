@@ -1,0 +1,14 @@
+{
+  "world.create": "Create world",
+  "provider.disconnected": "Source disconnected",
+  "request.cancelled": "Cancelled",
+  "request.waiting": "Waiting for your choice",
+  "inventory.missing": "Missing source: {name}",
+  "plan.degraded": "Some capabilities are unavailable",
+  "permission.request": "Permission requested: {capability}",
+  "action.pending": "Processing",
+  "action.unknown": "Outcome is not yet known",
+  "source.identity": "Source: {source}",
+  "tutorial.exit": "Exit tutorial",
+  "operator.takeover": "Take over and recover"
+}

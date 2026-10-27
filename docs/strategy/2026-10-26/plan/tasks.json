@@ -1,0 +1,2953 @@
+{
+  "updated_at": "2026-10-26",
+  "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+  "execution_policy": "依赖满足后按纵向闭环逐批执行；源码目标需再次核对。",
+  "tasks": [
+    {
+      "id": "B00-01",
+      "batch": "B00",
+      "title": "重定基线与旧链路回归",
+      "status": "VERIFIED",
+      "depends_on": [],
+      "requirement_ids": [
+        "R002",
+        "R003",
+        "R061",
+        "R062",
+        "R064"
+      ],
+      "targets": [
+        "AGENTS.md",
+        "docs/engineering/VALIDATION.md",
+        "Cargo.toml",
+        "package.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "记录git status、HEAD和与冻结SHA的差异；不重置他人修改",
+        "读当前AGENTS和Provider Skill，确认0.3及近期已完成工作",
+        "运行本机现有UI、Rust、协议测试，分离历史报告和本轮结果"
+      ],
+      "acceptance": [
+        {
+          "id": "B00-01-A1",
+          "criterion": "基线/锁文件/环境可复现且未覆盖工作区"
+        },
+        {
+          "id": "B00-01-A2",
+          "criterion": "旧链路实际结果逐项记录；无环境维持NOT_RUN"
+        },
+        {
+          "id": "B00-01-A3",
+          "criterion": "已有功能不重复立项"
+        }
+      ],
+      "verification_level": "L0-L4",
+      "verification_commands": [
+        "git status --short",
+        "git rev-parse HEAD",
+        "npm run check",
+        "cargo test --workspace",
+        "cargo clippy --workspace --all-targets -- -D warnings"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "本任务原则上只读；仅撤销新增证据索引，不改已有测试记录。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B00-02",
+      "batch": "B00",
+      "title": "合并需求账本与文档时效规则",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B00-01"
+      ],
+      "requirement_ids": [
+        "R029",
+        "R030",
+        "R043",
+        "R048",
+        "R062",
+        "R070"
+      ],
+      "targets": [
+        "AGENTS.md",
+        "docs/product/DECISIONS.md",
+        "proposed: docs/strategy/2026-10-26/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "按INTEGRATION增量放入本包，保留旧决定历史",
+        "将AGENTS_APPENDIX审阅合并，不覆盖旧权限",
+        "生成中英术语入口、日期/来源/状态检查并纳入离线检查"
+      ],
+      "acceptance": [
+        {
+          "id": "B00-02-A1",
+          "criterion": "每条需求可追到owner_doc/任务/用例"
+        },
+        {
+          "id": "B00-02-A2",
+          "criterion": "无许可、仓库归属或技术名称变更"
+        },
+        {
+          "id": "B00-02-A3",
+          "criterion": "私有技能摘要进入公开提交前被单独审查"
+        }
+      ],
+      "verification_level": "L0",
+      "verification_commands": [
+        "python scripts/validate_handoff.py",
+        "python -m unittest discover -s tests -v"
+      ],
+      "verification_workdir": "handoff root",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "移除本次增补段与新增目录；不回滚原AGENTS其他作者修改。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B00-03",
+      "batch": "B00",
+      "title": "参考对象与来源身份复核",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B00-01"
+      ],
+      "requirement_ids": [
+        "R041",
+        "R063",
+        "R071"
+      ],
+      "targets": [
+        "proposed: docs/research/integration-source-lock.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "锁定popup-ask、DSH、TouchAI、各Harness版本与入口",
+        "将 SysTorch 标记为本地未发行 M1 候选并固定相关文件哈希；将 TeamSense 标记未定位，不采用同名仓库推断",
+        "补官方API、权限、许可证边界的来源索引及复核触发器"
+      ],
+      "acceptance": [
+        {
+          "id": "B00-03-A1",
+          "criterion": "来源身份/版本/核验日期可查"
+        },
+        {
+          "id": "B00-03-A2",
+          "criterion": "未核实接口不会出现在真实集成PASS列表"
+        },
+        {
+          "id": "B00-03-A3",
+          "criterion": "第三方文档的可用性不等于本机已经安装"
+        }
+      ],
+      "verification_level": "L0",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "保留旧来源记录，仅废弃错误的新锁定条目。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。",
+      "source_ids": [
+        "P-SYSTORCH-LOCAL"
+      ]
+    },
+    {
+      "id": "B00-04",
+      "batch": "B00",
+      "title": "形成首轮风险与执行状态板",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B00-02",
+        "B00-03"
+      ],
+      "requirement_ids": [
+        "R061",
+        "R064",
+        "R070"
+      ],
+      "targets": [
+        "proposed: docs/strategy/2026-10-26/plan/status.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "将任务初始状态与当前仓库差异对齐",
+        "明确本轮只推进B01/B02最小依赖和B03闭环",
+        "将权限、原生环境和第三方接口缺口列为局部阻塞"
+      ],
+      "acceptance": [
+        {
+          "id": "B00-04-A1",
+          "criterion": "每个阻塞有范围/解除条件且不阻塞无关任务"
+        },
+        {
+          "id": "B00-04-A2",
+          "criterion": "不把路线批准转成远程推送/真实数据读取授权"
+        }
+      ],
+      "verification_level": "L0",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "恢复任务状态文件到前一评审版；不删除已收集证据。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B01-01",
+      "batch": "B01",
+      "title": "版本与能力契约演进门",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B00-04"
+      ],
+      "requirement_ids": [
+        "R001",
+        "R004",
+        "R042",
+        "R051",
+        "R059"
+      ],
+      "targets": [
+        "crates/wincraft-core/src/model.rs",
+        "crates/wincraft-server/src/hub.rs",
+        "protocol/",
+        "examples/python/client.py"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "审查strict0.3与deny_unknown_fields，制定兼容ADR",
+        "稳定必选核心，可选特性用命名能力和schema版本表达",
+        "新增SDK查询/错误分支与旧0.3 fixture，不直接让旧客户端忽略未知结构"
+      ],
+      "acceptance": [
+        {
+          "id": "B01-01-A1",
+          "criterion": "旧0.3客户端通过原路径工作或收到明确且有文档的迁移错误"
+        },
+        {
+          "id": "B01-01-A2",
+          "criterion": "协商未支持能力不伪成功"
+        },
+        {
+          "id": "B01-01-A3",
+          "criterion": "新增可选能力不意外赋权"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "关闭新能力并恢复旧握手入口；保留可诊断错误。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B01-02",
+      "batch": "B01",
+      "title": "会话注册与可撤销资源生命周期",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B01-01"
+      ],
+      "requirement_ids": [
+        "R005",
+        "R007",
+        "R040",
+        "R041",
+        "R053",
+        "R065"
+      ],
+      "targets": [
+        "crates/wincraft-core/src/engine.rs",
+        "crates/wincraft-server/src/hub.rs"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "建立资源注册/撤销/清理统一路径，复用现有会话与epoch",
+        "资源绑定身份、scope、授权与生命周期",
+        "断线、父资源撤销、operator hold时有序释放订阅与动作"
+      ],
+      "acceptance": [
+        {
+          "id": "B01-02-A1",
+          "criterion": "重复撤销幂等且不影响其他session"
+        },
+        {
+          "id": "B01-02-A2",
+          "criterion": "新会话不能复用旧资源句柄"
+        },
+        {
+          "id": "B01-02-A3",
+          "criterion": "注册/撤销不会执行第三方宿主代码"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤销新资源类型并回到现有世界级租约；不恢复已撤销的旧权限。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B01-03",
+      "batch": "B01",
+      "title": "授权inventory与发现契约",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "depends_on": [
+        "B01-01",
+        "B01-02"
+      ],
+      "requirement_ids": [
+        "R020",
+        "R024",
+        "R045",
+        "R065"
+      ],
+      "targets": [
+        "crates/wincraft-server/src/hub.rs",
+        "proposed: protocol/provider-inventory.schema.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "把发现元数据与world加入/读写授权分离",
+        "声明来源类型/能力/实例/版本/在线与数据新鲜度",
+        "仅对批准的端点和已注册来源发现，不扫描浏览器账号或全部进程"
+      ],
+      "acceptance": [
+        {
+          "id": "B01-03-A1",
+          "criterion": "发现结果不包含token/lease/完整业务数据"
+        },
+        {
+          "id": "B01-03-A2",
+          "criterion": "相同显示名的两个实例不会合并"
+        },
+        {
+          "id": "B01-03-A3",
+          "criterion": "offline/stale/unauthorized可区分"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停止新发现入口，旧descriptor与hello不变。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B01-04",
+      "batch": "B01",
+      "title": "公共场景SDK与诊断一致性",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B01-01",
+        "B01-02"
+      ],
+      "requirement_ids": [
+        "R006",
+        "R052",
+        "R059",
+        "R071"
+      ],
+      "targets": [
+        "examples/python/client.py",
+        "protocol/",
+        "skills/wincraft-provider/",
+        "scripts/check_contracts.py"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "统一请求关联、版本冲突、取消、数据新鲜度与能力降级示例",
+        "正反场景覆盖replace/patch/data/action",
+        "给错误码加稳定机器ID与可本地化文案，文档不成为第二份协议"
+      ],
+      "acceptance": [
+        {
+          "id": "B01-04-A1",
+          "criterion": "同一fixture在Schema/SDK/真实服务结果一致"
+        },
+        {
+          "id": "B01-04-A2",
+          "criterion": "动态操作保持未修改节点身份与输入草稿"
+        },
+        {
+          "id": "B01-04-A3",
+          "criterion": "错误日志不包含凭据或业务正文"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "保持原client.py兼容入口，新辅助API可撤回而旧调用不变。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B02-01",
+      "batch": "B02",
+      "title": "国际化基础与三层术语",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B00-02",
+        "B01-01"
+      ],
+      "requirement_ids": [
+        "R029",
+        "R031",
+        "R032",
+        "R048",
+        "R069"
+      ],
+      "targets": [
+        "apps/desktop/src/",
+        "crates/wincraft-server/src/self_provider.rs",
+        "proposed: locales/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "提取宿主文案，中英键集和参数一致",
+        "权限/错误/教程文本本地化，机器ID不翻译",
+        "文档按用户/Provider/内核层表达同一快照和租约模型"
+      ],
+      "acceptance": [
+        {
+          "id": "B02-01-A1",
+          "criterion": "缺失翻译回退且标记，布局无溢出"
+        },
+        {
+          "id": "B02-01-A2",
+          "criterion": "协议ID/操作名在语言切换后稳定"
+        },
+        {
+          "id": "B02-01-A3",
+          "criterion": "原始用户文本不被自动翻译"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回退默认中文资源但保持稳定键；不得把显示文案重新硬编码进协议。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B02-02",
+      "batch": "B02",
+      "title": "主题token与可信界面边界",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "depends_on": [
+        "B02-01",
+        "B01-04"
+      ],
+      "requirement_ids": [
+        "R012",
+        "R032",
+        "R049"
+      ],
+      "targets": [
+        "apps/desktop/style.css",
+        "apps/desktop/src/renderer.ts",
+        "proposed: protocol/theme.schema.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "实现有限颜色/字号/间距/圆角token和预设",
+        "明确宿主安全区域、用户无障碍偏好优先于提供者主题",
+        "主题解析禁止CSS/JS/远程可执行资源，超界值拒绝"
+      ],
+      "acceptance": [
+        {
+          "id": "B02-02-A1",
+          "criterion": "来源风格可表达且不能伪装系统授权条"
+        },
+        {
+          "id": "B02-02-A2",
+          "criterion": "高对比/放大/减少动画生效"
+        },
+        {
+          "id": "B02-02-A3",
+          "criterion": "无效主题回退，不影响租约或数据"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "切回默认主题并释放主题资源；不删除用户主题文件。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B02-03",
+      "batch": "B02",
+      "title": "教程世界与管理器自用",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "depends_on": [
+        "B02-01",
+        "B02-02"
+      ],
+      "requirement_ids": [
+        "R001",
+        "R035",
+        "R050"
+      ],
+      "targets": [
+        "crates/wincraft-server/src/self_provider.rs",
+        "apps/desktop/src/renderer.ts",
+        "skills/wincraft-provider/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "五课以通用组件和普通交互创建教学世界",
+        "管理器和教程复用同一renderer，operator特权仍局部可信",
+        "退出只清理教程资源，允许跳过"
+      ],
+      "acceptance": [
+        {
+          "id": "B02-03-A1",
+          "criterion": "新用户可完成建窗/改字/按钮/主题/发现课程"
+        },
+        {
+          "id": "B02-03-A2",
+          "criterion": "教程fixture不接真实用户数据"
+        },
+        {
+          "id": "B02-03-A3",
+          "criterion": "外部Provider不能冒充内部管理器取得operator权限"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "关闭教程入口，管理器正常可用；只清理教学标记资源。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B02-04",
+      "batch": "B02",
+      "title": "原生可访问性与输入回归",
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "depends_on": [
+        "B02-03"
+      ],
+      "requirement_ids": [
+        "R032",
+        "R035"
+      ],
+      "targets": [
+        "apps/desktop/src/renderer.ts",
+        "tests/",
+        "proposed: evidence/local/a11y/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "明确角色/名称/状态/键盘顺序与IME保护",
+        "独立release检查UIA树及真实键盘/鼠标/读屏路径",
+        "记录中英长文本、高DPI、窄窗和内部滚动"
+      ],
+      "acceptance": [
+        {
+          "id": "B02-04-A1",
+          "criterion": "可只用键盘提交并取消，不困住焦点"
+        },
+        {
+          "id": "B02-04-A2",
+          "criterion": "来源更新不打断IME或覆盖草稿"
+        },
+        {
+          "id": "B02-04-A3",
+          "criterion": "DOM通过不替代UIA和原生验收"
+        }
+      ],
+      "verification_level": "L3-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回退有问题的样式/组件变化，保留旧输入行为。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B03-01",
+      "batch": "B03",
+      "title": "Popup兼容适配与请求状态机",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B01-04",
+        "B02-01"
+      ],
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R064"
+      ],
+      "targets": [
+        "examples/python/popup_ask_provider.py",
+        "skills/wincraft-provider/references/popup-ask.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "先复用现有validate-only和返回序列化，不在WinCraft复制第二份题目业务",
+        "适配question.id、选项、Other、notes、多选、preview",
+        "为外层request建立独立等待/成功/取消/错误状态和到期规则"
+      ],
+      "acceptance": [
+        {
+          "id": "B03-01-A1",
+          "criterion": "原输入正反fixture一致；默认stdout摘要、--json结构不变"
+        },
+        {
+          "id": "B03-01-A2",
+          "criterion": "关闭/ESC/取消按原reason返回，不当error"
+        },
+        {
+          "id": "B03-01-A3",
+          "criterion": "普通10秒action ack不终止等待人类的问题"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "显式回到既有popup transport；不得同时显示两个问题窗口。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B03-02",
+      "batch": "B03",
+      "title": "Popup真实临时世界闭环",
+      "status": "IN_PROGRESS",
+      "depends_on": [
+        "B03-01",
+        "B02-02"
+      ],
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "targets": [
+        "examples/python/popup_ask_provider.py",
+        "apps/desktop/src/renderer.ts",
+        "crates/wincraft-core/src/scene.rs",
+        "crates/wincraft-core/src/engine.rs",
+        "apps/desktop/src-tauri/src/main.rs",
+        "tests/test_popup_ask_provider.py",
+        "docs/strategy/2026-10-26/docs/09_EPHEMERAL_POPUP_SYSTORCH.md",
+        "skills/wincraft-provider/references/popup-ask.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "用声明式选项组和textarea收集选择与备注；方向键/Tab保留可访问路径，Ctrl+Enter带草稿提交",
+        "本地点击及时ack，整体提交产生一个终态结果；成功后销毁本次临时世界",
+        "仅保存本机窗口几何偏好，下一次创建新世界/新租约并复用位置；不保存答案或旧world id",
+        "断线/租约失效/用户接管时停写并安全关闭或标记，清理世界",
+        "在连接Host/创建世界之前占用一个per-user-session Popup槽；并发调用返回busy并指向世界管理器，不创建第二个窗口或抢焦点。"
+      ],
+      "acceptance": [
+        {
+          "id": "B03-02-A1",
+          "criterion": "成功/取消/窗口关闭/来源退出/宿主退出均有确定结果或明确未知结果"
+        },
+        {
+          "id": "B03-02-A2",
+          "criterion": "同一请求不因重试重复提交业务"
+        },
+        {
+          "id": "B03-02-A3",
+          "criterion": "并发多个问题有配额与可发现入口，不强抢焦点"
+        },
+        {
+          "id": "B03-02-A4",
+          "criterion": "成功提交销毁本次临时世界；下一次请求以新world与lease复用最近一次可读的原生位置/尺寸，未观测位置不得猜测"
+        },
+        {
+          "id": "B03-02-A5",
+          "criterion": "选择后Tab直接进入备注；Ctrl+Enter连同当前备注草稿提交，方向键/读屏仍能完成选项操作"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停止WinCraft transport并回退旧实现；清理自身世界不动其他人世界。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B03-03",
+      "batch": "B03",
+      "title": "SysTorch发起与决策端口",
+      "status": "BLOCKED",
+      "depends_on": [
+        "B03-02"
+      ],
+      "requirement_ids": [
+        "R011",
+        "R012",
+        "R063"
+      ],
+      "targets": [
+        "proposed: examples/integrations/systorch/",
+        "proposed: docs/integrations/systorch.md"
+      ],
+      "inputs": "本地发现 SysTorch（原 Jev Switch）M1 决策 API 候选；相关服务模块、存储模块与契约在来源工作树中仍未提交/未发行。B03-02 仍是前置；真实运行时需显式来源地址和受管理 caller token。",
+      "implementation_steps": [
+        "分离发起与回答权限：caller 可创建/读取/取消自己的任务；回答仅归 SysTorch local-owner，WinCraft 不传 owner 密钥、不调用 answers 写接口",
+        "基于通用 renderer 建立显式发起、只读追踪/结果展示和显式取消；关闭 WinCraft 窗口不取消来源任务",
+        "地址显式配置；仅允许 loopback HTTP 或 HTTPS/安全隧道；用本地合成HTTP服务验证状态码、幂等、权限、重定向与超时边界",
+        "待 B03-02 完成且用户提供实际运行时地址与受管理 caller token 后，才验证当前 SysTorch M1 候选的真实连接"
+      ],
+      "acceptance": [
+        {
+          "id": "B03-03-A1",
+          "criterion": "发起和批准不互相混用，参数/权限单独校验"
+        },
+        {
+          "id": "B03-03-A2",
+          "criterion": "只有合成fixture时明确标mock"
+        },
+        {
+          "id": "B03-03-A3",
+          "criterion": "真实API未定位只阻塞真实适配不阻塞通用交互"
+        }
+      ],
+      "verification_level": "L0-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤销该Provider注册；任务真相留SysTorch。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。",
+      "source_ids": [
+        "P-SYSTORCH-LOCAL"
+      ]
+    },
+    {
+      "id": "B03-04",
+      "batch": "B03",
+      "title": "首个可交付版本与上游契约回归",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B03-02",
+        "B03-03",
+        "B02-04"
+      ],
+      "requirement_ids": [
+        "R009",
+        "R010",
+        "R061",
+        "R064"
+      ],
+      "targets": [
+        "tests/",
+        "proposed: docs/integrations/popup-compatibility.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "固定popup输入/输出golden cases和中文编码通道",
+        "长等待、超时、重连、迟到结果与清理压力测试",
+        "交付一条真实成功与一条取消链路，记录所有未测路径"
+      ],
+      "acceptance": [
+        {
+          "id": "B03-04-A1",
+          "criterion": "兼容层不改变既有Skill启用和提问权限"
+        },
+        {
+          "id": "B03-04-A2",
+          "criterion": "实际release等待超10秒仍可提交"
+        },
+        {
+          "id": "B03-04-A3",
+          "criterion": "上游契约未核验部分保持BLOCKED而非猜测"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P0",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回退适配层功能开关，保留旧Popup路径。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B04-01",
+      "batch": "B04",
+      "title": "有类型事件订阅与交付类别",
+      "status": "VERIFIED",
+      "depends_on": [
+        "B01-02",
+        "B01-04"
+      ],
+      "requirement_ids": [
+        "R052",
+        "R053"
+      ],
+      "targets": [
+        "crates/wincraft-core/src/model.rs",
+        "crates/wincraft-server/src/hub.rs",
+        "protocol/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "按快照sequence建立类型事件，明确cause/source/window_revision",
+        "把可合并状态与不可静默丢弃交互分开",
+        "设计取消订阅、重同步、慢消费者和因果循环预算"
+      ],
+      "acceptance": [
+        {
+          "id": "B04-01-A1",
+          "criterion": "高频几何可合并到最新态，不能承诺每帧不丢"
+        },
+        {
+          "id": "B04-01-A2",
+          "criterion": "读者订阅不会取得写权"
+        },
+        {
+          "id": "B04-01-A3",
+          "criterion": "慢消费者重同步/断开可解释，重复事件不循环触发动作"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo fmt --all -- --check",
+        "cargo test --workspace",
+        "cargo check --workspace",
+        "cargo clippy --workspace --all-targets -- -D warnings",
+        "python -m unittest discover -s tests -v",
+        "python examples/python/lease_probe.py --runtime <actual headless descriptor>"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "保留事件类型、权限、队列合并与取消的专用正反测试；以真实 headless WebSocket lease_probe 覆盖订阅与慢消费者",
+        "状态订阅只观察已加入世界；不自动执行动作。真实 Tauri 像素行为不属于本任务验收"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停新订阅API，回到已有快照推送；不更改0.3快照意义。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B04-02",
+      "batch": "B04",
+      "title": "窗口行为与焦点意图",
+      "status": "IN_PROGRESS",
+      "depends_on": [
+        "B04-01"
+      ],
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/src/windows.rs",
+        "apps/desktop/src-tauri/src/main.rs",
+        "crates/wincraft-core/src/scene.rs",
+        "crates/wincraft-core/src/engine.rs",
+        "crates/wincraft-server/src/hub.rs",
+        "protocol/scene.schema.json",
+        "protocol/request.schema.json",
+        "protocol/methods.json",
+        "examples/python/obsidian-workspace.py",
+        "skills/wincraft-provider/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "以工作区锚定/边距和有限运动为首个行为",
+        "坐标/DPI/人类交接在宿主本地处理",
+        "焦点请求与置顶/显隐分开并返回原生结果",
+        "增加能力门控的宿主原生窗口动作 allowlist；用户点击后由宿主执行现存窗口 activate/maximize/restore/minimize，不传任意进程路径或代码。"
+      ],
+      "acceptance": [
+        {
+          "id": "B04-02-A1",
+          "criterion": "切显示器/DPI变化后位置可恢复"
+        },
+        {
+          "id": "B04-02-A2",
+          "criterion": "用户接管立即停自动运动"
+        },
+        {
+          "id": "B04-02-A3",
+          "criterion": "Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。"
+        },
+        {
+          "id": "B04-02-A4",
+          "criterion": "仅原生host宣告 external_window_actions；应用ID/操作/title filter严格allowlist且有界；headless拒绝，disabled/stale/revoked按钮不执行"
+        },
+        {
+          "id": "B04-02-A5",
+          "criterion": "真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "取消行为句柄，恢复用户可拖动窗口和管理器救援。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B04-03",
+      "batch": "B04",
+      "title": "授权快捷键资源",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-02",
+        "B04-01"
+      ],
+      "requirement_ids": [
+        "R018",
+        "R066"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/src/main.rs",
+        "proposed: crates/wincraft-core/src/shortcuts.rs"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "核对当前Tauri依赖后选择兼容插件或薄原生适配",
+        "按session/scope登记快捷键；冲突/保留键/撤销明确",
+        "本机用户授权与一键停用，无后台键盘记录"
+      ],
+      "acceptance": [
+        {
+          "id": "B04-03-A1",
+          "criterion": "冲突注册失败不占用他人热键"
+        },
+        {
+          "id": "B04-03-A2",
+          "criterion": "断线/撤销/退出后无残留绑定"
+        },
+        {
+          "id": "B04-03-A3",
+          "criterion": "IME/输入框/平台组合键不被默认破坏"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "卸载本批注册的热键并恢复旧入口；不修改系统全局配置。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B04-04",
+      "batch": "B04",
+      "title": "TouchAI窄用例与等价性清单",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B04-03",
+        "B02-02"
+      ],
+      "requirement_ids": [
+        "R018",
+        "R050"
+      ],
+      "targets": [
+        "proposed: examples/integrations/touchai/",
+        "proposed: docs/integrations/touchai-gap-matrix.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "由用户确认正确项目后列热键/输入/结果/上下文等功能矩阵",
+        "只实现召唤→输入→来源返回→隐藏闭环",
+        "文件/屏幕/剪贴板权限留原提供者，缺口单列"
+      ],
+      "acceptance": [
+        {
+          "id": "B04-04-A1",
+          "criterion": "可以复现一项实际工作流而非只弹空窗"
+        },
+        {
+          "id": "B04-04-A2",
+          "criterion": "无法实现的功能不标等价"
+        },
+        {
+          "id": "B04-04-A3",
+          "criterion": "不复制未审许可源码进Host"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停Provider与热键资源，TouchAI原生界面继续工作。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B05-01",
+      "batch": "B05",
+      "title": "浏览器Native Messaging桥接",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-03",
+        "B01-04"
+      ],
+      "requirement_ids": [
+        "R014",
+        "R016",
+        "R065"
+      ],
+      "targets": [
+        "proposed: integrations/browser-extension/",
+        "proposed: tools/browser-native-bridge/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "建立扩展ID白名单与严格消息Schema",
+        "桥接自己保管descriptor/host token，网页只能有限语义请求",
+        "内容脚本权限按站点/用户动作授予，关闭页/重连可诊断"
+      ],
+      "acceptance": [
+        {
+          "id": "B05-01-A1",
+          "criterion": "任意网页不能拿到token或直接调用Host"
+        },
+        {
+          "id": "B05-01-A2",
+          "criterion": "保留现有Origin拒绝策略"
+        },
+        {
+          "id": "B05-01-A3",
+          "criterion": "桥接断开后来源stale而非继续显示实时"
+        }
+      ],
+      "verification_level": "L1-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "注销本次注册的消息宿主/扩展配置；不删浏览器账号或历史。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B05-02",
+      "batch": "B05",
+      "title": "TeamSense只读在线服务投影",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B05-01"
+      ],
+      "requirement_ids": [
+        "R013",
+        "R063"
+      ],
+      "targets": [
+        "proposed: examples/integrations/teamsense/",
+        "proposed: contracts/usage-observation.schema.json"
+      ],
+      "inputs": "TeamSense现行仓库/API与授权须本地核对；本包未定位。",
+      "implementation_steps": [
+        "在本地定位真实API/身份/数据口径，优先API其次明确DOM适配",
+        "将服务器负载与quota分开建字段，带单位/更新时间/来源",
+        "未提供官方总额度时标unknown或estimate，不推导伪余额"
+      ],
+      "acceptance": [
+        {
+          "id": "B05-02-A1",
+          "criterion": "账号/提供商/窗口期不同数据不混算"
+        },
+        {
+          "id": "B05-02-A2",
+          "criterion": "数据过期和断线清晰"
+        },
+        {
+          "id": "B05-02-A3",
+          "criterion": "真实接口未定位时只有合成演示，不改TeamSense"
+        }
+      ],
+      "verification_level": "L0-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停只读Provider；Host与服务无业务修改。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B05-03",
+      "batch": "B05",
+      "title": "网页聊天语义对象与动作边界",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B05-01",
+        "B03-02"
+      ],
+      "requirement_ids": [
+        "R014",
+        "R025"
+      ],
+      "targets": [
+        "proposed: integrations/browser-extension/adapters/",
+        "proposed: docs/integrations/web-chat.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "区分原标签页语义投影、API独立会话、视觉裁剪三种模式",
+        "先只读选定会话摘要/状态，再显式发送用户确认输入",
+        "站点限制、DOM变化、登录失效保留错误；不复制cookie或绕过登录/反自动化"
+      ],
+      "acceptance": [
+        {
+          "id": "B05-03-A1",
+          "criterion": "不承诺任意网页一键变原生APP"
+        },
+        {
+          "id": "B05-03-A2",
+          "criterion": "页面关闭/导航后错误地绑定旧对话被拒绝"
+        },
+        {
+          "id": "B05-03-A3",
+          "criterion": "用户发送内容有可见预览和回执，无法验证时返回unknown"
+        }
+      ],
+      "verification_level": "L1-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "禁用站点适配器；保留原浏览器会话和数据。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B05-04",
+      "batch": "B05",
+      "title": "主动语音输入与朗读POC",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B05-03",
+        "B02-04"
+      ],
+      "requirement_ids": [
+        "R015",
+        "R032",
+        "R066"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/",
+        "proposed: docs/poc/voice.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "选定平台API先做原生POC，说明离线/在线处理和语言能力",
+        "明确录音指示、时限、取消和设备丢失",
+        "先确认识别文本再交提供者，不把原始音频广播"
+      ],
+      "acceptance": [
+        {
+          "id": "B05-04-A1",
+          "criterion": "未授权时没有麦克风活动"
+        },
+        {
+          "id": "B05-04-A2",
+          "criterion": "取消/设备失联后释放资源"
+        },
+        {
+          "id": "B05-04-A3",
+          "criterion": "识别结果不自动成为系统命令或批准"
+        }
+      ],
+      "verification_level": "L3-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "禁用语音能力并回到文本输入；删除仅属测试的临时音频。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B06-01",
+      "batch": "B06",
+      "title": "配置包格式与无秘密导出",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-03",
+        "B02-02"
+      ],
+      "requirement_ids": [
+        "R019",
+        "R022",
+        "R033",
+        "R040",
+        "R072"
+      ],
+      "targets": [
+        "proposed: protocol/pack.schema.json",
+        "proposed: tools/pack/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "定义能力需求、蓝图/主题引用、可选依赖与适配声明",
+        "限制路径/大小/文件类型，manifest不接受credential或install hook",
+        "无凭据导出，版本校验与迁移明确"
+      ],
+      "acceptance": [
+        {
+          "id": "B06-01-A1",
+          "criterion": "包不包含提供者二进制/descriptor/lease"
+        },
+        {
+          "id": "B06-01-A2",
+          "criterion": "缺少Provider是可解释需求而非安装指令"
+        },
+        {
+          "id": "B06-01-A3",
+          "criterion": "读取恶意路径/未知字段失败且未执行文件"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "关闭包导入入口，原世界不受影响。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B06-02",
+      "batch": "B06",
+      "title": "纯规划器与有界环境适配",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B06-01"
+      ],
+      "requirement_ids": [
+        "R020",
+        "R021",
+        "R067"
+      ],
+      "targets": [
+        "proposed: crates/wincraft-core/src/plans.rs",
+        "examples/adapter/adaptive_plan.py"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "从批准的inventory生成确定性计划，先不调用Host",
+        "按版本/能力/权限/在线/新鲜度选择，歧义交用户",
+        "适配程序独立授权运行只产候选计划，再由宿主校验，不在import执行"
+      ],
+      "acceptance": [
+        {
+          "id": "B06-02-A1",
+          "criterion": "同输入同计划，缺失必选block/可选degrade"
+        },
+        {
+          "id": "B06-02-A2",
+          "criterion": "两个同等来源不会任意选一个"
+        },
+        {
+          "id": "B06-02-A3",
+          "criterion": "适配程序不能通过计划扩大权限或读取全机"
+        }
+      ],
+      "verification_level": "L0-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "丢弃未执行计划；规划不应产生外部副作用。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B06-03",
+      "batch": "B06",
+      "title": "计划预览、提交与回退",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B06-02",
+        "B01-02"
+      ],
+      "requirement_ids": [
+        "R022",
+        "R067",
+        "R072"
+      ],
+      "targets": [
+        "crates/wincraft-server/src/hub.rs",
+        "crates/wincraft-server/src/self_provider.rs"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "计划携带inventory版本和用户确认，执行前重验",
+        "建立本次创建资源账本，失败只清理本次资源",
+        "明确布局覆盖优先级和抖动抑制，不宣称多窗口OS事务原子"
+      ],
+      "acceptance": [
+        {
+          "id": "B06-03-A1",
+          "criterion": "环境变化使旧计划失效并重新规划"
+        },
+        {
+          "id": "B06-03-A2",
+          "criterion": "导入取消不会清空既有世界"
+        },
+        {
+          "id": "B06-03-A3",
+          "criterion": "失败报告部分成功与清理结果，不造假回滚"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "按本次资源账本释放新增资源；不恢复旧epoch或覆盖用户后续修改。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B06-04",
+      "batch": "B06",
+      "title": "配置分享与新机器验收",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B06-03"
+      ],
+      "requirement_ids": [
+        "R019",
+        "R020",
+        "R033",
+        "R050",
+        "R070"
+      ],
+      "targets": [
+        "proposed: examples/packs/",
+        "docs/",
+        "skills/wincraft-provider/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "提供有全来源/缺可选/缺必选/权限不足四份环境fixture",
+        "两个独立用户环境只复用配置并重新授权",
+        "记录分享格式，不建官方安装市场或社区网站"
+      ],
+      "acceptance": [
+        {
+          "id": "B06-04-A1",
+          "criterion": "没有预装Provider的新机器不会自动运行下载代码"
+        },
+        {
+          "id": "B06-04-A2",
+          "criterion": "分享内容不含原机路径/密钥/私有标题"
+        },
+        {
+          "id": "B06-04-A3",
+          "criterion": "使用者可解释每个缺失区域及其替代方案"
+        }
+      ],
+      "verification_level": "L0-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "删除合成导入世界和测试包，保留用户来源安装。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B07-01",
+      "batch": "B07",
+      "title": "资源树与单写子树租约",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-02",
+        "B01-04"
+      ],
+      "requirement_ids": [
+        "R005",
+        "R026",
+        "R027",
+        "R069"
+      ],
+      "targets": [
+        "crates/wincraft-core/src/model.rs",
+        "crates/wincraft-core/src/engine.rs",
+        "protocol/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "先建立world authority、component subtree、data namespace的区分",
+        "窗口级租约作为兼容模式，子树唯一写者、读者为快照",
+        "引入资源generation和局部revision，不用全世界revision制造无关冲突"
+      ],
+      "acceptance": [
+        {
+          "id": "B07-01-A1",
+          "criterion": "两个不相交子树可独立更新"
+        },
+        {
+          "id": "B07-01-A2",
+          "criterion": "旧0.3整窗writer与子树writer模式不可非法混用"
+        },
+        {
+          "id": "B07-01-A3",
+          "criterion": "读者不能取得可写别名或其他scope私有数据"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "新世界退回整窗独占模式；禁止把活动子树写者静默合并。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B07-02",
+      "batch": "B07",
+      "title": "结构事务、父子撤销与过滤",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B07-01"
+      ],
+      "requirement_ids": [
+        "R007",
+        "R028",
+        "R065"
+      ],
+      "targets": [
+        "crates/wincraft-core/src/scene.rs",
+        "crates/wincraft-core/src/engine.rs",
+        "crates/wincraft-server/src/hub.rs"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "校验insert/remove/move/replace所触及的所有资源",
+        "父删除前处理子租约撤销，旧消息fence",
+        "快照在服务端按read scope过滤，不全发再前端隐藏"
+      ],
+      "acceptance": [
+        {
+          "id": "B07-02-A1",
+          "criterion": "不能把无权节点移动进自有子树偷取"
+        },
+        {
+          "id": "B07-02-A2",
+          "criterion": "跨子树失败整批不部分提交"
+        },
+        {
+          "id": "B07-02-A3",
+          "criterion": "父撤销后任何旧子lease写入被拒绝"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停止新子树操作，保留最后合法快照与撤销状态。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B07-03",
+      "batch": "B07",
+      "title": "类型状态槽与受控共享高级通道",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B07-02"
+      ],
+      "requirement_ids": [
+        "R026",
+        "R027",
+        "R028"
+      ],
+      "targets": [
+        "proposed: crates/wincraft-core/src/state_slots.rs",
+        "protocol/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "共享从类型槽和版本CAS开始，不开放任意全局JSON可写引用",
+        "必要共享以宿主仲裁队列/短事务声明，不持锁await/等人",
+        "限制循环引用、跨scope引用、撤销后读取和配额"
+      ],
+      "acceptance": [
+        {
+          "id": "B07-03-A1",
+          "criterion": "竞争CAS一方失败可诊断且无丢失更新"
+        },
+        {
+          "id": "B07-03-A2",
+          "criterion": "Arc式共享不绕过权限与可变规则"
+        },
+        {
+          "id": "B07-03-A3",
+          "criterion": "慢或崩溃参与者不会锁住整个UI"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "关闭高级共享能力，普通独占槽和子树保持工作。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B07-04",
+      "batch": "B07",
+      "title": "多来源组合性质与真实窄验收",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B07-02",
+        "B07-03"
+      ],
+      "requirement_ids": [
+        "R006",
+        "R026",
+        "R028",
+        "R061"
+      ],
+      "targets": [
+        "crates/wincraft-core/tests/",
+        "examples/python/",
+        "proposed: tests/ownership/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "加入随机操作/撤销/乱序/断线性质测试",
+        "先用合成来源验证不相交写，再选两个已授权真实来源",
+        "窗口几何仍由单authority控制，不以多个组件owner争坐标"
+      ],
+      "acceptance": [
+        {
+          "id": "B07-04-A1",
+          "criterion": "多写者只在互不重叠权限域成立"
+        },
+        {
+          "id": "B07-04-A2",
+          "criterion": "任何序列不产生无owner可变资源"
+        },
+        {
+          "id": "B07-04-A3",
+          "criterion": "真实来源失败不会改变其他区域业务状态"
+        }
+      ],
+      "verification_level": "L1-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停止组合Provider，恢复独立世界；各来源业务数据不迁移。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B08-01",
+      "batch": "B08",
+      "title": "统一活动模型与只读聚合器",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-03",
+        "B01-04"
+      ],
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R025",
+        "R059"
+      ],
+      "targets": [
+        "proposed: examples/integrations/agent-board/",
+        "proposed: protocol/activity.schema.json"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "定义source/instance/session/parent/task/source_status/normalized_status/freshness",
+        "unknown/stale与idle分开，来源计数不双重计父子",
+        "先单聚合Provider占窗，后续子树writer模式标明"
+      ],
+      "acceptance": [
+        {
+          "id": "B08-01-A1",
+          "criterion": "断线不是任务完成或空闲"
+        },
+        {
+          "id": "B08-01-A2",
+          "criterion": "模型名/显示名不作身份"
+        },
+        {
+          "id": "B08-01-A3",
+          "criterion": "只读面板没有批准/写文件/继续执行权限"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停聚合器并释放世界，原Harness继续运行。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B08-02",
+      "batch": "B08",
+      "title": "两类真实Harness先行适配",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B08-01",
+        "B00-03"
+      ],
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R071"
+      ],
+      "targets": [
+        "proposed: examples/integrations/agent-board/adapters/"
+      ],
+      "inputs": "本地已安装Harness及用户选定会话/端点；不能自动读取所有session日志。",
+      "implementation_steps": [
+        "先选择本地确实存在的两种Harness，固定其API版本",
+        "优先官方事件/SDK，文件解析仅显式授权且记录脆弱性",
+        "重新启动/多实例/子会话的发现离开重建测试"
+      ],
+      "acceptance": [
+        {
+          "id": "B08-02-A1",
+          "criterion": "两种真实来源可同看且来源证据分开"
+        },
+        {
+          "id": "B08-02-A2",
+          "criterion": "不把全部任意既有CLI会话假定可枚举"
+        },
+        {
+          "id": "B08-02-A3",
+          "criterion": "适配失败仅对应来源stale"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "卸载适配注册/停只读进程，不改Harness配置和业务会话。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B08-03",
+      "batch": "B08",
+      "title": "扩到五类并作组件级组合",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B08-02",
+        "B07-04"
+      ],
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026"
+      ],
+      "targets": [
+        "proposed: examples/integrations/agent-board/adapters/",
+        "skills/wincraft-provider/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "补Claude/Codex/OpenCode/DSH/omp能力与版本矩阵，缺者保留NOT_RUN",
+        "两种已验证来源切为独立子树写入者",
+        "各自重连/离线不争整窗lease或删除别人的卡片"
+      ],
+      "acceptance": [
+        {
+          "id": "B08-03-A1",
+          "criterion": "五类都有明确入口/未知边界，不伪造五种实测"
+        },
+        {
+          "id": "B08-03-A2",
+          "criterion": "至少两种真实独立writer并发验收"
+        },
+        {
+          "id": "B08-03-A3",
+          "criterion": "动作路由跟随组件owner，不被后加入者截获"
+        }
+      ],
+      "verification_level": "L1-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回到只读聚合器单writer模式；不更改来源任务。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B08-04",
+      "batch": "B08",
+      "title": "决策卡与官方批准回传",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B08-02",
+        "B03-04"
+      ],
+      "requirement_ids": [
+        "R025",
+        "R010",
+        "R066"
+      ],
+      "targets": [
+        "proposed: examples/integrations/agent-board/decisions/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "只对确认支持的Harness建立approval adapter",
+        "问题绑定source/session/request/digest/expiry，结果回原权威端",
+        "撤销/过期/已在别处处理时阻止二次批准"
+      ],
+      "acceptance": [
+        {
+          "id": "B08-04-A1",
+          "criterion": "显示任务不自动具备批准权限"
+        },
+        {
+          "id": "B08-04-A2",
+          "criterion": "批准前显示具体操作与来源，token不在卡片中"
+        },
+        {
+          "id": "B08-04-A3",
+          "criterion": "网络超时只读回结果，不盲重放副作用"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P1",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "禁用批准通道，面板退回只读状态。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B09-01",
+      "batch": "B09",
+      "title": "设备消息信封与外部传输端口",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-03",
+        "B08-01"
+      ],
+      "requirement_ids": [
+        "R036",
+        "R037",
+        "R038",
+        "R065"
+      ],
+      "targets": [
+        "proposed: protocol/device-message.schema.json",
+        "proposed: examples/integrations/device-inbox/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "定义origin device/source seq/message id/TTL/provenance/redaction",
+        "只消费外部transport提供的认证通道",
+        "本地合成乱序/重复/过期/撤销测试，不建多跳网络"
+      ],
+      "acceptance": [
+        {
+          "id": "B09-01-A1",
+          "criterion": "重复消息不增加待办数"
+        },
+        {
+          "id": "B09-01-A2",
+          "criterion": "过期/撤销内容不继续可操作"
+        },
+        {
+          "id": "B09-01-A3",
+          "criterion": "网络中继声明不自动成为来源身份"
+        }
+      ],
+      "verification_level": "L1-L2",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "停收本端口，保留来源数据不变。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B09-02",
+      "batch": "B09",
+      "title": "Android通知摘要单设备验证",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B09-01",
+        "B00-03"
+      ],
+      "requirement_ids": [
+        "R036",
+        "R039"
+      ],
+      "targets": [
+        "AndroMorph provider boundary (separate project)",
+        "proposed: examples/integrations/device-inbox/"
+      ],
+      "inputs": "用户明确选择的真机、通知权限和来源；无条件时停在合成信封。",
+      "implementation_steps": [
+        "核实AndroMorph实际通知能力与授权，不继承旧fixture PASS",
+        "由用户选应用/时段，优先只读和脱敏摘要",
+        "通过一个已存在授权通道传递，设备取消后撤销呈现"
+      ],
+      "acceptance": [
+        {
+          "id": "B09-02-A1",
+          "criterion": "未授权应用通知不被读取或上传"
+        },
+        {
+          "id": "B09-02-A2",
+          "criterion": "摘要带来源时间与不确定性"
+        },
+        {
+          "id": "B09-02-A3",
+          "criterion": "用户撤销后停止监听与后续转发"
+        }
+      ],
+      "verification_level": "L5-L6",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤销通知授权/测试通道，只按用户指定清理测试缓存。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B09-03",
+      "batch": "B09",
+      "title": "手机与Agent待办合并呈现",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B09-02",
+        "B08-01"
+      ],
+      "requirement_ids": [
+        "R036",
+        "R038",
+        "R039"
+      ],
+      "targets": [
+        "proposed: examples/integrations/device-inbox/aggregator/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "聚合只保存可重建投影，标明原文/摘要/推断",
+        "分开需要回复、需要决策、普通通知，不依标题相似合并",
+        "返回来源/复制草稿先行，发送消息另行授权"
+      ],
+      "acceptance": [
+        {
+          "id": "B09-03-A1",
+          "criterion": "能够显示用户场景：若干Agent等待与一条联系人待回复，并注明模拟/真实"
+        },
+        {
+          "id": "B09-03-A2",
+          "criterion": "去重以来源身份而非文本近似"
+        },
+        {
+          "id": "B09-03-A3",
+          "criterion": "通知正文中的指令不能授予执行权限"
+        }
+      ],
+      "verification_level": "L1-L6",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "拆回独立来源卡片，保留各权威系统状态。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B09-04",
+      "batch": "B09",
+      "title": "多通道故障与隐私验收",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B09-03"
+      ],
+      "requirement_ids": [
+        "R037",
+        "R038",
+        "R039",
+        "R070"
+      ],
+      "targets": [
+        "proposed: tests/device-inbox/",
+        "docs/remote.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "用外部transport替身测试断连、延迟、重复、换路，不实现网络路由",
+        "检查端到端身份与消息重放",
+        "对真实单通道跑退出/休眠/重连；其他链路NOT_RUN"
+      ],
+      "acceptance": [
+        {
+          "id": "B09-04-A1",
+          "criterion": "不宣称BLE/USB/热点全部贯通"
+        },
+        {
+          "id": "B09-04-A2",
+          "criterion": "relay可能读内容时明确说明，不能冒充端到端加密"
+        },
+        {
+          "id": "B09-04-A3",
+          "criterion": "日志无真实消息正文和凭据"
+        }
+      ],
+      "verification_level": "L1-L6",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "断开本批测试桥接，恢复只读本地面板。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B10-01",
+      "batch": "B10",
+      "title": "PCSense孵化窄原型",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B06-04",
+        "B07-04"
+      ],
+      "requirement_ids": [
+        "R017",
+        "R050",
+        "R068"
+      ],
+      "targets": [
+        "proposed: examples/incubation/pcsense/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "只选一个已有来源可支撑的设备/任务工作流",
+        "以配置+Provider构建不改Host业务分支",
+        "记录缺失原语、用户价值与迁出边界"
+      ],
+      "acceptance": [
+        {
+          "id": "B10-01-A1",
+          "criterion": "原型可用且没有ERP业务进入Core"
+        },
+        {
+          "id": "B10-01-A2",
+          "criterion": "来源替换不要求Host专用补丁"
+        },
+        {
+          "id": "B10-01-A3",
+          "criterion": "未经证据不宣称独立APP等价完成"
+        }
+      ],
+      "verification_level": "L2-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "卸载本配置/Provider即可退出，不移走用户业务数据。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B10-02",
+      "batch": "B10",
+      "title": "毕业与可移植性演练",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B10-01"
+      ],
+      "requirement_ids": [
+        "R017",
+        "R068",
+        "R072"
+      ],
+      "targets": [
+        "proposed: docs/incubation/graduation.md",
+        "proposed: examples/incubation/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "将业务模型从界面声明分离，导出无秘密配置",
+        "演示由另一壳调用同一Provider或独立UI端口",
+        "记录仍依赖WinCraft的能力和迁移成本"
+      ],
+      "acceptance": [
+        {
+          "id": "B10-02-A1",
+          "criterion": "毕业无需复制WinCraft内核或剥离业务数据库"
+        },
+        {
+          "id": "B10-02-A2",
+          "criterion": "既有许可与来源边界不被擅改"
+        },
+        {
+          "id": "B10-02-A3",
+          "criterion": "用户可停止使用Host而不失去业务记录"
+        }
+      ],
+      "verification_level": "L0-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "保留原Provider入口，实验壳可删除。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B10-03",
+      "batch": "B10",
+      "title": "窗口组与角色可能性最小POC",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B04-02",
+        "B06-03"
+      ],
+      "requirement_ids": [
+        "R034",
+        "R056",
+        "R057",
+        "R058"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/src/windows.rs",
+        "proposed: docs/poc/presentation-extensions.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "分别选择临时窗口组和受控素材状态映射做小型POC",
+        "窗口组逐成员检查租约与回执，角色无业务情绪引擎",
+        "AppBar/DWM/区域输入/捕获每项独立记录，不一次全开放"
+      ],
+      "acceptance": [
+        {
+          "id": "B10-03-A1",
+          "criterion": "部分OS操作失败可观察，不假装全组原子"
+        },
+        {
+          "id": "B10-03-A2",
+          "criterion": "减少动画/关闭/救援可用"
+        },
+        {
+          "id": "B10-03-A3",
+          "criterion": "任何捕获排除仅用户启用且不承诺保密"
+        }
+      ],
+      "verification_level": "L1-L4",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤销行为/关闭POC能力，恢复独立普通窗口。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B10-04",
+      "batch": "B10",
+      "title": "独立创作者验证与外部参考更新",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B10-01",
+        "B06-04",
+        "B02-03"
+      ],
+      "requirement_ids": [
+        "R033",
+        "R050",
+        "R059"
+      ],
+      "targets": [
+        "docs/",
+        "skills/wincraft-provider/",
+        "proposed: docs/research/creator-validation.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "邀请未参与内核的作者仅用公开文档完成一个Provider/配方",
+        "记录首次可用路径、失败点与需改核心的次数",
+        "修复真实文档/API摩擦，不以搭官网替代创作验证"
+      ],
+      "acceptance": [
+        {
+          "id": "B10-04-A1",
+          "criterion": "来源、构建、连接、错误恢复均可由外部作者复现"
+        },
+        {
+          "id": "B10-04-A2",
+          "criterion": "同一组件/配方被第二个场景复用"
+        },
+        {
+          "id": "B10-04-A3",
+          "criterion": "指标如实记录，不虚构社区用户或需求规模"
+        }
+      ],
+      "verification_level": "L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤回无证据宣传，只保留真实反馈与兼容修复。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B11-01",
+      "batch": "B11",
+      "title": "持续兼容与资源性能基线",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B03-04",
+        "B02-04"
+      ],
+      "requirement_ids": [
+        "R060",
+        "R061",
+        "R062"
+      ],
+      "targets": [
+        "tests/",
+        ".github/workflows/verify.yml",
+        "docs/performance.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "针对本次拟发布的已实现能力建立旧Provider/协议fixture矩阵；未实现路线不成为首发前置",
+        "采全进程树/句柄/内存/CPU/尾延迟/创建销毁测量",
+        "长运行/睡眠/来源崩溃后资源回收，阈值由实测ADR确定"
+      ],
+      "acceptance": [
+        {
+          "id": "B11-01-A1",
+          "criterion": "每次测量带机器/版本/负载而非泛称轻量"
+        },
+        {
+          "id": "B11-01-A2",
+          "criterion": "无资源持续泄漏趋势或明确阻塞发布"
+        },
+        {
+          "id": "B11-01-A3",
+          "criterion": "未测性能不写宣传数字"
+        }
+      ],
+      "verification_level": "L1-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回退导致回归的单批改动，不修改历史基线。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B11-02",
+      "batch": "B11",
+      "title": "Windows发布前原生验收",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B11-01",
+        "B02-04"
+      ],
+      "requirement_ids": [
+        "R047",
+        "R055",
+        "R057",
+        "R061"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/",
+        "docs/windows.md",
+        "docs/engineering/VALIDATION.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "干净环境独立release，不依赖Vite/开发工具",
+        "多屏DPI、IME、焦点拒绝、托盘/穿透救援与更新回退",
+        "记录签名/安装/权限提示/用户可卸载状态"
+      ],
+      "acceptance": [
+        {
+          "id": "B11-02-A1",
+          "criterion": "发布声明只含实测能力"
+        },
+        {
+          "id": "B11-02-A2",
+          "criterion": "隐藏不销毁与原生minimize语义没有混淆"
+        },
+        {
+          "id": "B11-02-A3",
+          "criterion": "取消/退出后无残留hotkey/窗口/授权资源"
+        }
+      ],
+      "verification_level": "L4-L5",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "回退上个已验收版本，保留用户配置可导出。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B11-03",
+      "batch": "B11",
+      "title": "macOS/Linux能力矩阵与受限试构建",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B01-01",
+        "B11-01"
+      ],
+      "requirement_ids": [
+        "R002",
+        "R046"
+      ],
+      "targets": [
+        "apps/desktop/src-tauri/",
+        "proposed: docs/platforms/"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "分别列macOS/X11/Wayland原生能力、权限和限制",
+        "复用核心与协议，只替换必要native adapter",
+        "有环境才构建验收，无环境保持NOT_RUN，unsupported可降级"
+      ],
+      "acceptance": [
+        {
+          "id": "B11-03-A1",
+          "criterion": "Tauri编译成功不等于原生交互等价"
+        },
+        {
+          "id": "B11-03-A2",
+          "criterion": "跨平台Capability如实报告"
+        },
+        {
+          "id": "B11-03-A3",
+          "criterion": "不会为迁移破坏Windows现有契约"
+        }
+      ],
+      "verification_level": "L6",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "保留Windows已验收实现，新平台特性关掉。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    },
+    {
+      "id": "B11-04",
+      "batch": "B11",
+      "title": "集体治理与公众发布准备",
+      "status": "NOT_STARTED",
+      "depends_on": [
+        "B11-02",
+        "B00-02"
+      ],
+      "requirement_ids": [
+        "R030",
+        "R033",
+        "R043",
+        "R044",
+        "R047",
+        "R049",
+        "R070"
+      ],
+      "targets": [
+        "README.md",
+        "LICENSE-NOTES.md",
+        "proposed: docs/release/",
+        "proposed: CONTRIBUTING.md"
+      ],
+      "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "implementation_steps": [
+        "维护者角色作为提案，未经同意不改仓库权限",
+        "保留许可与署名，准备中英发布范围/已知限制/来源说明",
+        "审阅私有引用、凭据、签名、依赖与实际发布授权"
+      ],
+      "acceptance": [
+        {
+          "id": "B11-04-A1",
+          "criterion": "无擅自重许可/定名/归属迁移"
+        },
+        {
+          "id": "B11-04-A2",
+          "criterion": "未获发布授权仅生成材料不发Release"
+        },
+        {
+          "id": "B11-04-A3",
+          "criterion": "公众文档可读且适用版本/更新时间明确"
+        }
+      ],
+      "verification_level": "L0-L6",
+      "verification_commands": [
+        "npm run check",
+        "python scripts/check_contracts.py",
+        "cargo test --workspace"
+      ],
+      "verification_workdir": "current WinCraft checkout",
+      "verification_instructions": [
+        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+      ],
+      "priority": "P2",
+      "evidence_required": [
+        "baseline commit及工作区差异",
+        "实际命令/退出码与环境",
+        "用例状态和不含秘密的证据路径",
+        "未测项/阻塞来源",
+        "回滚验证结果"
+      ],
+      "rollback": "撤回未发布材料，已授权发布回退须按正式发布流程。",
+      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+    }
+  ]
+}

@@ -51,11 +51,87 @@ pub enum JoinMode {
     Read,
     Write,
 }
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub enum WindowEventType {
+    #[serde(rename = "window.geometry_changed")]
+    GeometryChanged,
+    #[serde(rename = "window.visibility_changed")]
+    VisibilityChanged,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EventSource {
+    Provider,
+    Operator,
+    Human,
+    Host,
+    System,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum EventDeliveryClass {
+    State,
+    Occurrence,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TypedWindowEvent {
+    pub event_id: Uuid,
+    pub subscription_id: Uuid,
+    pub world_id: Uuid,
+    #[serde(rename = "type")]
+    pub event_type: WindowEventType,
+    pub delivery: EventDeliveryClass,
+    pub source: EventSource,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cause_id: Option<String>,
+    pub sequence: u64,
+    pub window_revision: u64,
+    pub payload: Value,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkAreaCorner {
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+/// A logical-pixel anchor relative to the current monitor work area.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct WorkAreaAnchor {
+    pub corner: WorkAreaCorner,
+    pub margin_x: f64,
+    pub margin_y: f64,
+}
+
+impl WorkAreaAnchor {
+    pub fn validate(&self) -> Result<()> {
+        if !self.margin_x.is_finite()
+            || !self.margin_y.is_finite()
+            || !(0.0..=10_000.0).contains(&self.margin_x)
+            || !(0.0..=10_000.0).contains(&self.margin_y)
+        {
+            return Err(Fault::new(
+                "INVALID_WINDOW",
+                "work area anchor margins must be finite and within 0..=10000 logical pixels",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -66,10 +142,13 @@ pub struct WindowSpec {
     pub width: f64,
     pub height: f64,
     pub position: Option<Position>,
+    pub anchor: Option<WorkAreaAnchor>,
     pub always_on_top: bool,
     pub visible: bool,
     pub resizable: bool,
     pub title_bar_visible: bool,
+    /// Lets blank, non-interactive renderer surfaces act as a native drag handle.
+    pub background_drag_enabled: bool,
     /// Default text-selection behavior for the world; component styles may override it.
     pub text_selectable: bool,
     pub decorations: bool,
@@ -86,10 +165,12 @@ impl Default for WindowSpec {
             width: 412.0,
             height: 300.0,
             position: None,
+            anchor: None,
             always_on_top: true,
             visible: true,
             resizable: true,
             title_bar_visible: true,
+            background_drag_enabled: true,
             text_selectable: true,
             decorations: false,
             skip_taskbar: true,
@@ -107,11 +188,11 @@ impl WindowSpec {
         if !self.width.is_finite()
             || !self.height.is_finite()
             || !(160.0..=2400.0).contains(&self.width)
-            || !(80.0..=1800.0).contains(&self.height)
+            || !(50.0..=1800.0).contains(&self.height)
         {
             return Err(Fault::new(
                 "INVALID_WINDOW",
-                "size outside 160..2400 × 80..1800 logical pixels",
+                "size outside 160..2400 × 50..1800 logical pixels",
             ));
         }
         if !self.surface_opacity.is_finite() || !(0.15..=1.0).contains(&self.surface_opacity) {
@@ -128,6 +209,9 @@ impl WindowSpec {
                 ));
             }
         }
+        if let Some(anchor) = self.anchor {
+            anchor.validate()?;
+        }
         Ok(())
     }
 }
@@ -138,10 +222,12 @@ pub struct WindowPatch {
     pub width: Option<f64>,
     pub height: Option<f64>,
     pub position: Option<Position>,
+    pub anchor: Option<WorkAreaAnchor>,
     pub always_on_top: Option<bool>,
     pub visible: Option<bool>,
     pub resizable: Option<bool>,
     pub title_bar_visible: Option<bool>,
+    pub background_drag_enabled: Option<bool>,
     pub text_selectable: Option<bool>,
     pub decorations: Option<bool>,
     pub skip_taskbar: Option<bool>,
@@ -153,7 +239,10 @@ impl WindowPatch {
     pub fn apply(&self, old: &WindowSpec) -> Result<WindowSpec> {
         let control = self.geometry_control.unwrap_or(old.geometry_control);
         if control == GeometryControl::Human
-            && (self.position.is_some() || self.width.is_some() || self.height.is_some())
+            && (self.position.is_some()
+                || self.anchor.is_some()
+                || self.width.is_some()
+                || self.height.is_some())
         {
             return Err(Fault::new(
                 "HUMAN_GEOMETRY",
@@ -170,6 +259,7 @@ impl WindowPatch {
             visible,
             resizable,
             title_bar_visible,
+            background_drag_enabled,
             text_selectable,
             decorations,
             skip_taskbar,
@@ -179,6 +269,10 @@ impl WindowPatch {
         );
         if let Some(p) = &self.position {
             next.position = Some(p.clone());
+        }
+        if let Some(anchor) = self.anchor {
+            anchor.validate()?;
+            next.anchor = Some(anchor);
         }
         next.validate()?;
         Ok(next)

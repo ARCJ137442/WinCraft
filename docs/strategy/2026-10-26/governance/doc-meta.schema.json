@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "title",
+    "updated_at",
+    "last_verified_at",
+    "baseline_commit",
+    "protocol_baseline",
+    "status",
+    "audience",
+    "owner_role",
+    "review_trigger",
+    "source_ids"
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_verified_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "baseline_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "protocol_baseline": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "audience": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "owner_role": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "review_trigger": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "source_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+      },
+      "uniqueItems": true,
+      "maxItems": 64
+    }
+  },
+  "additionalProperties": true
+}

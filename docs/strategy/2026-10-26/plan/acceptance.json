@@ -1,0 +1,1924 @@
+{
+  "updated_at": "2026-10-27",
+  "cases": [
+    {
+      "id": "B00-01-A1",
+      "task_id": "B00-01",
+      "requirement_ids": [
+        "R002",
+        "R003",
+        "R061",
+        "R062",
+        "R064"
+      ],
+      "level": "L0-L4",
+      "criterion": "基线/锁文件/环境可复现且未覆盖工作区",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-01-A2",
+      "task_id": "B00-01",
+      "requirement_ids": [
+        "R002",
+        "R003",
+        "R061",
+        "R062",
+        "R064"
+      ],
+      "level": "L0-L4",
+      "criterion": "旧链路实际结果逐项记录；无环境维持NOT_RUN",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-01-A3",
+      "task_id": "B00-01",
+      "requirement_ids": [
+        "R002",
+        "R003",
+        "R061",
+        "R062",
+        "R064"
+      ],
+      "level": "L0-L4",
+      "criterion": "已有功能不重复立项",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-02-A1",
+      "task_id": "B00-02",
+      "requirement_ids": [
+        "R029",
+        "R030",
+        "R043",
+        "R048",
+        "R062",
+        "R070"
+      ],
+      "level": "L0",
+      "criterion": "每条需求可追到owner_doc/任务/用例",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-02-A2",
+      "task_id": "B00-02",
+      "requirement_ids": [
+        "R029",
+        "R030",
+        "R043",
+        "R048",
+        "R062",
+        "R070"
+      ],
+      "level": "L0",
+      "criterion": "无许可、仓库归属或技术名称变更",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-02-A3",
+      "task_id": "B00-02",
+      "requirement_ids": [
+        "R029",
+        "R030",
+        "R043",
+        "R048",
+        "R062",
+        "R070"
+      ],
+      "level": "L0",
+      "criterion": "私有技能摘要进入公开提交前被单独审查",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-03-A1",
+      "task_id": "B00-03",
+      "requirement_ids": [
+        "R041",
+        "R063",
+        "R071"
+      ],
+      "level": "L0",
+      "criterion": "来源身份/版本/核验日期可查",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-03-A2",
+      "task_id": "B00-03",
+      "requirement_ids": [
+        "R041",
+        "R063",
+        "R071"
+      ],
+      "level": "L0",
+      "criterion": "未核实接口不会出现在真实集成PASS列表",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-03-A3",
+      "task_id": "B00-03",
+      "requirement_ids": [
+        "R041",
+        "R063",
+        "R071"
+      ],
+      "level": "L0",
+      "criterion": "第三方文档的可用性不等于本机已经安装",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-04-A1",
+      "task_id": "B00-04",
+      "requirement_ids": [
+        "R061",
+        "R064",
+        "R070"
+      ],
+      "level": "L0",
+      "criterion": "每个阻塞有范围/解除条件且不阻塞无关任务",
+      "status": "PASS"
+    },
+    {
+      "id": "B00-04-A2",
+      "task_id": "B00-04",
+      "requirement_ids": [
+        "R061",
+        "R064",
+        "R070"
+      ],
+      "level": "L0",
+      "criterion": "不把路线批准转成远程推送/真实数据读取授权",
+      "status": "PASS"
+    },
+    {
+      "id": "B01-01-A1",
+      "task_id": "B01-01",
+      "requirement_ids": [
+        "R001",
+        "R004",
+        "R042",
+        "R051",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "旧0.3客户端通过原路径工作或收到明确且有文档的迁移错误",
+      "status": "PASS"
+    },
+    {
+      "id": "B01-01-A2",
+      "task_id": "B01-01",
+      "requirement_ids": [
+        "R001",
+        "R004",
+        "R042",
+        "R051",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "协商未支持能力不伪成功",
+      "status": "PASS"
+    },
+    {
+      "id": "B01-01-A3",
+      "task_id": "B01-01",
+      "requirement_ids": [
+        "R001",
+        "R004",
+        "R042",
+        "R051",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "新增可选能力不意外赋权",
+      "status": "PASS"
+    },
+    {
+      "id": "B01-02-A1",
+      "task_id": "B01-02",
+      "requirement_ids": [
+        "R005",
+        "R007",
+        "R040",
+        "R041",
+        "R053",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "重复撤销幂等且不影响其他session",
+      "status": "PASS",
+      "evidence": "Core release tests prove duplicate disconnect/leave idempotency and session isolation; transport integration proves graceful shutdown closes an active WebSocket, revokes its session/lease, stops listener/housekeeping, and removes the owned descriptor."
+    },
+    {
+      "id": "B01-02-A2",
+      "task_id": "B01-02",
+      "requirement_ids": [
+        "R005",
+        "R007",
+        "R040",
+        "R041",
+        "R053",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "新会话不能复用旧资源句柄",
+      "status": "PASS",
+      "evidence": "Core release regression replaces the disconnected session, acquires a higher-epoch lease, rejects the old lease with STALE_LEASE, and verifies no data mutation."
+    },
+    {
+      "id": "B01-02-A3",
+      "task_id": "B01-02",
+      "requirement_ids": [
+        "R005",
+        "R007",
+        "R040",
+        "R041",
+        "R053",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "注册/撤销不会执行第三方宿主代码",
+      "status": "PASS",
+      "evidence": "Session registration is data-only and no callback/resource code loader exists; host capability/schema checks reject script-like component props, and the external-provider system-world claim regression passes."
+    },
+    {
+      "id": "B01-03-A1",
+      "task_id": "B01-03",
+      "requirement_ids": [
+        "R020",
+        "R024",
+        "R045",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "发现结果不包含token/lease/完整业务数据",
+      "status": "PASS",
+      "evidence": "Core and real Rust headless probes serialize only WorldSummary metadata; tests assert no join_key, lease, scene, or data fields. Unjoined invite-only worlds are filtered before metadata leaves the host."
+    },
+    {
+      "id": "B01-03-A2",
+      "task_id": "B01-03",
+      "requirement_ids": [
+        "R020",
+        "R024",
+        "R045",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "相同显示名的两个实例不会合并",
+      "status": "PASS",
+      "evidence": "Core and real headless probes created two open worlds with the same title and observed two distinct world IDs in world.list."
+    },
+    {
+      "id": "B01-03-A3",
+      "task_id": "B01-03",
+      "requirement_ids": [
+        "R020",
+        "R024",
+        "R045",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "offline/stale/unauthorized可区分",
+      "status": "PASS",
+      "evidence": "Core regressions distinguish stale and vacant open worlds, keep unjoined invite-only worlds hidden, and verify an unauthorized join returns FORBIDDEN."
+    },
+    {
+      "id": "B01-04-A1",
+      "task_id": "B01-04",
+      "requirement_ids": [
+        "R006",
+        "R052",
+        "R059",
+        "R071"
+      ],
+      "level": "L1-L2",
+      "criterion": "同一fixture在Schema/SDK/真实服务结果一致",
+      "status": "PASS",
+      "evidence": "The schema checker validates the shared textarea/theme fixtures; the same form/theme/patch fixtures are consumed by examples/python/lease_probe.py against real Rust headless (28 checks PASS)."
+    },
+    {
+      "id": "B01-04-A2",
+      "task_id": "B01-04",
+      "requirement_ids": [
+        "R006",
+        "R052",
+        "R059",
+        "R071"
+      ],
+      "level": "L1-L2",
+      "criterion": "动态操作保持未修改节点身份与输入草稿",
+      "status": "PASS",
+      "evidence": "Edge smoke with the compiled renderer verifies stable DOM identity, preserved input drafts, and dynamic replacement (25 checks PASS)."
+    },
+    {
+      "id": "B01-04-A3",
+      "task_id": "B01-04",
+      "requirement_ids": [
+        "R006",
+        "R052",
+        "R059",
+        "R071"
+      ],
+      "level": "L1-L2",
+      "criterion": "错误日志不包含凭据或业务正文",
+      "status": "PASS",
+      "evidence": "Popup provider regression injects a synthetic private-body sentinel into action-ack transport failure; the provider returns only its generic unknown-result message and does not echo the sentinel."
+    },
+    {
+      "id": "B02-01-A1",
+      "task_id": "B02-01",
+      "requirement_ids": [
+        "R029",
+        "R031",
+        "R032",
+        "R048",
+        "R069"
+      ],
+      "level": "L1-L4",
+      "criterion": "缺失翻译回退且标记，布局无溢出",
+      "status": "PASS"
+    },
+    {
+      "id": "B02-01-A2",
+      "task_id": "B02-01",
+      "requirement_ids": [
+        "R029",
+        "R031",
+        "R032",
+        "R048",
+        "R069"
+      ],
+      "level": "L1-L4",
+      "criterion": "协议ID/操作名在语言切换后稳定",
+      "status": "PASS"
+    },
+    {
+      "id": "B02-01-A3",
+      "task_id": "B02-01",
+      "requirement_ids": [
+        "R029",
+        "R031",
+        "R032",
+        "R048",
+        "R069"
+      ],
+      "level": "L1-L4",
+      "criterion": "原始用户文本不被自动翻译",
+      "status": "PASS"
+    },
+    {
+      "id": "B02-02-A1",
+      "task_id": "B02-02",
+      "requirement_ids": [
+        "R012",
+        "R032",
+        "R049"
+      ],
+      "level": "L1-L4",
+      "criterion": "来源风格可表达且不能伪装系统授权条",
+      "status": "PASS"
+    },
+    {
+      "id": "B02-02-A2",
+      "task_id": "B02-02",
+      "requirement_ids": [
+        "R012",
+        "R032",
+        "R049"
+      ],
+      "level": "L1-L4",
+      "criterion": "高对比/放大/减少动画生效",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B02-02-A3",
+      "task_id": "B02-02",
+      "requirement_ids": [
+        "R012",
+        "R032",
+        "R049"
+      ],
+      "level": "L1-L4",
+      "criterion": "无效主题回退，不影响租约或数据",
+      "status": "PASS"
+    },
+    {
+      "id": "B02-03-A1",
+      "task_id": "B02-03",
+      "requirement_ids": [
+        "R001",
+        "R035",
+        "R050"
+      ],
+      "level": "L1-L4",
+      "criterion": "新用户可完成建窗/改字/按钮/主题/发现课程",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B02-03-A2",
+      "task_id": "B02-03",
+      "requirement_ids": [
+        "R001",
+        "R035",
+        "R050"
+      ],
+      "level": "L1-L4",
+      "criterion": "教程fixture不接真实用户数据",
+      "status": "PASS",
+      "evidence": "provider_tutorial.py uses synthetic state and local scene fixtures; discovery retains counts/policies only; 6 focused tutorial unit/schema tests and a real headless start/cleanup run passed."
+    },
+    {
+      "id": "B02-03-A3",
+      "task_id": "B02-03",
+      "requirement_ids": [
+        "R001",
+        "R035",
+        "R050"
+      ],
+      "level": "L1-L4",
+      "criterion": "外部Provider不能冒充内部管理器取得operator权限",
+      "status": "PASS",
+      "evidence": "real Rust headless world.list observed the tutorial world as system=false and join_policy=invite; provider create request does not send system/operator fields; core test system_world_cannot_be_claimed_by_external_provider passed."
+    },
+    {
+      "id": "B02-04-A1",
+      "task_id": "B02-04",
+      "requirement_ids": [
+        "R032",
+        "R035"
+      ],
+      "level": "L3-L4",
+      "criterion": "可只用键盘提交并取消，不困住焦点",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B02-04-A2",
+      "task_id": "B02-04",
+      "requirement_ids": [
+        "R032",
+        "R035"
+      ],
+      "level": "L3-L4",
+      "criterion": "来源更新不打断IME或覆盖草稿",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B02-04-A3",
+      "task_id": "B02-04",
+      "requirement_ids": [
+        "R032",
+        "R035"
+      ],
+      "level": "L3-L4",
+      "criterion": "DOM通过不替代UIA和原生验收",
+      "status": "PASS",
+      "evidence": "validation matrix retains native UIA, keyboard, IME, and screen-reader cases as NOT_RUN despite 25 Chromium DOM checks; new Tauri release is not under active native acceptance."
+    },
+    {
+      "id": "B03-01-A1",
+      "task_id": "B03-01",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R064"
+      ],
+      "level": "L1-L2",
+      "criterion": "原输入正反fixture一致；默认stdout摘要、--json结构不变",
+      "status": "PASS",
+      "evidence": "Actual installed Popup-Ask script accepted a synthetic validate-only fixture, injected its original Other option, rejected a duplicate-label fixture, and its existing stdout summary/JSON serializers matched the adapter outputs. No GUI was opened."
+    },
+    {
+      "id": "B03-01-A2",
+      "task_id": "B03-01",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R064"
+      ],
+      "level": "L1-L2",
+      "criterion": "关闭/ESC/取消按原reason返回，不当error",
+      "status": "PASS",
+      "evidence": "Provider unit regressions preserve cancel_button, escape_key, and window_closed as distinct cancelled reasons; connection loss remains unknown."
+    },
+    {
+      "id": "B03-01-A3",
+      "task_id": "B03-01",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R064"
+      ],
+      "level": "L1-L2",
+      "criterion": "普通10秒action ack不终止等待人类的问题",
+      "status": "PASS",
+      "evidence": "A new run-loop regression sends a local option interaction and its action.result acknowledgement, then a separate cancel event; the request remains active until the terminal cancel."
+    },
+    {
+      "id": "B03-02-A1",
+      "task_id": "B03-02",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "level": "L2-L5",
+      "criterion": "成功/取消/窗口关闭/来源退出/宿主退出均有确定结果或明确未知结果",
+      "status": "NOT_RUN",
+      "evidence": {
+        "automated_subcase": "PASS: 22 Popup provider tests cover success/cancel/window-close/source-loss/timeout/unknown-ACK; a 10.2-second delayed submit succeeds with a 20-second overall timeout. A real headless synthetic timeout/cleanup also passes. All provider run-loop tests use FakeClient; Tauri native paths remain NOT_RUN.",
+        "remaining": "Real Tauri Popup UI remains NOT_RUN.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
+      }
+    },
+    {
+      "id": "B03-02-A2",
+      "task_id": "B03-02",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "level": "L2-L5",
+      "criterion": "同一请求不因重试重复提交业务",
+      "status": "NOT_RUN",
+      "evidence": {
+        "automated_subcase": "PASS: duplicate queued submit after success produces one final result/ACK/destroy; an unconfirmed ACK is not retried. Real external business-side-effect exactly-once remains outside the adapter.",
+        "remaining": "NOT_RUN: no real source business-side-effect transaction was exercised.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
+      }
+    },
+    {
+      "id": "B03-02-A3",
+      "task_id": "B03-02",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "level": "L2-L5",
+      "criterion": "并发多个问题有配额与可发现入口，不强抢焦点",
+      "status": "NOT_RUN",
+      "evidence": {
+        "automated_subcase": "PASS: 21 Popup provider tests include same-process/cross-process quota, busy-before-client/create, error exit, and main-manager projection test lists a live invite Popup without changing its writer/epoch; a real headless provider test also confirms timeout cleanup and busy rejection.",
+        "remaining": "NOT_RUN: current Tauri manager window visual entry and human confirmation of no focus stealing.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
+      }
+    },
+    {
+      "id": "B03-02-A4",
+      "task_id": "B03-02",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "level": "L2-L5",
+      "criterion": "成功提交销毁本次临时世界；下一次请求以新world与lease复用最近一次可读的原生位置/尺寸，未观测位置不得猜测",
+      "status": "NOT_RUN",
+      "evidence": {
+        "automated_subcase": "PASS automated subcase: only bounded observed geometry is persisted and a new window spec uses it; real native position read/reopen remains NOT_RUN.",
+        "remaining": "NOT_RUN: actual native position read/reopen on the release.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
+      }
+    },
+    {
+      "id": "B03-02-A5",
+      "task_id": "B03-02",
+      "requirement_ids": [
+        "R008",
+        "R009",
+        "R010",
+        "R066",
+        "R073"
+      ],
+      "level": "L2-L5",
+      "criterion": "选择后Tab直接进入备注；Ctrl+Enter连同当前备注草稿提交，方向键/读屏仍能完成选项操作",
+      "status": "NOT_RUN",
+      "evidence": {
+        "automated_subcase": "PASS DOM/provider subcase: Tab/selection/Ctrl+Enter draft route; native keyboard/IME/reader acceptance remains NOT_RUN.",
+        "remaining": "NOT_RUN: native keyboard/IME/reader and Windows release interaction.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
+      }
+    },
+    {
+      "id": "B03-03-A1",
+      "task_id": "B03-03",
+      "requirement_ids": [
+        "R011",
+        "R012",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "发起和批准不互相混用，参数/权限单独校验",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03-03-A2",
+      "task_id": "B03-03",
+      "requirement_ids": [
+        "R011",
+        "R012",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "只有合成fixture时明确标mock",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03-03-A3",
+      "task_id": "B03-03",
+      "requirement_ids": [
+        "R011",
+        "R012",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "真实API未定位只阻塞真实适配不阻塞通用交互",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03-04-A1",
+      "task_id": "B03-04",
+      "requirement_ids": [
+        "R009",
+        "R010",
+        "R061",
+        "R064"
+      ],
+      "level": "L2-L5",
+      "criterion": "兼容层不改变既有Skill启用和提问权限",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03-04-A2",
+      "task_id": "B03-04",
+      "requirement_ids": [
+        "R009",
+        "R010",
+        "R061",
+        "R064"
+      ],
+      "level": "L2-L5",
+      "criterion": "实际release等待超10秒仍可提交",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B03-04-A3",
+      "task_id": "B03-04",
+      "requirement_ids": [
+        "R009",
+        "R010",
+        "R061",
+        "R064"
+      ],
+      "level": "L2-L5",
+      "criterion": "上游契约未核验部分保持BLOCKED而非猜测",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-01-A1",
+      "task_id": "B04-01",
+      "requirement_ids": [
+        "R052",
+        "R053"
+      ],
+      "level": "L1-L2",
+      "criterion": "高频几何可合并到最新态，不能承诺每帧不丢",
+      "status": "PASS",
+      "evidence": {
+        "date": "2026-10-27",
+        "commands": [
+          "cargo test --workspace",
+          "python examples/python/lease_probe.py --runtime <actual headless descriptor>"
+        ],
+        "summary": "Per-world latest-value watch coalesces 512 state updates; typed geometry event reports only the latest snapshot sequence and payload. The real headless probe received the current geometry state.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/window-events-b04-01.json",
+        "secrets_retained": false
+      }
+    },
+    {
+      "id": "B04-01-A2",
+      "task_id": "B04-01",
+      "requirement_ids": [
+        "R052",
+        "R053"
+      ],
+      "level": "L1-L2",
+      "criterion": "读者订阅不会取得写权",
+      "status": "PASS",
+      "evidence": {
+        "date": "2026-10-27",
+        "commands": [
+          "cargo test --workspace",
+          "python examples/python/lease_probe.py --runtime <actual headless descriptor>"
+        ],
+        "summary": "Unjoined event.subscribe returns FORBIDDEN. A joined read member receives geometry/visibility state but a write attempt using the writer lease is fenced as STALE_LEASE.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/window-events-b04-01.json",
+        "secrets_retained": false
+      }
+    },
+    {
+      "id": "B04-01-A3",
+      "task_id": "B04-01",
+      "requirement_ids": [
+        "R052",
+        "R053"
+      ],
+      "level": "L1-L2",
+      "criterion": "慢消费者重同步/断开可解释，重复事件不循环触发动作",
+      "status": "PASS",
+      "evidence": {
+        "date": "2026-10-27",
+        "commands": [
+          "cargo test --workspace",
+          "python examples/python/lease_probe.py --runtime <actual headless descriptor>"
+        ],
+        "summary": "A slow real WebSocket consumer is disconnected with resync_required. State updates do not consume occurrence queue capacity; unsubscribe, leave, and destroy cleanup pass; state observations do not trigger host actions.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/window-events-b04-01.json",
+        "secrets_retained": false
+      }
+    },
+    {
+      "id": "B04-02-A1",
+      "task_id": "B04-02",
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "level": "L1-L4",
+      "criterion": "切显示器/DPI变化后位置可恢复",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-02-A2",
+      "task_id": "B04-02",
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "level": "L1-L4",
+      "criterion": "用户接管立即停自动运动",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-02-A3",
+      "task_id": "B04-02",
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "level": "L1-L4",
+      "criterion": "Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-02-A4",
+      "task_id": "B04-02",
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "level": "L1-L4",
+      "criterion": "仅原生host宣告 external_window_actions；应用ID/操作/title filter严格allowlist且有界；headless拒绝，disabled/stale/revoked按钮不执行",
+      "status": "PASS",
+      "evidence": {
+        "date": "2026-10-27",
+        "commands": [
+          "cargo test --workspace",
+          "python examples/python/lease_probe.py --runtime <descriptor path omitted> (Tauri)",
+          "python examples/python/lease_probe.py --runtime <descriptor path omitted> (headless)"
+        ],
+        "summary": "66 workspace tests passed; native-action tests cover application-to-executable mapping, case-insensitive bounded title filters, app/operation allowlists, click-only routing, stale revision, expired/released writer and disabled state. Hub tests prove headless refuses and native hosts invoke the OS-action callback only after validation; both 31-check release probes confirm capability parity.",
+        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json",
+        "secrets_retained": false
+      }
+    },
+    {
+      "id": "B04-02-A5",
+      "task_id": "B04-02",
+      "requirement_ids": [
+        "R054",
+        "R055"
+      ],
+      "level": "L1-L4",
+      "criterion": "真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-03-A1",
+      "task_id": "B04-03",
+      "requirement_ids": [
+        "R018",
+        "R066"
+      ],
+      "level": "L1-L4",
+      "criterion": "冲突注册失败不占用他人热键",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-03-A2",
+      "task_id": "B04-03",
+      "requirement_ids": [
+        "R018",
+        "R066"
+      ],
+      "level": "L1-L4",
+      "criterion": "断线/撤销/退出后无残留绑定",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-03-A3",
+      "task_id": "B04-03",
+      "requirement_ids": [
+        "R018",
+        "R066"
+      ],
+      "level": "L1-L4",
+      "criterion": "IME/输入框/平台组合键不被默认破坏",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-04-A1",
+      "task_id": "B04-04",
+      "requirement_ids": [
+        "R018",
+        "R050"
+      ],
+      "level": "L2-L5",
+      "criterion": "可以复现一项实际工作流而非只弹空窗",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-04-A2",
+      "task_id": "B04-04",
+      "requirement_ids": [
+        "R018",
+        "R050"
+      ],
+      "level": "L2-L5",
+      "criterion": "无法实现的功能不标等价",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B04-04-A3",
+      "task_id": "B04-04",
+      "requirement_ids": [
+        "R018",
+        "R050"
+      ],
+      "level": "L2-L5",
+      "criterion": "不复制未审许可源码进Host",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-01-A1",
+      "task_id": "B05-01",
+      "requirement_ids": [
+        "R014",
+        "R016",
+        "R065"
+      ],
+      "level": "L1-L5",
+      "criterion": "任意网页不能拿到token或直接调用Host",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-01-A2",
+      "task_id": "B05-01",
+      "requirement_ids": [
+        "R014",
+        "R016",
+        "R065"
+      ],
+      "level": "L1-L5",
+      "criterion": "保留现有Origin拒绝策略",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-01-A3",
+      "task_id": "B05-01",
+      "requirement_ids": [
+        "R014",
+        "R016",
+        "R065"
+      ],
+      "level": "L1-L5",
+      "criterion": "桥接断开后来源stale而非继续显示实时",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-02-A1",
+      "task_id": "B05-02",
+      "requirement_ids": [
+        "R013",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "账号/提供商/窗口期不同数据不混算",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-02-A2",
+      "task_id": "B05-02",
+      "requirement_ids": [
+        "R013",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "数据过期和断线清晰",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-02-A3",
+      "task_id": "B05-02",
+      "requirement_ids": [
+        "R013",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "真实接口未定位时只有合成演示，不改TeamSense",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-03-A1",
+      "task_id": "B05-03",
+      "requirement_ids": [
+        "R014",
+        "R025"
+      ],
+      "level": "L1-L5",
+      "criterion": "不承诺任意网页一键变原生APP",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-03-A2",
+      "task_id": "B05-03",
+      "requirement_ids": [
+        "R014",
+        "R025"
+      ],
+      "level": "L1-L5",
+      "criterion": "页面关闭/导航后错误地绑定旧对话被拒绝",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-03-A3",
+      "task_id": "B05-03",
+      "requirement_ids": [
+        "R014",
+        "R025"
+      ],
+      "level": "L1-L5",
+      "criterion": "用户发送内容有可见预览和回执，无法验证时返回unknown",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-04-A1",
+      "task_id": "B05-04",
+      "requirement_ids": [
+        "R015",
+        "R032",
+        "R066"
+      ],
+      "level": "L3-L5",
+      "criterion": "未授权时没有麦克风活动",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-04-A2",
+      "task_id": "B05-04",
+      "requirement_ids": [
+        "R015",
+        "R032",
+        "R066"
+      ],
+      "level": "L3-L5",
+      "criterion": "取消/设备失联后释放资源",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B05-04-A3",
+      "task_id": "B05-04",
+      "requirement_ids": [
+        "R015",
+        "R032",
+        "R066"
+      ],
+      "level": "L3-L5",
+      "criterion": "识别结果不自动成为系统命令或批准",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-01-A1",
+      "task_id": "B06-01",
+      "requirement_ids": [
+        "R019",
+        "R022",
+        "R033",
+        "R040",
+        "R072"
+      ],
+      "level": "L1-L2",
+      "criterion": "包不包含提供者二进制/descriptor/lease",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-01-A2",
+      "task_id": "B06-01",
+      "requirement_ids": [
+        "R019",
+        "R022",
+        "R033",
+        "R040",
+        "R072"
+      ],
+      "level": "L1-L2",
+      "criterion": "缺少Provider是可解释需求而非安装指令",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-01-A3",
+      "task_id": "B06-01",
+      "requirement_ids": [
+        "R019",
+        "R022",
+        "R033",
+        "R040",
+        "R072"
+      ],
+      "level": "L1-L2",
+      "criterion": "读取恶意路径/未知字段失败且未执行文件",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-02-A1",
+      "task_id": "B06-02",
+      "requirement_ids": [
+        "R020",
+        "R021",
+        "R067"
+      ],
+      "level": "L0-L2",
+      "criterion": "同输入同计划，缺失必选block/可选degrade",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-02-A2",
+      "task_id": "B06-02",
+      "requirement_ids": [
+        "R020",
+        "R021",
+        "R067"
+      ],
+      "level": "L0-L2",
+      "criterion": "两个同等来源不会任意选一个",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-02-A3",
+      "task_id": "B06-02",
+      "requirement_ids": [
+        "R020",
+        "R021",
+        "R067"
+      ],
+      "level": "L0-L2",
+      "criterion": "适配程序不能通过计划扩大权限或读取全机",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-03-A1",
+      "task_id": "B06-03",
+      "requirement_ids": [
+        "R022",
+        "R067",
+        "R072"
+      ],
+      "level": "L1-L4",
+      "criterion": "环境变化使旧计划失效并重新规划",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-03-A2",
+      "task_id": "B06-03",
+      "requirement_ids": [
+        "R022",
+        "R067",
+        "R072"
+      ],
+      "level": "L1-L4",
+      "criterion": "导入取消不会清空既有世界",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-03-A3",
+      "task_id": "B06-03",
+      "requirement_ids": [
+        "R022",
+        "R067",
+        "R072"
+      ],
+      "level": "L1-L4",
+      "criterion": "失败报告部分成功与清理结果，不造假回滚",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-04-A1",
+      "task_id": "B06-04",
+      "requirement_ids": [
+        "R019",
+        "R020",
+        "R033",
+        "R050",
+        "R070"
+      ],
+      "level": "L0-L5",
+      "criterion": "没有预装Provider的新机器不会自动运行下载代码",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-04-A2",
+      "task_id": "B06-04",
+      "requirement_ids": [
+        "R019",
+        "R020",
+        "R033",
+        "R050",
+        "R070"
+      ],
+      "level": "L0-L5",
+      "criterion": "分享内容不含原机路径/密钥/私有标题",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B06-04-A3",
+      "task_id": "B06-04",
+      "requirement_ids": [
+        "R019",
+        "R020",
+        "R033",
+        "R050",
+        "R070"
+      ],
+      "level": "L0-L5",
+      "criterion": "使用者可解释每个缺失区域及其替代方案",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-01-A1",
+      "task_id": "B07-01",
+      "requirement_ids": [
+        "R005",
+        "R026",
+        "R027",
+        "R069"
+      ],
+      "level": "L1-L2",
+      "criterion": "两个不相交子树可独立更新",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-01-A2",
+      "task_id": "B07-01",
+      "requirement_ids": [
+        "R005",
+        "R026",
+        "R027",
+        "R069"
+      ],
+      "level": "L1-L2",
+      "criterion": "旧0.3整窗writer与子树writer模式不可非法混用",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-01-A3",
+      "task_id": "B07-01",
+      "requirement_ids": [
+        "R005",
+        "R026",
+        "R027",
+        "R069"
+      ],
+      "level": "L1-L2",
+      "criterion": "读者不能取得可写别名或其他scope私有数据",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-02-A1",
+      "task_id": "B07-02",
+      "requirement_ids": [
+        "R007",
+        "R028",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "不能把无权节点移动进自有子树偷取",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-02-A2",
+      "task_id": "B07-02",
+      "requirement_ids": [
+        "R007",
+        "R028",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "跨子树失败整批不部分提交",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-02-A3",
+      "task_id": "B07-02",
+      "requirement_ids": [
+        "R007",
+        "R028",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "父撤销后任何旧子lease写入被拒绝",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-03-A1",
+      "task_id": "B07-03",
+      "requirement_ids": [
+        "R026",
+        "R027",
+        "R028"
+      ],
+      "level": "L1-L2",
+      "criterion": "竞争CAS一方失败可诊断且无丢失更新",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-03-A2",
+      "task_id": "B07-03",
+      "requirement_ids": [
+        "R026",
+        "R027",
+        "R028"
+      ],
+      "level": "L1-L2",
+      "criterion": "Arc式共享不绕过权限与可变规则",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-03-A3",
+      "task_id": "B07-03",
+      "requirement_ids": [
+        "R026",
+        "R027",
+        "R028"
+      ],
+      "level": "L1-L2",
+      "criterion": "慢或崩溃参与者不会锁住整个UI",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-04-A1",
+      "task_id": "B07-04",
+      "requirement_ids": [
+        "R006",
+        "R026",
+        "R028",
+        "R061"
+      ],
+      "level": "L1-L5",
+      "criterion": "多写者只在互不重叠权限域成立",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-04-A2",
+      "task_id": "B07-04",
+      "requirement_ids": [
+        "R006",
+        "R026",
+        "R028",
+        "R061"
+      ],
+      "level": "L1-L5",
+      "criterion": "任何序列不产生无owner可变资源",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B07-04-A3",
+      "task_id": "B07-04",
+      "requirement_ids": [
+        "R006",
+        "R026",
+        "R028",
+        "R061"
+      ],
+      "level": "L1-L5",
+      "criterion": "真实来源失败不会改变其他区域业务状态",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-01-A1",
+      "task_id": "B08-01",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R025",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "断线不是任务完成或空闲",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-01-A2",
+      "task_id": "B08-01",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R025",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "模型名/显示名不作身份",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-01-A3",
+      "task_id": "B08-01",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R025",
+        "R059"
+      ],
+      "level": "L1-L2",
+      "criterion": "只读面板没有批准/写文件/继续执行权限",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-02-A1",
+      "task_id": "B08-02",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R071"
+      ],
+      "level": "L2-L5",
+      "criterion": "两种真实来源可同看且来源证据分开",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-02-A2",
+      "task_id": "B08-02",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R071"
+      ],
+      "level": "L2-L5",
+      "criterion": "不把全部任意既有CLI会话假定可枚举",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-02-A3",
+      "task_id": "B08-02",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R071"
+      ],
+      "level": "L2-L5",
+      "criterion": "适配失败仅对应来源stale",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A1",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026"
+      ],
+      "level": "L1-L5",
+      "criterion": "五类都有明确入口/未知边界，不伪造五种实测",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A2",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026"
+      ],
+      "level": "L1-L5",
+      "criterion": "至少两种真实独立writer并发验收",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A3",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026"
+      ],
+      "level": "L1-L5",
+      "criterion": "动作路由跟随组件owner，不被后加入者截获",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-04-A1",
+      "task_id": "B08-04",
+      "requirement_ids": [
+        "R025",
+        "R010",
+        "R066"
+      ],
+      "level": "L2-L5",
+      "criterion": "显示任务不自动具备批准权限",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-04-A2",
+      "task_id": "B08-04",
+      "requirement_ids": [
+        "R025",
+        "R010",
+        "R066"
+      ],
+      "level": "L2-L5",
+      "criterion": "批准前显示具体操作与来源，token不在卡片中",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-04-A3",
+      "task_id": "B08-04",
+      "requirement_ids": [
+        "R025",
+        "R010",
+        "R066"
+      ],
+      "level": "L2-L5",
+      "criterion": "网络超时只读回结果，不盲重放副作用",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-01-A1",
+      "task_id": "B09-01",
+      "requirement_ids": [
+        "R036",
+        "R037",
+        "R038",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "重复消息不增加待办数",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-01-A2",
+      "task_id": "B09-01",
+      "requirement_ids": [
+        "R036",
+        "R037",
+        "R038",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "过期/撤销内容不继续可操作",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-01-A3",
+      "task_id": "B09-01",
+      "requirement_ids": [
+        "R036",
+        "R037",
+        "R038",
+        "R065"
+      ],
+      "level": "L1-L2",
+      "criterion": "网络中继声明不自动成为来源身份",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-02-A1",
+      "task_id": "B09-02",
+      "requirement_ids": [
+        "R036",
+        "R039"
+      ],
+      "level": "L5-L6",
+      "criterion": "未授权应用通知不被读取或上传",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-02-A2",
+      "task_id": "B09-02",
+      "requirement_ids": [
+        "R036",
+        "R039"
+      ],
+      "level": "L5-L6",
+      "criterion": "摘要带来源时间与不确定性",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-02-A3",
+      "task_id": "B09-02",
+      "requirement_ids": [
+        "R036",
+        "R039"
+      ],
+      "level": "L5-L6",
+      "criterion": "用户撤销后停止监听与后续转发",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-03-A1",
+      "task_id": "B09-03",
+      "requirement_ids": [
+        "R036",
+        "R038",
+        "R039"
+      ],
+      "level": "L1-L6",
+      "criterion": "能够显示用户场景：若干Agent等待与一条联系人待回复，并注明模拟/真实",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-03-A2",
+      "task_id": "B09-03",
+      "requirement_ids": [
+        "R036",
+        "R038",
+        "R039"
+      ],
+      "level": "L1-L6",
+      "criterion": "去重以来源身份而非文本近似",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-03-A3",
+      "task_id": "B09-03",
+      "requirement_ids": [
+        "R036",
+        "R038",
+        "R039"
+      ],
+      "level": "L1-L6",
+      "criterion": "通知正文中的指令不能授予执行权限",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-04-A1",
+      "task_id": "B09-04",
+      "requirement_ids": [
+        "R037",
+        "R038",
+        "R039",
+        "R070"
+      ],
+      "level": "L1-L6",
+      "criterion": "不宣称BLE/USB/热点全部贯通",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-04-A2",
+      "task_id": "B09-04",
+      "requirement_ids": [
+        "R037",
+        "R038",
+        "R039",
+        "R070"
+      ],
+      "level": "L1-L6",
+      "criterion": "relay可能读内容时明确说明，不能冒充端到端加密",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B09-04-A3",
+      "task_id": "B09-04",
+      "requirement_ids": [
+        "R037",
+        "R038",
+        "R039",
+        "R070"
+      ],
+      "level": "L1-L6",
+      "criterion": "日志无真实消息正文和凭据",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-01-A1",
+      "task_id": "B10-01",
+      "requirement_ids": [
+        "R017",
+        "R050",
+        "R068"
+      ],
+      "level": "L2-L5",
+      "criterion": "原型可用且没有ERP业务进入Core",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-01-A2",
+      "task_id": "B10-01",
+      "requirement_ids": [
+        "R017",
+        "R050",
+        "R068"
+      ],
+      "level": "L2-L5",
+      "criterion": "来源替换不要求Host专用补丁",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-01-A3",
+      "task_id": "B10-01",
+      "requirement_ids": [
+        "R017",
+        "R050",
+        "R068"
+      ],
+      "level": "L2-L5",
+      "criterion": "未经证据不宣称独立APP等价完成",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-02-A1",
+      "task_id": "B10-02",
+      "requirement_ids": [
+        "R017",
+        "R068",
+        "R072"
+      ],
+      "level": "L0-L5",
+      "criterion": "毕业无需复制WinCraft内核或剥离业务数据库",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-02-A2",
+      "task_id": "B10-02",
+      "requirement_ids": [
+        "R017",
+        "R068",
+        "R072"
+      ],
+      "level": "L0-L5",
+      "criterion": "既有许可与来源边界不被擅改",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-02-A3",
+      "task_id": "B10-02",
+      "requirement_ids": [
+        "R017",
+        "R068",
+        "R072"
+      ],
+      "level": "L0-L5",
+      "criterion": "用户可停止使用Host而不失去业务记录",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-03-A1",
+      "task_id": "B10-03",
+      "requirement_ids": [
+        "R034",
+        "R056",
+        "R057",
+        "R058"
+      ],
+      "level": "L1-L4",
+      "criterion": "部分OS操作失败可观察，不假装全组原子",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-03-A2",
+      "task_id": "B10-03",
+      "requirement_ids": [
+        "R034",
+        "R056",
+        "R057",
+        "R058"
+      ],
+      "level": "L1-L4",
+      "criterion": "减少动画/关闭/救援可用",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-03-A3",
+      "task_id": "B10-03",
+      "requirement_ids": [
+        "R034",
+        "R056",
+        "R057",
+        "R058"
+      ],
+      "level": "L1-L4",
+      "criterion": "任何捕获排除仅用户启用且不承诺保密",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-04-A1",
+      "task_id": "B10-04",
+      "requirement_ids": [
+        "R033",
+        "R050",
+        "R059"
+      ],
+      "level": "L5",
+      "criterion": "来源、构建、连接、错误恢复均可由外部作者复现",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-04-A2",
+      "task_id": "B10-04",
+      "requirement_ids": [
+        "R033",
+        "R050",
+        "R059"
+      ],
+      "level": "L5",
+      "criterion": "同一组件/配方被第二个场景复用",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B10-04-A3",
+      "task_id": "B10-04",
+      "requirement_ids": [
+        "R033",
+        "R050",
+        "R059"
+      ],
+      "level": "L5",
+      "criterion": "指标如实记录，不虚构社区用户或需求规模",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-01-A1",
+      "task_id": "B11-01",
+      "requirement_ids": [
+        "R060",
+        "R061",
+        "R062"
+      ],
+      "level": "L1-L5",
+      "criterion": "每次测量带机器/版本/负载而非泛称轻量",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-01-A2",
+      "task_id": "B11-01",
+      "requirement_ids": [
+        "R060",
+        "R061",
+        "R062"
+      ],
+      "level": "L1-L5",
+      "criterion": "无资源持续泄漏趋势或明确阻塞发布",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-01-A3",
+      "task_id": "B11-01",
+      "requirement_ids": [
+        "R060",
+        "R061",
+        "R062"
+      ],
+      "level": "L1-L5",
+      "criterion": "未测性能不写宣传数字",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-02-A1",
+      "task_id": "B11-02",
+      "requirement_ids": [
+        "R047",
+        "R055",
+        "R057",
+        "R061"
+      ],
+      "level": "L4-L5",
+      "criterion": "发布声明只含实测能力",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-02-A2",
+      "task_id": "B11-02",
+      "requirement_ids": [
+        "R047",
+        "R055",
+        "R057",
+        "R061"
+      ],
+      "level": "L4-L5",
+      "criterion": "隐藏不销毁与原生minimize语义没有混淆",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-02-A3",
+      "task_id": "B11-02",
+      "requirement_ids": [
+        "R047",
+        "R055",
+        "R057",
+        "R061"
+      ],
+      "level": "L4-L5",
+      "criterion": "取消/退出后无残留hotkey/窗口/授权资源",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-03-A1",
+      "task_id": "B11-03",
+      "requirement_ids": [
+        "R002",
+        "R046"
+      ],
+      "level": "L6",
+      "criterion": "Tauri编译成功不等于原生交互等价",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-03-A2",
+      "task_id": "B11-03",
+      "requirement_ids": [
+        "R002",
+        "R046"
+      ],
+      "level": "L6",
+      "criterion": "跨平台Capability如实报告",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-03-A3",
+      "task_id": "B11-03",
+      "requirement_ids": [
+        "R002",
+        "R046"
+      ],
+      "level": "L6",
+      "criterion": "不会为迁移破坏Windows现有契约",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-04-A1",
+      "task_id": "B11-04",
+      "requirement_ids": [
+        "R030",
+        "R033",
+        "R043",
+        "R044",
+        "R047",
+        "R049",
+        "R070"
+      ],
+      "level": "L0-L6",
+      "criterion": "无擅自重许可/定名/归属迁移",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-04-A2",
+      "task_id": "B11-04",
+      "requirement_ids": [
+        "R030",
+        "R033",
+        "R043",
+        "R044",
+        "R047",
+        "R049",
+        "R070"
+      ],
+      "level": "L0-L6",
+      "criterion": "未获发布授权仅生成材料不发Release",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B11-04-A3",
+      "task_id": "B11-04",
+      "requirement_ids": [
+        "R030",
+        "R033",
+        "R043",
+        "R044",
+        "R047",
+        "R049",
+        "R070"
+      ],
+      "level": "L0-L6",
+      "criterion": "公众文档可读且适用版本/更新时间明确",
+      "status": "NOT_RUN"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "scope": "handoff consistency, draft fixtures and metadata; not runtime integration",
+  "status": "PASS",
+  "documents": 42,
+  "relative_links": 140,
+  "sources": 31,
+  "requirements": 72,
+  "tasks": 48,
+  "acceptance_cases": 143,
+  "schema_examples": 17,
+  "locale_keys": 12,
+  "errors": []
+}

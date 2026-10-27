@@ -1,0 +1,102 @@
+{
+  "updated_at": "2026-10-26",
+  "precedence": [
+    "用户最新反馈",
+    "既有已批准且不冲突意见",
+    "本包工程默认",
+    "历史未决建议"
+  ],
+  "decisions": [
+    {
+      "id": "D01",
+      "title": "冻结许可与技术边界",
+      "status": "USER_DECIDED",
+      "decision": "保留CCOPL和上游署名，Rust/Tauri，不创建新的代码执行宿主。",
+      "supersedes": "旧版“换更开放许可促进生态”的建议暂停。"
+    },
+    {
+      "id": "D02",
+      "title": "整合包不封存提供者",
+      "status": "USER_DECIDED",
+      "decision": "保存配置、需求、来源绑定意图和适配计划；不保存程序二进制、凭据或永久租约。",
+      "supersedes": "旧版“预设软件与运行时一并保证开箱即用”改为按环境规划、明确缺失。"
+    },
+    {
+      "id": "D03",
+      "title": "不先建设市场与Mod",
+      "status": "USER_DECIDED",
+      "decision": "先开放格式、文档、加载校验与公共API；社区聚合可自发生长。",
+      "supersedes": "不复制Minecraft加载器或官方平台市场工程。"
+    },
+    {
+      "id": "D04",
+      "title": "i18n与文档治理前置",
+      "status": "USER_DECIDED",
+      "decision": "从B00/B02开始日期、来源、版本、中英与读者分层。",
+      "supersedes": "不是最后一期补翻译。"
+    },
+    {
+      "id": "D05",
+      "title": "Popup优先真实纵向闭环",
+      "status": "USER_DECIDED",
+      "decision": "保留既有语义，呈现端改用临时世界，支持取消与清理。",
+      "supersedes": "不重开已决需求访谈。"
+    },
+    {
+      "id": "D06",
+      "title": "Host稳定不等于Host源码永久不动",
+      "status": "PROPOSED_ENGINEERING_INTERPRETATION",
+      "decision": "普通Provider不改Host；必要通用能力、内核和适配器仍可作最小扩展。",
+      "supersedes": "不是把所有新功能硬塞Provider或完全拒绝原生实现。"
+    },
+    {
+      "id": "D07",
+      "title": "租约代替跨进程Rust引用",
+      "status": "USER_DECIDED_WITH_ENGINEERING_DETAIL",
+      "decision": "细化到子树/状态槽，快照读者；高级共享先CAS/仲裁而非暴露远程锁。",
+      "supersedes": "Arc不能被解释成自动同步，Mutex不能持锁等人。"
+    },
+    {
+      "id": "D08",
+      "title": "品牌不冻结中文名",
+      "status": "USER_DECIDED",
+      "decision": "WinCraft工作名、WinC简称可用；中文标签可暂不展示；技术ID保持。",
+      "supersedes": "“窗构”为推荐而非最终决定。"
+    },
+    {
+      "id": "D09",
+      "title": "系统权限可申请可撤销",
+      "status": "USER_DECIDED",
+      "decision": "借鉴安全模式UX，路由层逐资源操作检查，保留本机operator。",
+      "supersedes": "安全模式/签名不是沙箱或安全认证。"
+    },
+    {
+      "id": "D10",
+      "title": "跨设备传输在外",
+      "status": "USER_DECIDED",
+      "decision": "WinCraft只定义消息边界、身份和呈现；外部transport负责实际链路。",
+      "supersedes": "不重做蓝牙热点USB路由系统。"
+    },
+    {
+      "id": "D11",
+      "title": "官方做原语可行性验证而非全部业务",
+      "status": "PROPOSED_ENGINEERING_INTERPRETATION",
+      "decision": "每项公开能力仍需POC和验收；不实现桌宠/ERP/消息总结全部业务。",
+      "supersedes": "“不做可行性”仅针对衍生业务，不免除引擎接口验证。"
+    },
+    {
+      "id": "D12",
+      "title": "方案批准与操作授权分离",
+      "status": "EXECUTION_BOUNDARY",
+      "decision": "本轮交付规划包；本地代码按现有合同执行，公开推送/发版/私有数据读取需独立授权。",
+      "supersedes": "不把全部方向通过解释为无限设备与账户权限。"
+    },
+    {
+      "id": "D13",
+      "title": "Popup提交后关闭并记住人类几何与键盘路径",
+      "status": "USER_DECIDED",
+      "decision": "成功提交后销毁临时世界；后续请求创建新world/lease但复用最近一次可观测的位置与尺寸。单选后Tab进入备注，Ctrl+Enter连同备注草稿提交；方向键保持选项键盘导航。只保存几何UI偏好，不保存问题、答案或旧世界绑定。",
+      "supersedes": "不是将临时问题world永久绑定，也不把业务答案持久化到WinCraft。"
+    }
+  ]
+}

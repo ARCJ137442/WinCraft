@@ -1,0 +1,748 @@
+{
+  "updated_at": "2026-10-27",
+  "documents": [
+    {
+      "path": "START_HERE.md",
+      "doc_id": "START_HERE",
+      "title": "WinCraft 平台演进交接包：从当前 0.3 到可组合生态",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "handoff",
+      "audience": "human, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "EXECUTIVE_SUMMARY.md",
+      "doc_id": "EXECUTIVE_SUMMARY",
+      "title": "执行摘要：让程序长出界面，而不是让宿主长成业务大全",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "handoff",
+      "audience": "human, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/00_BASELINE_AND_EVIDENCE.md",
+      "doc_id": "docs__00_BASELINE_AND_EVIDENCE",
+      "title": "基线、证据与未知边界",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "verified-scope",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "W-BASELINE",
+        "W-VALIDATION",
+        "W-MODEL",
+        "W-TRANSPORT",
+        "P-POPUP"
+      ]
+    },
+    {
+      "path": "docs/01_CHARTER.md",
+      "doc_id": "docs__01_CHARTER",
+      "title": "产品哲学与章程",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "user-aligned",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/02_PRODUCT_AND_ECOSYSTEM.md",
+      "doc_id": "docs__02_PRODUCT_AND_ECOSYSTEM",
+      "title": "生态定位、边界与成功指标",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "user-aligned",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/03_REFERENCE_DECISIONS.md",
+      "doc_id": "docs__03_REFERENCE_DECISIONS",
+      "title": "业界参考：采纳机制，不复制产品",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "VS-MANIFEST",
+        "VS-CONTRIB",
+        "VS-HOST",
+        "VS-TRUST",
+        "VS-I18N",
+        "X-DSH",
+        "OBS-SEC",
+        "RUST-BORROW"
+      ]
+    },
+    {
+      "path": "docs/04_ARCHITECTURE.md",
+      "doc_id": "docs__04_ARCHITECTURE",
+      "title": "架构与代码接线：不重写宿主，不把业务塞进内核",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-TREE",
+        "W-MODEL",
+        "W-TRANSPORT",
+        "W-PROVIDER"
+      ]
+    },
+    {
+      "path": "docs/05_PUBLIC_API_AND_COMPATIBILITY.md",
+      "doc_id": "docs__05_PUBLIC_API_AND_COMPATIBILITY",
+      "title": "公共 API、兼容演进与错误语义",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/06_OWNERSHIP.md",
+      "doc_id": "docs__06_OWNERSHIP",
+      "title": "所有权与借用：窗口、组件、状态与高级共享",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "RUST-BORROW",
+        "RUST-ARC",
+        "RUST-MUTEX"
+      ]
+    },
+    {
+      "path": "docs/07_EVENT_ACTION_LIFECYCLE.md",
+      "doc_id": "docs__07_EVENT_ACTION_LIFECYCLE",
+      "title": "事件、反应与可撤销资源",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/08_DISCOVERY_ADAPTIVE_PACKS.md",
+      "doc_id": "docs__08_DISCOVERY_ADAPTIVE_PACKS",
+      "title": "自发现、自适应配置与整合包",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/09_EPHEMERAL_POPUP_SYSTORCH.md",
+      "doc_id": "docs__09_EPHEMERAL_POPUP_SYSTORCH",
+      "title": "一次性交互：Popup-Ask 与 SysTorch",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "P-POPUP",
+        "W-MODEL"
+      ]
+    },
+    {
+      "path": "docs/10_THEME_I18N_ACCESSIBILITY.md",
+      "doc_id": "docs__10_THEME_I18N_ACCESSIBILITY",
+      "title": "主题、国际化与可访问性：从第一批进入架构",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "VS-I18N",
+        "TAURI-CAP"
+      ]
+    },
+    {
+      "path": "docs/11_BROWSER_TEAMSENSE_VOICE.md",
+      "doc_id": "docs__11_BROWSER_TEAMSENSE_VOICE",
+      "title": "浏览器、TeamSense 与一次性语音",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "CHROME-NATIVE",
+        "W-TRANSPORT"
+      ]
+    },
+    {
+      "path": "docs/12_HARNESS_ACTIVITY.md",
+      "doc_id": "docs__12_HARNESS_ACTIVITY",
+      "title": "多 Harness 状态聚合与人类待办",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "X-CODEX",
+        "X-CLAUDE",
+        "X-OPENCODE",
+        "X-DSH",
+        "X-OMP"
+      ]
+    },
+    {
+      "path": "docs/13_TOUCHAI_PCSENSE_INCUBATION.md",
+      "doc_id": "docs__13_TOUCHAI_PCSENSE_INCUBATION",
+      "title": "TouchAI 与 PCSense：平台孵化而非功能吞并",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "P-TOUCH",
+        "TAURI-KEY"
+      ]
+    },
+    {
+      "path": "docs/14_ANDROMORPH_TRANSPORT.md",
+      "doc_id": "docs__14_ANDROMORPH_TRANSPORT",
+      "title": "AndroMorph 通知摘要与传输边界",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "ANDROID-NOTIFY"
+      ]
+    },
+    {
+      "path": "docs/15_NATIVE_CAPABILITIES.md",
+      "doc_id": "docs__15_NATIVE_CAPABILITIES",
+      "title": "原生能力路线：以扩展点验收，不堆 Win32 清单",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/16_SECURITY.md",
+      "doc_id": "docs__16_SECURITY",
+      "title": "安全与信任：用户可理解、内核可执行",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "OBS-SEC",
+        "TAURI-CAP",
+        "W-TRANSPORT"
+      ]
+    },
+    {
+      "path": "docs/17_TUTORIAL_DOGFOOD.md",
+      "doc_id": "docs__17_TUTORIAL_DOGFOOD",
+      "title": "教程世界与自用：先让人会玩，再让人会写",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/18_ROADMAP.md",
+      "doc_id": "docs__18_ROADMAP",
+      "title": "下一步路线图：分批形成真实闭环",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "execution-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/19_VALIDATION_AND_PERFORMANCE.md",
+      "doc_id": "docs__19_VALIDATION_AND_PERFORMANCE",
+      "title": "验证、性能与交付证据",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "execution-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/20_GOVERNANCE_RELEASE_BRAND.md",
+      "doc_id": "docs__20_GOVERNANCE_RELEASE_BRAND",
+      "title": "治理、许可、品牌与发布",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "user-aligned",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/21_DOCUMENTATION_CONTRACT.md",
+      "doc_id": "docs__21_DOCUMENTATION_CONTRACT",
+      "title": "文档时效、分层与 Luna 必须遵守的规则",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "normative-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/22_SCENARIOS.md",
+      "doc_id": "docs__22_SCENARIOS",
+      "title": "串起来的用户叙事：从个人工具到可组合环境",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "proposal",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "governance/AGENTS_APPENDIX.md",
+      "doc_id": "governance__AGENTS_APPENDIX",
+      "title": "供合并进 AGENTS.md 的演进规则",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "normative-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "governance/REVIEW_CHECKLIST.md",
+      "doc_id": "governance__REVIEW_CHECKLIST",
+      "title": "每批合入审查",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "normative-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "sources/README.md",
+      "doc_id": "sources__README",
+      "title": "来源与复核方法",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "evidence-index",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE",
+        "P-POPUP"
+      ]
+    },
+    {
+      "path": "plan/TRACEABILITY.md",
+      "doc_id": "plan__TRACEABILITY",
+      "title": "需求—规范—任务—验收追踪（生成视图）",
+      "updated_at": "2026-10-27",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "generated-view",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "plan/TASKS.md",
+      "doc_id": "plan__TASKS",
+      "title": "实施任务与可验收交付（生成视图）",
+      "updated_at": "2026-10-27",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "generated-view",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "plan/ACCEPTANCE.md",
+      "doc_id": "plan__ACCEPTANCE",
+      "title": "验收矩阵（生成视图）",
+      "updated_at": "2026-10-27",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "generated-view",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "contracts/README.md",
+      "doc_id": "contracts__README",
+      "title": "提案型契约的使用边界",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "draft-contract",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "examples/README.md",
+      "doc_id": "examples__README",
+      "title": "样例怎么用：先解释，再执行",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "example-guide",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/audience/USER_GUIDE.md",
+      "doc_id": "docs__audience__USER_GUIDE",
+      "title": "用户层：世界、来源与控制权",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "beginner-design-guide",
+      "audience": "end-user",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/audience/PROVIDER_GUIDE.md",
+      "doc_id": "docs__audience__PROVIDER_GUIDE",
+      "title": "提供者层：不用前端也能搭建",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "provider-design-guide",
+      "audience": "provider-author",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/audience/CORE_GUIDE.md",
+      "doc_id": "docs__audience__CORE_GUIDE",
+      "title": "内核层：不变量比组件数量重要",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "core-design-guide",
+      "audience": "kernel-maintainer",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "docs/en/START_HERE.md",
+      "doc_id": "docs__en__START_HERE",
+      "title": "WinCraft evolution handoff — English entry",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "translation-entry",
+      "audience": "international-contributor",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ],
+      "source_document": "EXECUTIVE_SUMMARY.md",
+      "source_revision_sha256": "ac521d40ef9d1a6f321142cee760edaa6274f29c325eef03ad3c73fbed9b344c",
+      "translation_scope": "entry summary; not full translation",
+      "translation_status": "current"
+    },
+    {
+      "path": "INTEGRATION.md",
+      "doc_id": "INTEGRATION",
+      "title": "如何合入现有仓库，而不覆盖当前工作",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "execution-plan",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "LUNA_PROMPT.md",
+      "doc_id": "LUNA_PROMPT",
+      "title": "交给本地 Codex / Luna 的完整执行提示词",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "execution-prompt",
+      "audience": "local Codex / Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "evidence/README.md",
+      "doc_id": "evidence__README",
+      "title": "交接包自身验证边界",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "validation-scope",
+      "audience": "maintainer, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "INDEX.md",
+      "doc_id": "INDEX",
+      "title": "全包导航与唯一事实来源",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "navigation",
+      "audience": "human, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    },
+    {
+      "path": "DELIVERY_STATUS.md",
+      "doc_id": "DELIVERY_STATUS",
+      "title": "交付验证与下一步",
+      "updated_at": "2026-10-26",
+      "last_verified_at": "2026-10-26",
+      "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+      "protocol_baseline": "0.3",
+      "status": "verified-handoff-only",
+      "audience": "human, Luna",
+      "owner_role": "WinCraft maintainers",
+      "review_trigger": "包内容或实现基线变化后重跑",
+      "source_ids": [
+        "U-LATEST",
+        "W-BASELINE"
+      ]
+    }
+  ]
+}

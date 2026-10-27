@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:ephemeral-request:draft-2026-10-26",
+  "title": "外层临时请求信封草案，payload沿用PopupAsk",
+  "description": "研发提案；不是现有0.3宿主接口。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "wincraft.ephemeral-request.draft"
+    },
+    "schema_version": {
+      "const": "draft-2026-10-26"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "origin_instance_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "locale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+              },
+              "header": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12
+              },
+              "question": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096,
+                "pattern": "[?？]$"
+              },
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 5,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "description": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "preview": {
+                      "type": "string",
+                      "maxLength": 8192
+                    },
+                    "recommended": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "description"
+                  ]
+                }
+              },
+              "multiSelect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "header",
+              "question",
+              "options"
+            ]
+          }
+        }
+      },
+      "required": [
+        "questions"
+      ]
+    },
+    "output_mode": {
+      "enum": [
+        "summary",
+        "json"
+      ]
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "request_id",
+    "origin_instance_id",
+    "locale",
+    "expires_at",
+    "payload",
+    "output_mode"
+  ]
+}

@@ -1,3 +1,5 @@
+import {t} from './i18n.js';
+
 /** Deliberately not an expression language. No eval, HTML, CSS strings or object mutation. */
 export function resolve(value:unknown,data:unknown):unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
@@ -44,9 +46,22 @@ export function errorDetails(error:unknown):{code:string|null;message:string} {
     const record=value as Record<string,unknown>;
     const code=typeof record.code==='string'?record.code:null;
     const message=typeof record.message==='string'?record.message:null;
-    if(code||message)return {code,message:message??code??'操作失败'};
+    if(code||message){
+      const key=code?`error.${code.toLowerCase()}`:null;
+      const localized=key?t(key):'';
+      const headline=localized&&localized!==key?localized:(message??code??t('action.failed'));
+      return {code,message:headline&&message&&headline!==message?`${headline} · ${message}`:headline};
+    }
   }
-  return {code:null,message:typeof raw==='string'?raw:JSON.stringify(raw)??String(raw)};
+  if(typeof raw==='string'){
+    const match=raw.match(/^([A-Z][A-Z0-9_]+):\s*(.*)$/u);
+    if(match){
+      const code=match[1]??'';const details=match[2]??'';const key=`error.${code.toLowerCase()}`;const localized=t(key);
+      if(localized!==key)return {code,message:details?`${localized} · ${details}`:localized};
+    }
+    return {code:null,message:raw};
+  }
+  return {code:null,message:JSON.stringify(raw)??String(raw)};
 }
 export type ActionFeedback={state:'pending'|'ok'|'error';message:string};
 export function displayActionFeedback(
@@ -57,7 +72,7 @@ export function displayActionFeedback(
   if(notice)return notice;
   const action=trackedActionId?actions.find(item=>item.id===trackedActionId):actions.at(-1);
   if(!action)return null;
-  const label=action.status==='pending'?'等待提供者确认':action.status==='ok'?'操作已确认':'操作失败';
+  const label=action.status==='pending'?t('action.waiting'):action.status==='ok'?t('action.confirmed'):t('action.failed');
   return {state:action.status,message:`${label}${action.message?' · '+action.message:''}`};
 }
 /** Event and initial fetch may race; a stale snapshot must not replace a newer one. */

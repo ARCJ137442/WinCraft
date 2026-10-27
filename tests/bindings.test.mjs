@@ -25,9 +25,12 @@ test('late initial fetch cannot replace event state',()=>{assert.equal(newer({id
 test('cross-world snapshot rejected after first binding',()=>{assert.equal(newer({id:'w',sequence:1},{id:'other',sequence:99}),false);assert.equal(newer(null,{id:'w',sequence:1}),true);});
 test('Tauri fault objects and JSON strings preserve code and message',()=>{
   const expected={code:'REVISION_CONFLICT',message:'expected 1653, actual 1654'};
-  assert.deepEqual(errorDetails(expected),expected);
-  assert.deepEqual(errorDetails(JSON.stringify(expected)),expected);
-  assert.deepEqual(errorDetails(new Error(JSON.stringify(expected))),expected);
+  for(const actual of [expected,JSON.stringify(expected),new Error(JSON.stringify(expected))]){
+    const result=errorDetails(actual);
+    assert.equal(result.code,expected.code);
+    assert.match(result.message,/界面刚更新/u);
+    assert.ok(result.message.includes(expected.message));
+  }
 });
 test('ordinary errors stay readable',()=>{
   assert.deepEqual(errorDetails('offline'),{code:null,message:'offline'});

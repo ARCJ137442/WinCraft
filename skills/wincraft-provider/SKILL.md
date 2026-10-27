@@ -14,10 +14,38 @@ window assembled from typed components. The provider owns business truth and sen
 declarations, data, and action results; it never uploads HTML, JavaScript, or executable
 code to the host.
 
+For the staged path from first connection to native-window integrations, use the
+[provider journey](../../docs/provider-journey.md). It is a navigation aid over the
+lessons and references below; the protocol, schemas, and Rust implementation remain
+authoritative.
+
 ## The first-world tutorial
 
 Complete these lessons in order. Read [the protocol](../../docs/protocol.md) when a
 method or field is unclear; the Rust implementation and schema are authoritative.
+
+For a guided, real-host walkthrough, run `examples/python/provider_tutorial.py` with the
+actual runtime descriptor path shown by the manager. It uses the shared `client.py`,
+ordinary components, and synthetic values; it does not read external business data.
+The tutorial creates one ordinary invited world and destroys only that world on exit.
+If a create/destroy result times out, the outcome is unknown: inspect the manager before
+retrying. Do not treat this provider as the internal manager or an operator.
+
+The five interactive lessons are:
+
+1. **看见第一个世界** — create a world, move it, then optionally hide and resurface it
+   through the local manager.
+2. **搭一块会变的方块** — replace data and insert a component with `scene.patch`.
+3. **与程序对话** — send a choice or input to provider-owned demo state and acknowledge
+   its interaction.
+4. **换一个自己的外观** — apply or reset the bounded `theme_tokens` feature.
+5. **发现与加入是两件事** — summarize `world.list` metadata and join policies only;
+   the lesson never opens another world's scene. Protocol 0.3 does not yet provide a
+   separate provider catalog, so the tutorial states that limit instead of simulating one.
+
+Every lesson can be skipped. The course banner and all values identify the content as
+synthetic. Use an isolated test host for repeatable runs. If a connected host does not
+advertise `theme_tokens`, the provider must fail before creating a world.
 
 ### 0. Prepare safely
 
@@ -43,12 +71,18 @@ descriptor or mismatched host is a hard error.
 
 Create a world with `world.create`, or join a known world with `world.join`. A write
 join returns the one active window-level lease; a read join receives snapshots and
-cannot mutate. Discovery only finds metadata; it grants no world or write permission.
+cannot mutate. `world.list` returns only worlds this session has joined plus explicitly
+`open_authenticated` non-system worlds. Unjoined invite-only worlds stay hidden. A listed
+world still requires `world.join` before its snapshot can be read; discovery grants no
+membership or write permission.
 
 ### 2. Build the first scene
 
 Send one `scene.replace` containing a root `stack` or `row` and supported leaf nodes:
 `text`, `metric`, `progress`, `badge`, `button`, `input`, `key_value`, or `divider`.
+The optional `textarea` node is available only when the host capability table advertises it.
+For the Popup-Ask form pattern, check every optional behavior before creating its world:
+`client.require_capabilities(components=("textarea",), keyboard_shortcuts=("escape", "ctrl_enter"), button_features=("selection_groups",))`.
 Bind values with JSON Pointer `{"$path":"/..."}` or send a complete `data.replace`.
 Keep IDs stable and unique: the renderer uses them to preserve component identity.
 The default window belongs to the human: it is resizable, and a user's horizontal
@@ -58,6 +92,11 @@ the integration genuinely owns placement and size.
 Window snapshots expose `surface_opacity`, defaulting to `0.8`. Set it with
 `window.configure` only when the provider has a clear reason to change visual opacity;
 the property affects the rendered surface while the native window remains transparent.
+In provider geometry mode, a window can use `anchor: {corner, margin_x, margin_y}` instead
+of fixed `position`. The corner is relative to the selected monitor work area and margins
+are logical pixels scaled by that monitor's DPI. The host clamps the result into the work
+area. Human geometry mode rejects anchors; local rescue clears the anchor and returns
+geometry control to the operator. This property is capability-gated as `window_property:anchor`.
 Window visibility is observable runtime state. A local minimize hides the native
 window while keeping the world and lease alive; your next snapshot reports
 `window.visible=false`. A current writer may restore it with `window.configure`
@@ -71,6 +110,16 @@ Window snapshots expose `text_selectable=true` by default. The writer may change
 `window.configure`; it controls the whole world's default text-selection behavior while
 renderer component styles can override individual elements. The title bar remains
 unselectable in either mode. Providers cannot submit CSS or scripts to create overrides.
+
+An optional scene theme is available only when `ready.capabilities.scene_features`
+contains `theme_tokens`. Call `client.require_capabilities(scene_features=("theme_tokens",))`
+before sending `scene.theme`. The allowlist contains only background/foreground/accent
+colors, font scale, radius, and spacing; never send CSS, markup, scripts, remote assets,
+or a `trusted_chrome` claim. The host owns the title bar, provider identity, status,
+permission cues, and rescue controls. OS high contrast/reduced motion and local user
+text zoom override provider styling. An invalid token returns `INVALID_SCENE` atomically;
+read the snapshot and correct the theme explicitly instead of replaying unrelated writes.
+See [the scene theme guide](references/theme.md).
 
 Use `protocol/examples/focus.scene.json` as the first working shape. Run
 `examples/python/focus_demo.py` to see creation, data updates, an action, and an in-place
@@ -87,9 +136,15 @@ whole tree on every tick.
 
 ### 4. Handle interactions as requests
 
-Buttons and inputs have a static action name. They may also declare a static
-`context_action`; right-clicks are ignored unless it is registered, and the host
-suppresses the browser's native context menu. Consume `interaction` events only for
+Buttons and inputs have a static action name. A button may declare the capability-gated
+`shortcut: "escape"` together with a distinct static `shortcut_action`; a textarea may
+use `shortcut: "ctrl_enter"` the same way. Each fixed shortcut is registered at most once
+per world. The click and keyboard actions remain distinct. Option buttons can declare a
+shared `selection_group`, its `selection_mode`, and `pressed` state when the host advertises
+`button_features: ["selection_groups"]`; this gives the group one Tab stop and arrow-key
+navigation while preserving provider-owned selection state.
+Buttons, inputs, and textareas may also declare a static `context_action`; right-clicks
+are ignored unless it is registered, and the host suppresses the browser's native context menu. Consume `interaction` events only for
 your world, validate their shape, perform the provider-owned operation, update the
 world with the resulting business state, then send `action.result` with the same event
 ID and current lease. Report failure as failure. A delivered event is not proof that
@@ -98,6 +153,22 @@ the requested business operation succeeded.
 The event ID is for correlation, **not** an idempotency key. If a provider action
 causes an external side effect, use that service's own transaction/idempotency mechanism
 before acknowledging it. Never retry a timed-out write blindly.
+
+If `ready.capabilities.button_features` includes `external_window_actions`, a button
+may declare the host-managed `native_window_action` described in
+[the native window action guide](references/native-window-actions.md). Check the
+capability before creating the world. The current allowlist is `obsidian` and
+`traffic_monitor`, with `activate`, `maximize`, `restore`, and `minimize` operations
+plus an optional bounded `title_contains` filter. The host performs the OS operation only after a trusted
+renderer interaction, then forwards the same interaction to the provider for its normal
+acknowledgement. On native failure, the provider receives no event and the user sees a
+failure result. Do not add process paths, shell commands, AHK, or OS code to provider
+props; ordinary world visibility and geometry still use the world APIs.
+
+For read-only changes to a joined world's position/size or logical visibility, use the
+session-scoped event flow in [the window state event guide](references/window-events.md).
+Read event types from the host capability table first. Subscriptions do not grant a
+world read membership, writer lease, or permission to trigger native actions.
 
 ### 5. Survive expiry and reconnect
 
@@ -130,7 +201,8 @@ not proof that Windows applied it; inspect the native report separately.
 - Keep source freshness visible. Missing, stale, rejected, or disconnected data is not
   zero and is not a successful empty result.
 - Keep data bounded to protocol limits. Never pass HTML, CSS, JavaScript, `eval`, shell
-  commands, arbitrary URLs, or general OS calls through component props or actions.
+  commands, arbitrary URLs, process paths, or general OS calls through component props
+  or actions; use only the capability-gated native window operation allowlist.
 - A provider integration must state whether it is synthetic, file-backed, plugin-backed,
   or reading a live service. Do not label a mock as a real protocol test.
 
@@ -160,8 +232,15 @@ not proof that Windows applied it; inspect the native report separately.
 - For the plugin-backed Windows setup, staging boundary, and local run steps, follow
   the [TrafficMonitor provider reference](references/trafficmonitor.md).
 - `examples/python/obsidian-workspace.py` — read-only Obsidian Workspace dashboard projection;
-  it requires an explicitly named open Obsidian vault and never edits notes.
+  it requires an explicitly named open Obsidian vault and never edits notes; its title
+  activates an existing Obsidian window through the native host action.
 - `examples/python/lease_probe.py` — protocol acceptance against the actual Rust host.
+- `examples/python/theme_demo.py` — synthetic theme preview, host-chrome boundary, and an explicit invalid-token rejection probe.
+- `examples/python/popup_ask_provider.py` — optional WinCraft transport for an installed
+  Popup-Ask skill; it reuses that skill's validate-only parser and result serializer.
+  The adapter requires an explicit skill-script path and runtime descriptor and creates
+  a temporary ordinary world; see [the transport reference](references/popup-ask.md).
+- `protocol/examples/theme.scene.json` — capability-gated scene theme fixture.
 
 When adapting a different source, reuse `client.py` and this sequence. Keep the adapter
 thin; let the external application remain authoritative and let the shared renderer

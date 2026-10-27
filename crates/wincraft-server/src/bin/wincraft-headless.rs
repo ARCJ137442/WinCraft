@@ -8,7 +8,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()?;
     let dir =
         PathBuf::from(std::env::var("WINCRAFT_RUNTIME_DIR").unwrap_or_else(|_| ".wincraft".into()));
-    let _server = start(Hub::new(false), bind, &dir).await?;
+    let server = start(Hub::new(false), bind, &dir).await?;
     tokio::signal::ctrl_c().await?;
+    server.shutdown().await;
     Ok(())
 }

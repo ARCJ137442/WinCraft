@@ -9,6 +9,7 @@ import contextlib
 import json
 import os
 import uuid
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -19,6 +20,30 @@ class RpcError(RuntimeError):
     def __init__(self, error: dict[str, Any]):
         self.code = str(error.get("code", "UNKNOWN"))
         super().__init__(f"{self.code}: {error.get('message', '')}")
+
+
+class EventQueue(asyncio.Queue[dict[str, Any]]):
+    """Bounded event queue that retains only the newest queued state per subscription/type."""
+
+    @staticmethod
+    def _state_key(message: Any) -> tuple[str, str] | None:
+        if not isinstance(message, Mapping) or message.get("event") != "window.event":
+            return None
+        data = message.get("data")
+        if not isinstance(data, Mapping) or data.get("delivery") != "state":
+            return None
+        subscription_id = data.get("subscription_id")
+        event_type = data.get("type")
+        if isinstance(subscription_id, str) and isinstance(event_type, str):
+            return subscription_id, event_type
+        return None
+
+    def put_nowait(self, item: dict[str, Any]) -> None:
+        key = self._state_key(item)
+        if key is not None and self._queue and self._state_key(self._queue[-1]) == key:
+            self._queue[-1] = item
+            return
+        super().put_nowait(item)
 
 class Client:
     def __init__(self, runtime: str | Path, name: str, ws_url: str | None = None):
@@ -33,7 +58,7 @@ class Client:
             raise ValueError("Use a loopback SSH tunnel or authenticated TLS; no plaintext remote bearer credentials")
         self.name = name
         self.pending: dict[str, asyncio.Future[Any]] = {}
-        self.events: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=128)
+        self.events: asyncio.Queue[dict[str, Any]] = EventQueue(maxsize=128)
         self.snapshots: dict[str, dict[str, Any]] = {}
         self.socket: Any = None
         self.reader: asyncio.Task[Any] | None = None
@@ -135,6 +160,55 @@ class Client:
             return await asyncio.wait_for(future, 8)
         finally:
             self.pending.pop(request_id, None)
+
+    def require_capabilities(self, *, components: tuple[str, ...] = (),
+                             keyboard_shortcuts: tuple[str, ...] = (),
+                             button_features: tuple[str, ...] = (),
+                             scene_features: tuple[str, ...] = (),
+                             window_properties: tuple[str, ...] = (),
+                             event_types: tuple[str, ...] = ()) -> None:
+        """Fail closed when a provider needs an optional renderer feature."""
+        capabilities = self.ready.get("capabilities")
+        if not isinstance(capabilities, dict):
+            raise RuntimeError("Host did not return a capability table; optional features are unavailable")
+        advertised_components = capabilities.get("components")
+        advertised_shortcuts = capabilities.get("keyboard_shortcuts")
+        advertised_button_features = capabilities.get("button_features")
+        advertised_scene_features = capabilities.get("scene_features")
+        advertised_window_properties = capabilities.get("window_properties")
+        event_subscriptions = capabilities.get("event_subscriptions")
+        advertised_events = event_subscriptions.get("events") if isinstance(event_subscriptions, dict) else None
+        component_set = {value for value in advertised_components if isinstance(value, str)} \
+            if isinstance(advertised_components, list) else set()
+        shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
+            if isinstance(advertised_shortcuts, list) else set()
+        button_feature_set = {value for value in advertised_button_features if isinstance(value, str)} \
+            if isinstance(advertised_button_features, list) else set()
+        scene_feature_set = {value for value in advertised_scene_features if isinstance(value, str)} \
+            if isinstance(advertised_scene_features, list) else set()
+        window_property_set = {value for value in advertised_window_properties if isinstance(value, str)} \
+            if isinstance(advertised_window_properties, list) else set()
+        event_type_set = {
+            event.get("type") for event in advertised_events
+            if isinstance(event, dict) and isinstance(event.get("type"), str)
+        } if isinstance(advertised_events, list) else set()
+        missing = [f"component:{value}" for value in components if value not in component_set]
+        missing.extend(f"keyboard_shortcut:{value}" for value in keyboard_shortcuts if value not in shortcut_set)
+        missing.extend(f"button_feature:{value}" for value in button_features if value not in button_feature_set)
+        missing.extend(f"scene_feature:{value}" for value in scene_features if value not in scene_feature_set)
+        missing.extend(f"window_property:{value}" for value in window_properties if value not in window_property_set)
+        missing.extend(f"event:{value}" for value in event_types if value not in event_type_set)
+        if missing:
+            raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
+
+    async def subscribe_events(self, world_id: str, types: tuple[str, ...]) -> dict[str, Any]:
+        """Subscribe to connection-scoped window state events for an already joined world."""
+        self.require_capabilities(event_types=types)
+        return await self.call("event.subscribe", {"world_id": world_id, "types": list(types)})
+
+    async def unsubscribe_events(self, subscription_id: str) -> dict[str, Any]:
+        """Cancel a subscription; it also disappears automatically when this session ends."""
+        return await self.call("event.unsubscribe", {"subscription_id": subscription_id})
 
     async def mutate(self, method: str, world_id: str, lease: dict[str, Any], **payload: Any) -> dict[str, Any]:
         """Only retry explicit revision rejection, never a timeout or native failure."""

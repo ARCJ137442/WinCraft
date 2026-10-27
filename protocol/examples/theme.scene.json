@@ -1,0 +1,29 @@
+{
+  "root": {
+    "id": "root",
+    "kind": "stack",
+    "props": {
+      "gap": 12
+    },
+    "children": [
+      {
+        "id": "title",
+        "kind": "text",
+        "props": {
+          "text": "Theme fixture",
+          "size": "heading"
+        },
+        "children": []
+      }
+    ]
+  },
+  "data": {},
+  "theme": {
+    "background": "#111827",
+    "foreground": "#F9FAFB",
+    "accent": "#67E8F9",
+    "font_scale": 1.0,
+    "radius_px": 12,
+    "spacing_px": 12
+  }
+}

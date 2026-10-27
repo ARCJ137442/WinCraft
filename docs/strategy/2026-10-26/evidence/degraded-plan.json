@@ -1,0 +1,30 @@
+{
+  "kind": "wincraft.plan.draft",
+  "schema_version": "draft-2026-10-26",
+  "pack_id": "wincraft.workday",
+  "inventory_generation": 8,
+  "input_digest": "422da9bc4f15f40f64a8fc69534b3a818e67918869aa499b5ca467edaeedc7f4",
+  "created_at": "2026-10-26T12:00:10Z",
+  "expires_at": "2026-10-26T12:01:00Z",
+  "status": "degraded",
+  "mutates_host": false,
+  "requires_confirmation": true,
+  "bindings": [
+    {
+      "binding_id": "agents",
+      "provider_instance_id": "board-1",
+      "status": "selected",
+      "reason": "unique_eligible_provider"
+    },
+    {
+      "binding_id": "metrics",
+      "provider_instance_id": null,
+      "status": "missing",
+      "reason": "no_online_fresh_authorized_compatible_provider"
+    }
+  ],
+  "blockers": [],
+  "warnings": [
+    "metrics:missing"
+  ]
+}

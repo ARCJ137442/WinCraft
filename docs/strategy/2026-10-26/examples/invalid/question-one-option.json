@@ -1,0 +1,28 @@
+{
+  "kind": "wincraft.ephemeral-request.draft",
+  "schema_version": "draft-2026-10-26",
+  "request_id": "question-example",
+  "origin_instance_id": "fixture-cli",
+  "locale": "zh-CN",
+  "expires_at": "2026-10-26T12:30:00Z",
+  "payload": {
+    "title": "选择工作方式（合成示例）",
+    "questions": [
+      {
+        "id": "mode",
+        "header": "工作方式",
+        "question": "本轮应以哪种方式展示进展？",
+        "options": [
+          {
+            "label": "保留紧凑视图",
+            "description": "只显示当前任务与状态。",
+            "preview": "不会打开额外窗口，详细内容由你主动展开。",
+            "recommended": true
+          }
+        ],
+        "multiSelect": false
+      }
+    ]
+  },
+  "output_mode": "summary"
+}

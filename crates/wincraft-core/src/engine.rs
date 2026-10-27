@@ -49,9 +49,15 @@ impl Engine {
     }
     pub fn list(&self, session: Uuid) -> Result<Vec<WorldSummary>> {
         self.session(session)?;
+        let operator = self.operator(session);
         Ok(self
             .worlds
             .values()
+            .filter(|world| {
+                operator
+                    || world.readers.contains_key(&session)
+                    || (!world.system && world.join_policy == JoinPolicy::OpenAuthenticated)
+            })
             .map(|w| {
                 let sid = w.writer.as_ref().map(|x| x.session);
                 WorldSummary {
@@ -379,11 +385,13 @@ impl Engine {
         w.window.visible = true;
         w.window.click_through = false;
         w.window.geometry_control = GeometryControl::Human;
+        w.window.anchor = None;
         w.window.title_bar_visible = true;
         w.window.text_selectable = true;
         w.window.position = None;
         w.window.resizable = true;
         w.window.surface_opacity = 1.0;
+        w.window.background_drag_enabled = true;
         w.window_revision += 1;
         w.native = NativeReport::default();
         w.touch();
@@ -470,6 +478,89 @@ impl Engine {
         expected_revision: u64,
         now: u64,
     ) -> Result<(Uuid, UiEvent)> {
+        self.interact_with_source(
+            id,
+            node_id,
+            value,
+            if context_action {
+                InteractionSource::ContextMenu
+            } else {
+                InteractionSource::Click
+            },
+            expected_revision,
+            now,
+        )
+    }
+    pub fn native_window_action(
+        &self,
+        id: Uuid,
+        node_id: &str,
+        source: InteractionSource,
+        expected_revision: u64,
+        now: u64,
+    ) -> Result<Option<NativeWindowAction>> {
+        if source != InteractionSource::Click {
+            return Ok(None);
+        }
+        let world = self
+            .worlds
+            .get(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::revision(world, expected_revision)?;
+        let node = world
+            .scene
+            .root
+            .find(node_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+        if node.kind != Kind::Button {
+            return Err(Fault::new(
+                "FORBIDDEN",
+                "native focus is only valid on buttons",
+            ));
+        }
+        let Some(action) = node.props.get("native_window_action") else {
+            return Ok(None);
+        };
+        if world
+            .writer
+            .as_ref()
+            .filter(|lease| lease.expires_at > now)
+            .is_none()
+        {
+            return Err(Fault::new("OFFLINE", "no active writer"));
+        }
+        let disabled = node
+            .props
+            .get("disabled")
+            .map(|value| {
+                if let Some(path) = value.get("$path").and_then(Value::as_str) {
+                    world
+                        .scene
+                        .data
+                        .pointer(path)
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false)
+                } else {
+                    value.as_bool().unwrap_or(false)
+                }
+            })
+            .unwrap_or(false);
+        if disabled {
+            return Err(Fault::new("FORBIDDEN", "component disabled"));
+        }
+        let action = serde_json::from_value(action.clone())
+            .map_err(|_| Fault::new("INVALID_SCENE", "invalid native window action"))?;
+        Ok(Some(action))
+    }
+    pub fn interact_with_source(
+        &mut self,
+        id: Uuid,
+        node_id: &str,
+        value: Value,
+        source: InteractionSource,
+        expected_revision: u64,
+        now: u64,
+    ) -> Result<(Uuid, UiEvent)> {
         let w = self
             .worlds
             .get_mut(&id)
@@ -486,8 +577,24 @@ impl Engine {
             .root
             .find(node_id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
-        if !node.kind.interactive() {
+        let key_value_action = node.kind == Kind::KeyValue
+            && node.props.get("action").and_then(Value::as_str).is_some();
+        if !node.kind.interactive() && !key_value_action {
             return Err(Fault::new("FORBIDDEN", "component is not interactive"));
+        }
+        if node.kind == Kind::KeyValue {
+            let key = value
+                .as_object()
+                .filter(|record| record.len() == 1)
+                .and_then(|record| record.get("key"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if source != InteractionSource::Click || key.is_empty() || key.chars().count() > 64 {
+                return Err(Fault::new(
+                    "INVALID_EVENT",
+                    "key_value action must be a click with one bounded row key",
+                ));
+            }
         }
         let disabled = node
             .props
@@ -508,11 +615,16 @@ impl Engine {
             return Err(Fault::new("FORBIDDEN", "component disabled"));
         }
         match node.kind {
-            Kind::Input => {
-                if !value.is_string() || value.as_str().unwrap().len() > 4096 {
+            Kind::Input | Kind::TextArea => {
+                let max_bytes = if node.kind == Kind::TextArea {
+                    32_768
+                } else {
+                    4_096
+                };
+                if !value.is_string() || value.as_str().unwrap().len() > max_bytes {
                     return Err(Fault::new(
                         "INVALID_EVENT",
-                        "input must be at most 4096 UTF-8 bytes",
+                        format!("text input must be at most {max_bytes} UTF-8 bytes"),
                     ));
                 }
             }
@@ -521,12 +633,31 @@ impl Engine {
                     return Err(Fault::new("INVALID_EVENT", "button carries null value"));
                 }
             }
+            Kind::KeyValue => {}
             _ => unreachable!(),
         }
-        let action_property = if context_action {
-            "context_action"
-        } else {
-            "action"
+        let action_property = match source {
+            InteractionSource::Click => "action",
+            InteractionSource::ContextMenu => "context_action",
+            InteractionSource::Escape => {
+                if node.kind != Kind::Button
+                    || node.props.get("shortcut").and_then(Value::as_str) != Some("escape")
+                {
+                    return Err(Fault::new("FORBIDDEN", "Escape action is not registered"));
+                }
+                "shortcut_action"
+            }
+            InteractionSource::ControlEnter => {
+                if node.kind != Kind::TextArea
+                    || node.props.get("shortcut").and_then(Value::as_str) != Some("ctrl_enter")
+                {
+                    return Err(Fault::new(
+                        "FORBIDDEN",
+                        "Ctrl+Enter action is not registered",
+                    ));
+                }
+                "shortcut_action"
+            }
         };
         let action = node
             .props

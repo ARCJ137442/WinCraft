@@ -1,0 +1,172 @@
+---
+{
+  "doc_id": "plan__ACCEPTANCE",
+  "title": "验收矩阵（生成视图）",
+  "updated_at": "2026-10-27",
+  "last_verified_at": "2026-10-26",
+  "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+  "protocol_baseline": "0.3",
+  "status": "generated-view",
+  "audience": "maintainer, Luna",
+  "owner_role": "WinCraft maintainers",
+  "review_trigger": "实现、协议、权限、依赖或用户决定发生变化时",
+  "source_ids": [
+    "U-LATEST",
+    "W-BASELINE"
+  ]
+}
+---
+
+# 验收矩阵（生成视图）
+
+用例定义来自tasks.json；执行结果仅在acceptance.json记录，代码基线改变须重新验证。
+
+| 用例 | 任务 | 层级 | 条件 | 状态 |
+|---|---|---|---|---|
+| B00-01-A1 | B00-01 | L0-L4 | 基线/锁文件/环境可复现且未覆盖工作区 | PASS |
+| B00-01-A2 | B00-01 | L0-L4 | 旧链路实际结果逐项记录；无环境维持NOT_RUN | PASS |
+| B00-01-A3 | B00-01 | L0-L4 | 已有功能不重复立项 | PASS |
+| B00-02-A1 | B00-02 | L0 | 每条需求可追到owner_doc/任务/用例 | PASS |
+| B00-02-A2 | B00-02 | L0 | 无许可、仓库归属或技术名称变更 | PASS |
+| B00-02-A3 | B00-02 | L0 | 私有技能摘要进入公开提交前被单独审查 | PASS |
+| B00-03-A1 | B00-03 | L0 | 来源身份/版本/核验日期可查 | PASS |
+| B00-03-A2 | B00-03 | L0 | 未核实接口不会出现在真实集成PASS列表 | PASS |
+| B00-03-A3 | B00-03 | L0 | 第三方文档的可用性不等于本机已经安装 | PASS |
+| B00-04-A1 | B00-04 | L0 | 每个阻塞有范围/解除条件且不阻塞无关任务 | PASS |
+| B00-04-A2 | B00-04 | L0 | 不把路线批准转成远程推送/真实数据读取授权 | PASS |
+| B01-01-A1 | B01-01 | L1-L2 | 旧0.3客户端通过原路径工作或收到明确且有文档的迁移错误 | PASS |
+| B01-01-A2 | B01-01 | L1-L2 | 协商未支持能力不伪成功 | PASS |
+| B01-01-A3 | B01-01 | L1-L2 | 新增可选能力不意外赋权 | PASS |
+| B01-02-A1 | B01-02 | L1-L2 | 重复撤销幂等且不影响其他session | PASS |
+| B01-02-A2 | B01-02 | L1-L2 | 新会话不能复用旧资源句柄 | PASS |
+| B01-02-A3 | B01-02 | L1-L2 | 注册/撤销不会执行第三方宿主代码 | PASS |
+| B01-03-A1 | B01-03 | L1-L2 | 发现结果不包含token/lease/完整业务数据 | PASS |
+| B01-03-A2 | B01-03 | L1-L2 | 相同显示名的两个实例不会合并 | PASS |
+| B01-03-A3 | B01-03 | L1-L2 | offline/stale/unauthorized可区分 | PASS |
+| B01-04-A1 | B01-04 | L1-L2 | 同一fixture在Schema/SDK/真实服务结果一致 | PASS |
+| B01-04-A2 | B01-04 | L1-L2 | 动态操作保持未修改节点身份与输入草稿 | PASS |
+| B01-04-A3 | B01-04 | L1-L2 | 错误日志不包含凭据或业务正文 | PASS |
+| B02-01-A1 | B02-01 | L1-L4 | 缺失翻译回退且标记，布局无溢出 | PASS |
+| B02-01-A2 | B02-01 | L1-L4 | 协议ID/操作名在语言切换后稳定 | PASS |
+| B02-01-A3 | B02-01 | L1-L4 | 原始用户文本不被自动翻译 | PASS |
+| B02-02-A1 | B02-02 | L1-L4 | 来源风格可表达且不能伪装系统授权条 | PASS |
+| B02-02-A2 | B02-02 | L1-L4 | 高对比/放大/减少动画生效 | NOT_RUN |
+| B02-02-A3 | B02-02 | L1-L4 | 无效主题回退，不影响租约或数据 | PASS |
+| B02-03-A1 | B02-03 | L1-L4 | 新用户可完成建窗/改字/按钮/主题/发现课程 | NOT_RUN |
+| B02-03-A2 | B02-03 | L1-L4 | 教程fixture不接真实用户数据 | PASS |
+| B02-03-A3 | B02-03 | L1-L4 | 外部Provider不能冒充内部管理器取得operator权限 | PASS |
+| B02-04-A1 | B02-04 | L3-L4 | 可只用键盘提交并取消，不困住焦点 | NOT_RUN |
+| B02-04-A2 | B02-04 | L3-L4 | 来源更新不打断IME或覆盖草稿 | NOT_RUN |
+| B02-04-A3 | B02-04 | L3-L4 | DOM通过不替代UIA和原生验收 | PASS |
+| B03-01-A1 | B03-01 | L1-L2 | 原输入正反fixture一致；默认stdout摘要、--json结构不变 | PASS |
+| B03-01-A2 | B03-01 | L1-L2 | 关闭/ESC/取消按原reason返回，不当error | PASS |
+| B03-01-A3 | B03-01 | L1-L2 | 普通10秒action ack不终止等待人类的问题 | PASS |
+| B03-02-A1 | B03-02 | L2-L5 | 成功/取消/窗口关闭/来源退出/宿主退出均有确定结果或明确未知结果 | NOT_RUN |
+| B03-02-A2 | B03-02 | L2-L5 | 同一请求不因重试重复提交业务 | NOT_RUN |
+| B03-02-A3 | B03-02 | L2-L5 | 并发多个问题有配额与可发现入口，不强抢焦点 | NOT_RUN |
+| B03-02-A4 | B03-02 | L2-L5 | 成功提交销毁本次临时世界；下一次请求以新world与lease复用最近一次可读的原生位置/尺寸，未观测位置不得猜测 | NOT_RUN |
+| B03-02-A5 | B03-02 | L2-L5 | 选择后Tab直接进入备注；Ctrl+Enter连同当前备注草稿提交，方向键/读屏仍能完成选项操作 | NOT_RUN |
+| B03-03-A1 | B03-03 | L0-L5 | 发起和批准不互相混用，参数/权限单独校验 | NOT_RUN |
+| B03-03-A2 | B03-03 | L0-L5 | 只有合成fixture时明确标mock | NOT_RUN |
+| B03-03-A3 | B03-03 | L0-L5 | 真实API未定位只阻塞真实适配不阻塞通用交互 | NOT_RUN |
+| B03-04-A1 | B03-04 | L2-L5 | 兼容层不改变既有Skill启用和提问权限 | NOT_RUN |
+| B03-04-A2 | B03-04 | L2-L5 | 实际release等待超10秒仍可提交 | NOT_RUN |
+| B03-04-A3 | B03-04 | L2-L5 | 上游契约未核验部分保持BLOCKED而非猜测 | NOT_RUN |
+| B04-01-A1 | B04-01 | L1-L2 | 高频几何可合并到最新态，不能承诺每帧不丢 | PASS |
+| B04-01-A2 | B04-01 | L1-L2 | 读者订阅不会取得写权 | PASS |
+| B04-01-A3 | B04-01 | L1-L2 | 慢消费者重同步/断开可解释，重复事件不循环触发动作 | PASS |
+| B04-02-A1 | B04-02 | L1-L4 | 切显示器/DPI变化后位置可恢复 | PARTIAL（核心锚点换算/工作区夹取测试 PASS；Tauri ScaleFactorChanged 重新应用已接线；真实多显示器/DPI UI NOT_RUN） |
+| B04-02-A2 | B04-02 | L1-L4 | 用户接管立即停自动运动 | NOT_RUN |
+| B04-02-A3 | B04-02 | L1-L4 | Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。 | PASS（服务层模拟 OS 拒绝；真实 Windows 路径 NOT_RUN） |
+| B04-02-A4 | B04-02 | L1-L4 | 仅原生host宣告 external_window_actions；应用ID/操作/title filter严格allowlist且有界；headless拒绝，disabled/stale/revoked按钮不执行 | PASS |
+| B04-02-A5 | B04-02 | L1-L4 | 真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执 | NOT_RUN |
+| B04-03-A1 | B04-03 | L1-L4 | 冲突注册失败不占用他人热键 | PASS（core intent registry；真实 OS registration NOT_RUN） |
+| B04-03-A2 | B04-03 | L1-L4 | 断线/撤销/退出后无残留绑定 | PASS（session revoke/unregister core tests；native adapter cleanup NOT_RUN） |
+| B04-03-A3 | B04-03 | L1-L4 | IME/输入框/平台组合键不被默认破坏 | NOT_RUN（尚未接入 OS keyboard hook/RegisterHotKey） |
+| B04-04-A1 | B04-04 | L2-L5 | 可以复现一项实际工作流而非只弹空窗 | NOT_RUN |
+| B04-04-A2 | B04-04 | L2-L5 | 无法实现的功能不标等价 | NOT_RUN |
+| B04-04-A3 | B04-04 | L2-L5 | 不复制未审许可源码进Host | NOT_RUN |
+| B05-01-A1 | B05-01 | L1-L5 | 任意网页不能拿到token或直接调用Host | NOT_RUN |
+| B05-01-A2 | B05-01 | L1-L5 | 保留现有Origin拒绝策略 | NOT_RUN |
+| B05-01-A3 | B05-01 | L1-L5 | 桥接断开后来源stale而非继续显示实时 | NOT_RUN |
+| B05-02-A1 | B05-02 | L0-L5 | 账号/提供商/窗口期不同数据不混算 | NOT_RUN |
+| B05-02-A2 | B05-02 | L0-L5 | 数据过期和断线清晰 | NOT_RUN |
+| B05-02-A3 | B05-02 | L0-L5 | 真实接口未定位时只有合成演示，不改TeamSense | NOT_RUN |
+| B05-03-A1 | B05-03 | L1-L5 | 不承诺任意网页一键变原生APP | NOT_RUN |
+| B05-03-A2 | B05-03 | L1-L5 | 页面关闭/导航后错误地绑定旧对话被拒绝 | NOT_RUN |
+| B05-03-A3 | B05-03 | L1-L5 | 用户发送内容有可见预览和回执，无法验证时返回unknown | NOT_RUN |
+| B05-04-A1 | B05-04 | L3-L5 | 未授权时没有麦克风活动 | PASS（schema/fixture contract only；真实 microphone NOT_RUN） |
+| B05-04-A2 | B05-04 | L3-L5 | 取消/设备失联后释放资源 | IMPLEMENTED_UNVERIFIED（state contract；native cleanup NOT_RUN） |
+| B05-04-A3 | B05-04 | L3-L5 | 识别结果不自动成为系统命令或批准 | PASS（schema requires user_confirmed; native UI NOT_RUN） |
+| B06-01-A1 | B06-01 | L1-L2 | 包不包含提供者二进制/descriptor/lease | NOT_RUN |
+| B06-01-A2 | B06-01 | L1-L2 | 缺少Provider是可解释需求而非安装指令 | NOT_RUN |
+| B06-01-A3 | B06-01 | L1-L2 | 读取恶意路径/未知字段失败且未执行文件 | NOT_RUN |
+| B06-02-A1 | B06-02 | L0-L2 | 同输入同计划，缺失必选block/可选degrade | NOT_RUN |
+| B06-02-A2 | B06-02 | L0-L2 | 两个同等来源不会任意选一个 | NOT_RUN |
+| B06-02-A3 | B06-02 | L0-L2 | 适配程序不能通过计划扩大权限或读取全机 | NOT_RUN |
+| B06-03-A1 | B06-03 | L1-L4 | 环境变化使旧计划失效并重新规划 | PARTIAL（planner generation/digest/expiry guard PASS；runtime submit/replan NOT_RUN） |
+| B06-03-A2 | B06-03 | L1-L4 | 导入取消不会清空既有世界 | NOT_RUN（runtime import/preview 未实现） |
+| B06-03-A3 | B06-03 | L1-L4 | 失败报告部分成功与清理结果，不造假回滚 | NOT_RUN（resource ledger/rollback 未实现） |
+| B06-04-A1 | B06-04 | L0-L5 | 没有预装Provider的新机器不会自动运行下载代码 | NOT_RUN |
+| B06-04-A2 | B06-04 | L0-L5 | 分享内容不含原机路径/密钥/私有标题 | NOT_RUN |
+| B06-04-A3 | B06-04 | L0-L5 | 使用者可解释每个缺失区域及其替代方案 | NOT_RUN |
+| B07-01-A1 | B07-01 | L1-L2 | 两个不相交子树可独立更新 | NOT_RUN |
+| B07-01-A2 | B07-01 | L1-L2 | 旧0.3整窗writer与子树writer模式不可非法混用 | NOT_RUN |
+| B07-01-A3 | B07-01 | L1-L2 | 读者不能取得可写别名或其他scope私有数据 | NOT_RUN |
+| B07-02-A1 | B07-02 | L1-L2 | 不能把无权节点移动进自有子树偷取 | NOT_RUN |
+| B07-02-A2 | B07-02 | L1-L2 | 跨子树失败整批不部分提交 | NOT_RUN |
+| B07-02-A3 | B07-02 | L1-L2 | 父撤销后任何旧子lease写入被拒绝 | NOT_RUN |
+| B07-03-A1 | B07-03 | L1-L2 | 竞争CAS一方失败可诊断且无丢失更新 | NOT_RUN |
+| B07-03-A2 | B07-03 | L1-L2 | Arc式共享不绕过权限与可变规则 | NOT_RUN |
+| B07-03-A3 | B07-03 | L1-L2 | 慢或崩溃参与者不会锁住整个UI | NOT_RUN |
+| B07-04-A1 | B07-04 | L1-L5 | 多写者只在互不重叠权限域成立 | NOT_RUN |
+| B07-04-A2 | B07-04 | L1-L5 | 任何序列不产生无owner可变资源 | NOT_RUN |
+| B07-04-A3 | B07-04 | L1-L5 | 真实来源失败不会改变其他区域业务状态 | NOT_RUN |
+| B08-01-A1 | B08-01 | L1-L2 | 断线不是任务完成或空闲 | NOT_RUN |
+| B08-01-A2 | B08-01 | L1-L2 | 模型名/显示名不作身份 | NOT_RUN |
+| B08-01-A3 | B08-01 | L1-L2 | 只读面板没有批准/写文件/继续执行权限 | NOT_RUN |
+| B08-02-A1 | B08-02 | L2-L5 | 两种真实来源可同看且来源证据分开 | NOT_RUN |
+| B08-02-A2 | B08-02 | L2-L5 | 不把全部任意既有CLI会话假定可枚举 | NOT_RUN |
+| B08-02-A3 | B08-02 | L2-L5 | 适配失败仅对应来源stale | NOT_RUN |
+| B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | NOT_RUN |
+| B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | NOT_RUN |
+| B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | NOT_RUN |
+| B08-04-A1 | B08-04 | L2-L5 | 显示任务不自动具备批准权限 | NOT_RUN |
+| B08-04-A2 | B08-04 | L2-L5 | 批准前显示具体操作与来源，token不在卡片中 | NOT_RUN |
+| B08-04-A3 | B08-04 | L2-L5 | 网络超时只读回结果，不盲重放副作用 | NOT_RUN |
+| B09-01-A1 | B09-01 | L1-L2 | 重复消息不增加待办数 | NOT_RUN |
+| B09-01-A2 | B09-01 | L1-L2 | 过期/撤销内容不继续可操作 | NOT_RUN |
+| B09-01-A3 | B09-01 | L1-L2 | 网络中继声明不自动成为来源身份 | NOT_RUN |
+| B09-02-A1 | B09-02 | L5-L6 | 未授权应用通知不被读取或上传 | NOT_RUN |
+| B09-02-A2 | B09-02 | L5-L6 | 摘要带来源时间与不确定性 | NOT_RUN |
+| B09-02-A3 | B09-02 | L5-L6 | 用户撤销后停止监听与后续转发 | NOT_RUN |
+| B09-03-A1 | B09-03 | L1-L6 | 能够显示用户场景：若干Agent等待与一条联系人待回复，并注明模拟/真实 | NOT_RUN |
+| B09-03-A2 | B09-03 | L1-L6 | 去重以来源身份而非文本近似 | NOT_RUN |
+| B09-03-A3 | B09-03 | L1-L6 | 通知正文中的指令不能授予执行权限 | NOT_RUN |
+| B09-04-A1 | B09-04 | L1-L6 | 不宣称BLE/USB/热点全部贯通 | NOT_RUN |
+| B09-04-A2 | B09-04 | L1-L6 | relay可能读内容时明确说明，不能冒充端到端加密 | NOT_RUN |
+| B09-04-A3 | B09-04 | L1-L6 | 日志无真实消息正文和凭据 | NOT_RUN |
+| B10-01-A1 | B10-01 | L2-L5 | 原型可用且没有ERP业务进入Core | NOT_RUN |
+| B10-01-A2 | B10-01 | L2-L5 | 来源替换不要求Host专用补丁 | NOT_RUN |
+| B10-01-A3 | B10-01 | L2-L5 | 未经证据不宣称独立APP等价完成 | NOT_RUN |
+| B10-02-A1 | B10-02 | L0-L5 | 毕业无需复制WinCraft内核或剥离业务数据库 | NOT_RUN |
+| B10-02-A2 | B10-02 | L0-L5 | 既有许可与来源边界不被擅改 | NOT_RUN |
+| B10-02-A3 | B10-02 | L0-L5 | 用户可停止使用Host而不失去业务记录 | NOT_RUN |
+| B10-03-A1 | B10-03 | L1-L4 | 部分OS操作失败可观察，不假装全组原子 | NOT_RUN |
+| B10-03-A2 | B10-03 | L1-L4 | 减少动画/关闭/救援可用 | NOT_RUN |
+| B10-03-A3 | B10-03 | L1-L4 | 任何捕获排除仅用户启用且不承诺保密 | NOT_RUN |
+| B10-04-A1 | B10-04 | L5 | 来源、构建、连接、错误恢复均可由外部作者复现 | NOT_RUN |
+| B10-04-A2 | B10-04 | L5 | 同一组件/配方被第二个场景复用 | NOT_RUN |
+| B10-04-A3 | B10-04 | L5 | 指标如实记录，不虚构社区用户或需求规模 | NOT_RUN |
+| B11-01-A1 | B11-01 | L1-L5 | 每次测量带机器/版本/负载而非泛称轻量 | PARTIAL（docs/performance.md 定义测量字段；campaign NOT_RUN） |
+| B11-01-A2 | B11-01 | L1-L5 | 无资源持续泄漏趋势或明确阻塞发布 | NOT_RUN |
+| B11-01-A3 | B11-01 | L1-L5 | 未测性能不写宣传数字 | PASS（release-gate/performance docs enforce no unmeasured claims） |
+| B11-02-A1 | B11-02 | L4-L5 | 发布声明只含实测能力 | PARTIAL（release-gate.md；最终发布人工门 NOT_RUN） |
+| B11-02-A2 | B11-02 | L4-L5 | 隐藏不销毁与原生minimize语义没有混淆 | NOT_RUN |
+| B11-02-A3 | B11-02 | L4-L5 | 取消/退出后无残留hotkey/窗口/授权资源 | NOT_RUN |
+| B11-03-A1 | B11-03 | L6 | Tauri编译成功不等于原生交互等价 | PASS（capability-matrix.md explicitly separates native validation） |
+| B11-03-A2 | B11-03 | L6 | 跨平台Capability如实报告 | PASS（macOS/Linux remain NOT_RUN/unsupported in matrix） |
+| B11-03-A3 | B11-03 | L6 | 不会为迁移破坏Windows现有契约 | PARTIAL（core/protocol unchanged by matrix; non-Windows migration NOT_RUN） |
+| B11-04-A1 | B11-04 | L0-L6 | 无擅自重许可/定名/归属迁移 | PASS（governance-release-checklist preserves license/name boundary） |
+| B11-04-A2 | B11-04 | L0-L6 | 未获发布授权仅生成材料不发Release | PASS（publication boundary documented; no release/push performed） |
+| B11-04-A3 | B11-04 | L0-L6 | 公众文档可读且适用版本/更新时间明确 | PARTIAL（release/governance docs present; final public release NOT_RUN） |

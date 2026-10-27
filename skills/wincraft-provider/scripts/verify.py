@@ -8,9 +8,14 @@ from pathlib import Path
 
 REQUIRED_PATHS = (
     "docs/protocol.md",
+    "protocol/theme.schema.json",
+    "protocol/examples/theme.scene.json",
+    "protocol/examples/theme.request.json",
     "examples/python/client.py",
     "examples/python/focus_demo.py",
+    "examples/python/provider_tutorial.py",
     "examples/python/lease_probe.py",
+    "examples/python/theme_demo.py",
     "examples/python/trafficmonitor_provider.py",
     "examples/python/obsidian-workspace.py",
     "examples/trafficmonitor/wincraft_bridge.cpp",
@@ -19,10 +24,15 @@ REQUIRED_PATHS = (
     "examples/trafficmonitor/configure_staged_copy.py",
     "apps/desktop/src-tauri/src/main.rs",
     "skills/wincraft-provider/references/trafficmonitor.md",
+    "skills/wincraft-provider/references/theme.md",
+    "apps/desktop/src/accessibility.ts",
 )
 
 
 def main() -> int:
+    if len(REQUIRED_PATHS) != len(set(REQUIRED_PATHS)):
+        print("FAIL: repository reference list contains duplicates")
+        return 1
     skill_dir = Path(__file__).resolve().parents[1]
     repo_root = skill_dir.parents[1]
     skill_file = skill_dir / "SKILL.md"
@@ -49,6 +59,21 @@ def main() -> int:
         return 1
     if "--open-manager" not in content or "--open-manager" not in desktop_source:
         print("FAIL: manager startup guidance does not match the desktop CLI flag")
+        return 1
+    lesson_titles = (
+        "看见第一个世界",
+        "搭一块会变的方块",
+        "与程序对话",
+        "换一个自己的外观",
+        "发现与加入是两件事",
+    )
+    tutorial = (repo_root / "examples/python/provider_tutorial.py").read_text(encoding="utf-8")
+    missing_lessons = [title for title in lesson_titles if title not in tutorial]
+    if missing_lessons:
+        print(f"FAIL: provider tutorial is missing lessons: {', '.join(missing_lessons)}")
+        return 1
+    if "examples/python/provider_tutorial.py" not in content:
+        print("FAIL: skill does not link the guided provider tutorial")
         return 1
     print(f"PASS: {len(REQUIRED_PATHS)} repository references exist")
     return 0

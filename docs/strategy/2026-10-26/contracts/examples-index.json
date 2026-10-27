@@ -1,0 +1,107 @@
+{
+  "updated_at": "2026-10-26",
+  "cases": [
+    {
+      "path": "examples/packs/workday.pack.json",
+      "schema": "pack",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/packs/blueprints/workday.json",
+      "schema": "blueprint",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/inventory/full.json",
+      "schema": "inventory",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/inventory/optional-missing.json",
+      "schema": "inventory",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/inventory/required-missing.json",
+      "schema": "inventory",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/inventory/ambiguous.json",
+      "schema": "inventory",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/inventory/no-grant.json",
+      "schema": "inventory",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/theme/calm.json",
+      "schema": "theme",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/activity/needs-human.json",
+      "schema": "activity",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/ephemeral/question.json",
+      "schema": "ephemeral-request",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/device/notification-summary.json",
+      "schema": "device-message",
+      "expected_valid": true,
+      "reason": ""
+    },
+    {
+      "path": "examples/invalid/pack-with-token.json",
+      "schema": "pack",
+      "expected_valid": false,
+      "reason": "配置包不能含凭据字段，测试值非真实token。"
+    },
+    {
+      "path": "examples/invalid/pack-with-provider.json",
+      "schema": "pack",
+      "expected_valid": false,
+      "reason": "不承载提供者二进制。"
+    },
+    {
+      "path": "examples/invalid/inventory-extra-field.json",
+      "schema": "inventory",
+      "expected_valid": false,
+      "reason": "未声明元数据字段拒绝。"
+    },
+    {
+      "path": "examples/invalid/theme-css.json",
+      "schema": "theme",
+      "expected_valid": false,
+      "reason": "不是CSS注入通道。"
+    },
+    {
+      "path": "examples/invalid/question-one-option.json",
+      "schema": "ephemeral-request",
+      "expected_valid": false,
+      "reason": "至少两个预设选项。"
+    },
+    {
+      "path": "examples/plans/full.plan.json",
+      "schema": "resolution-plan",
+      "expected_valid": true,
+      "reason": ""
+    }
+  ]
+}

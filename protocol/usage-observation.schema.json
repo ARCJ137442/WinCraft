@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:usage-observation:0.1",
+  "title": "WinCraft read-only usage observation draft",
+  "type": "object",
+  "properties": {
+    "provider_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "account_scope": {"type": "string", "minLength": 1, "maxLength": 256},
+    "window": {"type": "string", "minLength": 1, "maxLength": 128},
+    "metric": {"type": "string", "enum": ["requests", "tokens", "credits", "unknown"]},
+    "used": {"type": ["number", "null"], "minimum": 0},
+    "limit": {"type": ["number", "null"], "minimum": 0},
+    "unit": {"type": ["string", "null"], "maxLength": 32},
+    "reset_at": {"type": ["string", "null"], "format": "date-time"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "freshness": {"type": "string", "enum": ["fresh", "stale", "disconnected", "unknown"]},
+    "authority": {"type": "string", "enum": ["provider", "estimated", "unknown"]}
+  },
+  "required": ["provider_id", "account_scope", "window", "metric", "used", "limit", "unit", "reset_at", "observed_at", "freshness", "authority"],
+  "additionalProperties": false
+}

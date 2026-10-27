@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-27",
+  "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
+  "protocol_baseline": null,
+  "source": "docs/strategy/2026-10-26/plan/status.json",
+  "summary": [
+    {
+      "status": "BLOCKED",
+      "count": 3,
+      "tasks": "B03-03, B04-04, B05-01"
+    },
+    {
+      "status": "IMPLEMENTED_UNVERIFIED",
+      "count": 11,
+      "tasks": "B01-03, B02-02, B02-03, B02-04, B04-03, B05-02, B05-03, B05-04, B06-01, B06-02, B06-04"
+    },
+    {
+      "status": "IN_PROGRESS",
+      "count": 2,
+      "tasks": "B03-02, B04-02"
+    },
+    {
+      "status": "VERIFIED",
+      "count": 10,
+      "tasks": "B00-01, B00-02, B00-03, B00-04, B01-01, B01-02, B01-04, B02-01, B03-01, B04-01"
+    },
+    {
+      "status": "NOT_STARTED",
+      "count": 21,
+      "tasks": "B03-04, B07-01..B11-04"
+    }
+  ],
+  "decision": "Do not mark NOT_STARTED tasks green from design prose. B03-03 remains BLOCKED because SysTorch endpoint/profile/token are unavailable. B03-02 and B04-02 have automated evidence plus explicit native/manual gates. All remaining batches require separate implementation and acceptance.",
+  "verified_evidence": {
+    "B00-B02": "docs/engineering/VALIDATION.md and workspace/Node/Python/schema evidence",
+    "B04-01": "evidence/local/nextgen-2026-10-27/window-events-b04-01.json and final headless lease_probe",
+    "B04-02": "evidence/local/nextgen-2026-10-27/work-area-anchor-20261027.json and native-window action evidence",
+    "provider-guides": "docs/provider-journey.md, skills/wincraft-provider/"
+  },
+  "manual_gates": [
+    "Tauri release tray manager open/focus",
+    "global hide/show",
+    "Obsidian Workspace title activation",
+    "Popup success/cancel/position reuse/keyboard/IME/UIA",
+    "multi-monitor and DPI pixel behavior",
+    "monitor detach migration",
+    "click-through rescue",
+    "graceful tray Exit"
+  ],
+  "blocked_or_external": [
+    "B03-03 SysTorch: actual runtime address and managed caller token unavailable",
+    "B04-04 TouchAI: only README reference available; fixed source commit, runtime, license/permission boundary and user authorization missing",
+    "B05-01 Browser Native Messaging: extension ID, host manifest, pairing authorization and real browser source missing",
+    "B05-02 TeamSense: usage observation schema is drafted with synthetic fixtures, but real TeamSense API/schema/authorization is not located",
+    "B05-03 Web chat: semantic observation schema is drafted with synthetic fixtures, but no authorized browser source/adapter is integrated",
+    "B05-04 Voice: one-shot voice session schema is drafted with synthetic fixtures, but Windows API/device/language and authorization are not tested",
+    "B06-01 Configuration packs: draft schema and positive/negative fixtures are offline-validated; runtime import/migration/rollback/new-machine execution is not implemented",
+    "B06-02 Adaptive planner: deterministic/fail-closed synthetic behavior is verified; no runtime inventory discovery or adapter execution is implemented",
+    "B06-04 New-machine packs: five synthetic inventory outcomes and secret/path absence are verified; real second-machine migration/import/rollback is not implemented",
+    "B05/B08/B09 external browser/Harness/Android sources and authorization not integrated",
+    "B11 macOS/Linux and release signing environment not available",
+    "B06-03 runtime submit/resource ledger/rollback remain absent; pure submission eligibility guard is verified",
+    "B11-01 performance: measurement protocol documented, but controlled native process/resource/long-run/sleep-wake campaign and thresholds are not run",
+    "B11-02 release gate: consolidated claims boundary exists, but final isolated release native/manual W/R gates remain NOT_RUN",
+    "B11-03 platform matrix documented; macOS/Linux X11/Wayland builds and native validation remain NOT_RUN",
+    "B11-04 governance checklist documented; release publication/signing/permission approval remain absent"
+  ],
+  "next_sequence": [
+    "Complete current-release human gates in one Windows session",
+    "If gates pass, close B03-02 and B04-02 acceptance rows",
+    "Then implement B04-03 authorized shortcuts",
+    "Re-audit dependencies before B04-04 and B05"
+  ]
+}

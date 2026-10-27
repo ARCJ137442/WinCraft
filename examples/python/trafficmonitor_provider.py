@@ -76,7 +76,7 @@ def make_view_data(
     stale = age > stale_after_seconds
     sampled = datetime.fromtimestamp(metrics["sampled_at_ms"] / 1000).strftime("%H:%M:%S")
     result: dict[str, Any] = {
-        "status": source_error or ("数据已过期" if stale else "TrafficMonitor 在线"),
+        "status": source_error or ("数据已过期" if stale else ""),
         "app_version": metrics.get("app_version") or "未知版本",
         "sample_time": f"采样于 {sampled} · {age} 秒前",
         "age_seconds": age,

@@ -24,7 +24,7 @@
 
 2026-10-26 本机只下载并暂存作者发布的 `V1.86 x64 Lite` 二进制包；没有替换 `Program/Tool` 中原有安装。Gitee 作者仓库的 [V1.86 发布页](https://gitee.com/zhongyang219/TrafficMonitor/releases)列出 x64 Lite；[GitHub release asset 清单](https://github.com/zhongyang219/TrafficMonitor/releases/expanded_assets/V1.86)公布 SHA-256 `d9774a64268f952b5cb88a1eead399f863f7d4ab64e945f19c096fed89cc1145`，本机 Gitee 下载哈希与之匹配。包内不含 `TrafficMonitor.sys`、`OpenHardwareMonitorApi.dll` 或 `LibreHardwareMonitorLib.dll`。
 
-以 V1.86 标签的 [`TrafficMonitorDlg.cpp`](https://gitee.com/zhongyang219/TrafficMonitor/blob/V1.86/TrafficMonitor/TrafficMonitorDlg.cpp) 和插件接口头文件为准：主程序周期调用 `DataRequired()`，随后以 `OnMonitorInfo(MonitorInfo)` 传入上下行、CPU、内存和 GPU 读数。桥接因此从该回调生成本地快照，不依赖未必可用的 `OnInitialize` API 指针。实现/验收见 `examples/trafficmonitor/wincraft_bridge.cpp` 与 `evidence/local/validation-matrix.md`。
+以 V1.86 标签的 [`TrafficMonitorDlg.cpp`](https://gitee.com/zhongyang219/TrafficMonitor/blob/V1.86/TrafficMonitor/TrafficMonitorDlg.cpp) 和插件接口头文件为准：主程序周期调用 `DataRequired()`，随后以 `OnMonitorInfo(MonitorInfo)` 传入上下行、CPU、内存和 GPU 读数。桥接因此从该回调生成本地快照，不依赖未必可用的 `OnInitialize` API 指针。实现见 `examples/trafficmonitor/wincraft_bridge.cpp`；实测状态见 [`docs/engineering/VALIDATION.md`](../engineering/VALIDATION.md) 与默认忽略的本机证据目录。
 
 ## 官方技术资料
 

@@ -3,6 +3,14 @@
   "$id": "urn:wincraft:protocol:0.3",
   "title": "WinCraft 0.3 provider requests",
   "$defs": {
+    "Binding": {
+      "type": "object",
+      "properties": {
+        "$path": {"type": "string", "maxLength": 256, "pattern": "^(|/.*)$"}
+      },
+      "required": ["$path"],
+      "additionalProperties": false
+    },
     "Node": {
       "oneOf": [
         {
@@ -780,12 +788,73 @@
                       "additionalProperties": false
                     }
                   ]
+                },
+                "appearance": {
+                  "type": "string",
+                  "enum": ["default", "link", "title"]
+                },
+                "native_window_action": {
+                  "type": "object",
+                  "properties": {
+                    "application": {"type": "string", "enum": ["obsidian", "traffic_monitor"]},
+                    "operation": {"type": "string", "enum": ["activate", "minimize", "restore"]},
+                    "title_contains": {"type": "string", "maxLength": 128}
+                  },
+                  "required": ["application", "operation"],
+                  "additionalProperties": false
+                },
+                "shortcut": {
+                  "type": "string",
+                  "enum": [
+                    "escape"
+                  ]
+                },
+                "shortcut_action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "selection_group": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.:-]+$"
+                },
+                "selection_mode": {
+                  "type": "string",
+                  "enum": [
+                    "single",
+                    "multiple"
+                  ]
+                },
+                "pressed": {
+                  "type": "boolean"
                 }
               },
               "required": [
                 "action"
               ],
-              "additionalProperties": false
+              "additionalProperties": false,
+              "dependentRequired": {
+                "shortcut": [
+                  "shortcut_action"
+                ],
+                "shortcut_action": [
+                  "shortcut"
+                ],
+                "selection_group": [
+                  "selection_mode",
+                  "pressed"
+                ],
+                "selection_mode": [
+                  "selection_group",
+                  "pressed"
+                ],
+                "pressed": [
+                  "selection_group",
+                  "selection_mode"
+                ]
+              }
             },
             "children": {
               "type": "array",
@@ -931,6 +1000,33 @@
                       "additionalProperties": false
                     }
                   ]
+                },
+                "submit_label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
                 }
               },
               "required": [
@@ -968,29 +1064,28 @@
                 "items": {
                   "anyOf": [
                     {
-                      "type": [
-                        "string",
-                        "number",
-                        "boolean",
-                        "null",
-                        "array"
-                      ]
+                      "type": "array",
+                      "maxItems": 64,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {"anyOf": [{"type": ["string", "number", "boolean", "null"]}, {"$ref": "#/$defs/Binding"}]},
+                          "value": {"anyOf": [{"type": ["string", "number", "boolean", "null"]}, {"$ref": "#/$defs/Binding"}]},
+                          "secondary": {"anyOf": [{"type": ["string", "number", "boolean", "null"]}, {"$ref": "#/$defs/Binding"}]},
+                          "icon": {"type": "string", "enum": ["pin", "link", "external", "clock", "check"]},
+                          "tone": {"type": "string", "enum": ["normal", "muted", "accent", "success", "warning", "danger"]}
+                        },
+                        "required": ["key", "value"],
+                        "additionalProperties": false
+                      }
                     },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "$path": {
-                          "type": "string",
-                          "maxLength": 256,
-                          "pattern": "^(|/.*)$"
-                        }
-                      },
-                      "required": [
-                        "$path"
-                      ],
-                      "additionalProperties": false
-                    }
+                    {"$ref": "#/$defs/Binding"}
                   ]
+                },
+                "action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
                 }
               },
               "required": [],
@@ -1005,6 +1100,68 @@
             "id",
             "kind"
           ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {"const": "icon"},
+            "props": {
+              "type": "object",
+              "properties": {
+                "name": {"type": "string", "enum": ["pin", "link", "external", "clock", "check"]},
+                "label": {"type": "string", "maxLength": 80},
+                "tone": {"type": "string", "enum": ["normal", "muted", "accent", "success", "warning", "danger"]}
+              },
+              "required": ["name"],
+              "additionalProperties": false
+            },
+            "children": {"type": "array", "maxItems": 0}
+          },
+          "required": ["id", "kind", "props"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_.:-]+$"},
+            "kind": {"const": "bar_chart"},
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {"anyOf": [{"type": "string"}, {"$ref": "#/$defs/Binding"}]},
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "maxItems": 8,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {"type": "string", "maxLength": 80},
+                          "value": {"type": "number", "minimum": 0, "maximum": 1000000},
+                          "tone": {"type": "string", "enum": ["normal", "muted", "accent", "success", "warning", "danger"]}
+                        },
+                        "required": ["label", "value"],
+                        "additionalProperties": false
+                      }
+                    },
+                    {"$ref": "#/$defs/Binding"}
+                  ]
+                }
+              },
+              "required": ["label", "items"],
+              "additionalProperties": false
+            },
+            "children": {"type": "array", "maxItems": 0}
+          },
+          "required": ["id", "kind", "props"],
           "additionalProperties": false
         },
         {
@@ -1035,6 +1192,203 @@
             "kind"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_.:-]+$"
+            },
+            "kind": {
+              "const": "textarea"
+            },
+            "props": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "context_action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "placeholder": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "disabled": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "submit_label": {
+                  "anyOf": [
+                    {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null",
+                        "array"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "$path": {
+                          "type": "string",
+                          "maxLength": 256,
+                          "pattern": "^(|/.*)$"
+                        }
+                      },
+                      "required": [
+                        "$path"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "shortcut": {
+                  "type": "string",
+                  "enum": [
+                    "ctrl_enter"
+                  ]
+                },
+                "shortcut_action": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": false,
+              "dependentRequired": {
+                "shortcut": [
+                  "shortcut_action"
+                ],
+                "shortcut_action": [
+                  "shortcut"
+                ]
+              }
+            },
+            "children": {
+              "type": "array",
+              "maxItems": 0
+            }
+          },
+          "required": [
+            "id",
+            "kind",
+            "props"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -1044,7 +1398,10 @@
         "root": {
           "$ref": "#/$defs/Node"
         },
-        "data": {}
+        "data": {},
+        "theme": {
+          "$ref": "urn:wincraft:theme:0.3"
+        }
       },
       "required": [
         "root"
@@ -1069,6 +1426,16 @@
         "x",
         "y"
       ],
+      "additionalProperties": false
+    },
+    "WorkAreaAnchor": {
+      "type": "object",
+      "properties": {
+        "corner": {"enum": ["top_left", "top_right", "bottom_left", "bottom_right"]},
+        "margin_x": {"type": "number", "minimum": 0, "maximum": 10000},
+        "margin_y": {"type": "number", "minimum": 0, "maximum": 10000}
+      },
+      "required": ["corner", "margin_x", "margin_y"],
       "additionalProperties": false
     },
     "Lease": {
@@ -1103,7 +1470,7 @@
         },
         "height": {
           "type": "number",
-          "minimum": 80,
+          "minimum": 50,
           "maximum": 1800
         },
         "position": {
@@ -1116,6 +1483,7 @@
             }
           ]
         },
+        "anchor": {"anyOf": [{"$ref": "#/$defs/WorkAreaAnchor"}, {"type": "null"}]},
         "geometry_control": {
           "enum": [
             "provider",
@@ -1137,6 +1505,10 @@
           "type": "boolean"
         },
         "title_bar_visible": {
+          "type": "boolean",
+          "default": true
+        },
+        "background_drag_enabled": {
           "type": "boolean",
           "default": true
         },
@@ -1171,7 +1543,7 @@
         },
         "height": {
           "type": "number",
-          "minimum": 80,
+          "minimum": 50,
           "maximum": 1800
         },
         "position": {
@@ -1184,6 +1556,7 @@
             }
           ]
         },
+        "anchor": {"$ref": "#/$defs/WorkAreaAnchor"},
         "geometry_control": {
           "enum": [
             "provider",
@@ -1205,6 +1578,9 @@
           "type": "boolean"
         },
         "title_bar_visible": {
+          "type": "boolean"
+        },
+        "background_drag_enabled": {
           "type": "boolean"
         },
         "text_selectable": {
@@ -1933,6 +2309,47 @@
         "method",
         "params"
       ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "method": {"const": "event.subscribe"},
+        "params": {
+          "type": "object",
+          "properties": {
+            "world_id": {"type": "string", "format": "uuid"},
+            "types": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "items": {"type": "string", "enum": ["window.geometry_changed", "window.visibility_changed"]}
+            }
+          },
+          "required": ["world_id", "types"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "method": {"const": "event.unsubscribe"},
+        "params": {
+          "type": "object",
+          "properties": {
+            "subscription_id": {"type": "string", "format": "uuid"}
+          },
+          "required": ["subscription_id"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["id", "method", "params"],
       "additionalProperties": false
     }
   ]
