@@ -199,6 +199,8 @@ struct FitEntry {
     user_resized: bool,
     last_fitted_height: Option<f64>,
     expected_heights: Vec<(f64, Instant)>,
+    expanded_size: Option<(f64, f64)>,
+    collapsed_size: Option<(f64, f64)>,
 }
 
 impl ContentFitState {
@@ -295,6 +297,48 @@ impl ContentFitState {
             entries.remove(&id);
         });
     }
+
+    pub fn set_collapsed_size(
+        &self,
+        id: Uuid,
+        expanded_size: (f64, f64),
+        collapsed_size: (f64, f64),
+    ) {
+        self.with_entries(|entries| {
+            let entry = entries.entry(id).or_default();
+            if entry.collapsed_size.is_none() {
+                entry.expanded_size = Some(expanded_size);
+            }
+            entry.collapsed_size = Some(collapsed_size);
+        });
+    }
+
+    pub fn collapsed_size(&self, id: Uuid) -> Option<(f64, f64)> {
+        self.with_entries(|entries| entries.get(&id).and_then(|entry| entry.collapsed_size))
+    }
+
+    pub fn restore_expanded_size(&self, id: Uuid) -> Option<(f64, f64)> {
+        self.with_entries(|entries| {
+            let entry = entries.get_mut(&id)?;
+            entry.collapsed_size.take()?;
+            entry.expanded_size.take()
+        })
+    }
+
+    pub fn update_expanded_size(&self, id: Uuid, size: (f64, f64)) {
+        self.with_entries(|entries| {
+            if let Some(entry) = entries.get_mut(&id) {
+                if entry.collapsed_size.is_some() {
+                    entry.expanded_size = Some(size);
+                }
+            }
+        });
+    }
+}
+
+pub fn bounded_content_width(requested: f64, work_area_width: f64) -> f64 {
+    let maximum = work_area_width.clamp(160.0, 2_400.0);
+    requested.clamp(160.0, maximum)
 }
 
 pub fn bounded_content_height(requested: f64, screen_height: f64) -> f64 {
@@ -751,18 +795,26 @@ fn make_window(
                 handle.inner_size(),
                 handle.scale_factor(),
             ) {
+                let (width, height) = if fit_for_event.collapsed_size(id).is_some() {
+                    hub.renderer_snapshot(id)
+                        .map(|snapshot| (snapshot.window.width, snapshot.window.height))
+                        .unwrap_or((
+                            f64::from(size.width) / scale,
+                            f64::from(size.height) / scale,
+                        ))
+                } else {
+                    (
+                        f64::from(size.width) / scale,
+                        f64::from(size.height) / scale,
+                    )
+                };
                 let source = if matches!(event, tauri::WindowEvent::ScaleFactorChanged { .. }) {
                     EventSource::System
                 } else {
                     EventSource::Human
                 };
                 let _ = hub.apply_state_change(id, source, None, |core| {
-                    Ok(core.observe_geometry(
-                        id,
-                        Position { x: p.x, y: p.y },
-                        f64::from(size.width) / scale,
-                        f64::from(size.height) / scale,
-                    ))
+                    Ok(core.observe_geometry(id, Position { x: p.x, y: p.y }, width, height))
                 });
             }
         }
@@ -885,8 +937,14 @@ fn apply(
     native!(
         w.set_resizable(s.window.resizable && s.window.geometry_control == GeometryControl::Human)
     );
-    content_fit.expect_height(s.id, s.window.height);
-    native!(w.set_size(LogicalSize::new(s.window.width, s.window.height)));
+    if s.window.geometry_control == GeometryControl::Provider {
+        content_fit.update_expanded_size(s.id, (s.window.width, s.window.height));
+    }
+    let (width, height) = content_fit
+        .collapsed_size(s.id)
+        .unwrap_or((s.window.width, s.window.height));
+    content_fit.expect_height(s.id, height);
+    native!(w.set_size(LogicalSize::new(width, height)));
     place_visible(app, w, s)?;
     native!(w.set_ignore_cursor_events(s.window.click_through));
     if s.window.visible && !tray_visibility.should_temporarily_hide(s.id, true) {
@@ -1077,6 +1135,38 @@ mod content_fit_tests {
         assert_eq!(bounded_content_height(2_000.0, 3_000.0), 1_800.0);
         assert_eq!(bounded_content_height(51.0, 60.0), 51.0);
         assert_eq!(bounded_content_height(20.0, 600.0), 50.0);
+    }
+
+    #[test]
+    fn content_width_is_bounded_by_protocol_and_work_area() {
+        assert_eq!(bounded_content_width(120.0, 1_000.0), 160.0);
+        assert_eq!(bounded_content_width(300.0, 1_000.0), 300.0);
+        assert_eq!(bounded_content_width(3_000.0, 1_000.0), 1_000.0);
+        assert_eq!(bounded_content_width(2_800.0, 3_000.0), 2_400.0);
+    }
+
+    #[test]
+    fn collapsed_window_restores_its_expanded_size_after_a_compact_update() {
+        let fit = ContentFitState::default();
+        let id = Uuid::new_v4();
+        fit.register(id, GeometryControl::Human, 600.0);
+        fit.set_collapsed_size(id, (480.0, 600.0), (236.0, 50.0));
+        fit.set_collapsed_size(id, (480.0, 600.0), (248.0, 50.0));
+
+        assert_eq!(fit.collapsed_size(id), Some((248.0, 50.0)));
+        assert_eq!(fit.restore_expanded_size(id), Some((480.0, 600.0)));
+        assert_eq!(fit.collapsed_size(id), None);
+    }
+
+    #[test]
+    fn provider_size_changes_while_collapsed_become_the_restored_size() {
+        let fit = ContentFitState::default();
+        let id = Uuid::new_v4();
+        fit.register(id, GeometryControl::Provider, 600.0);
+        fit.set_collapsed_size(id, (480.0, 600.0), (236.0, 50.0));
+        fit.update_expanded_size(id, (520.0, 720.0));
+
+        assert_eq!(fit.restore_expanded_size(id), Some((520.0, 720.0)));
     }
 
     #[test]

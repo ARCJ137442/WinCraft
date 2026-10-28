@@ -25,7 +25,7 @@
 | GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
 | 原生人工门 | PARTIAL | UIA 树可读出管理器/教程窗口 role、名称、状态与动作；manager 中英切换已实际操作并恢复。Computer Use 对 tutorial 窗口两次恢复后仍报 `failed to activate captured window`；隐藏/找回、Popup Tab→备注→Ctrl+Enter/Escape、IME/屏幕阅读器、多 DPI、休眠恢复和穿透救援仍未完成人工验收 |
-| ExoMind | BLOCKED（用户暂缓） | 未读取连接信息、未猜端口/档案、未调用 API |
+| ExoMind | PARTIAL（真实档案只读联调） | `exomind-monitor` 脚本自动发现本机 RT/profile；只读快照确认当前时间块，`exomind_readonly.py` 从真实 GET 接口投影到 WinCraft 并报告来源读取成功。未调用外心写 API；当前 runtime 版本与技能记录的构建哈希不同；本轮没有保存档案 ID、任务内容或截图 |
 
 shutdown 版 release 为 `E:/tmp/wincraft-nextgen-lifecycle-20261026/release/wincraft-desktop.exe`，11,438,080 字节，SHA-256 `6216eaedb720e8fe5e710baaf9539dc1925fe6cde102f62c2e71876a228d7403`。它当前以 PID 41616 运行。旧 PID 48464 在正常关闭请求后仅隐藏到托盘，之后按准确 exe 路径结束；PID 58140 和 31256 为清理/替换临时提供者而结束，PID 58680 更早已结束。旧进程可能留下本地 runtime descriptor；一次删除尝试被本机策略拒绝，未读取或写入 descriptor 内容；headless 测试 runtime 均在 shutdown 后为空。
 
@@ -273,3 +273,26 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。单独运行结果为 **34 tests passed**，覆盖：full/optional/required/no-grant/ambiguous inventory、显式选择、过期/陈旧来源、未来时钟、重复身份、provider contract 版本、输入不变性、digest 稳定性、pack secret/path traversal、adapter 不执行、resolution plan schema，以及验收标准改变/显式 reset 后旧结果失效。
 
 这组结果为 B06-02 和 B06-03-A1 的纯规划证据：inventory generation/digest/expiry 变化会使旧计划不可直接复用。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
+
+## 2026-10-28 标题栏轴线与折叠尺寸
+
+标题栏品牌、最小化和关闭图标改为内联 SVG，固定 viewBox 与尺寸，CSS 让图形盒和标题共享 48 px 标题栏的垂直中轴。折叠尺寸采用独立的本机展示覆盖：收起时按标题栏内容测量宽度、按可见内容测量高度；展开恢复收起前尺寸。临时 compact size 不覆盖提供者或用户保存的展开尺寸。`docs/engineering/ACCEPTANCE.md` 的 W23 已纳入 SVG 中轴与折叠宽高标准。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `npm run check` | PASS | 27 项 UI 测试、离线契约与交接包检查通过；含 icon-vector/中轴布局、折叠宽度边界测试。|
+| `cargo fmt --all -- --check` | PASS | exit 0。|
+| `cargo test -p wincraft-desktop --no-fail-fast` | PASS | 17 tests passed；新增折叠尺寸恢复、provider 尺寸变化和工作区宽度上限测试。|
+| `cargo clippy -p wincraft-desktop --all-targets -- -D warnings` | PASS | exit 0。|
+| 独立 release 构建 | PASS（build） | `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`，11,793,408 bytes，SHA-256 `1175191A6CB51E1542E31A125BDE5F018E94F1A885BCB1387F30A9449B19A633`。|
+| 折叠高度原生观察 | PASS（前一版 build） | 真实外心只读投影窗口从 480×1104 收到 480×50，标题栏高度通过；最新含宽度恢复的合并 build 尚未复测这个尺寸。|
+| 折叠宽度原生观察 | NOT_RUN | Computer Use 两次点击管理器均命中 Edge 覆盖窗（point 2199,416），激活并刷新后仍未发出目标点击；不记为通过。|
+| 展开恢复与中轴像素检查 | NOT_RUN | Rust 状态回归、静态 SVG/CSS 测试通过；最新合并 build 的原生展开恢复和像素中心线仍待 UI 自动化成功或人工检查。|
+
+## 2026-10-28 ExoMind 真实档案只读联调
+
+用户明确授权当前档案研究后，使用 `exomind-monitor` 的 `get-config.js` 自动选择本机运行的 ExoMind RT，并以配置的 profile 发起只读 `monitor.js snapshot`。一次快照为 active/running、未暂停；稍后快照为 active/paused。两个结果都只读取时间块状态，没有调用 start/stop/end/pause/resume、任务写入或 eventlog 写入接口。RT 报告 0.3.0、git hash `dbca9432`、build 2026-08-24，与技能记录的 0.3.0 / `d7fedac` / 2026-04-22 不同，需持续注意该版本差异。
+
+`examples/python/exomind_readonly.py` 使用当前配置的实际 RT/profile，通过 `GET /timeblocks/active` 连接 WinCraft release；UIA 可观察到来源读取成功和真实字段投影。未把 profile ID、时间块标题/正文、运行时描述文件或截图写入证据。此为单字段只读桥接 PASS；更完整的 ExoMind 工作台复刻由独立观察任务继续，WinCraft 内部映射和写能力未实现。
+
+脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。

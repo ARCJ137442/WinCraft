@@ -54,17 +54,25 @@ mod capability_tests {
                 "root",
                 Kind::Stack,
                 json!({}),
-                vec![Node::new(
-                    "activate-app",
-                    Kind::Button,
-                    json!({
-                        "label":"Activate app",
-                        "action":"app.activate",
-                        "context_action":"app.context",
-                        "native_window_action":{"application":"obsidian","operation":"activate"}
-                    }),
-                    vec![],
-                )],
+                vec![
+                    Node::new(
+                        "activate-app",
+                        Kind::Button,
+                        json!({
+                            "label":"Activate app",
+                            "action":"app.activate",
+                            "context_action":"app.context",
+                            "native_window_action":{"application":"obsidian","operation":"activate"}
+                        }),
+                        vec![],
+                    ),
+                    Node::new(
+                        "note-input",
+                        Kind::Input,
+                        json!({"label":"Message","action":"message.submit"}),
+                        vec![],
+                    ),
+                ],
             ),
             ..Scene::default()
         };
@@ -231,6 +239,37 @@ mod capability_tests {
                 |_| panic!("context gestures must not execute a click-only host action"),
             )
             .unwrap();
+        assert!(!event_id.is_nil());
+        assert!(matches!(
+            notices.try_recv(),
+            Ok(super::Notice::Directed(
+                target_session,
+                ref message
+            )) if target_session == session && message["event"] == "interaction"
+        ));
+        let snapshot = native.renderer_snapshot(world_id).unwrap();
+        assert_eq!(snapshot.actions.len(), 1);
+        assert_eq!(snapshot.actions[0].status, "pending");
+        native.disconnect(session);
+    }
+
+    #[test]
+    fn ordinary_input_action_is_not_rejected_by_native_window_action_guard() {
+        let native = Hub::new(true);
+        let (session, world_id, _lease, revision) = native_action_world(&native);
+        let mut notices = native.subscribe();
+
+        let event_id = native
+            .interact_with_source_with_native_window_action(
+                world_id,
+                "note-input",
+                json!("synthetic input"),
+                InteractionSource::Click,
+                revision,
+                |_| panic!("ordinary inputs do not request native window actions"),
+            )
+            .expect("ordinary input interaction should reach the provider");
+
         assert!(!event_id.is_nil());
         assert!(matches!(
             notices.try_recv(),

@@ -166,6 +166,113 @@ fn surface_minimize(
 }
 
 #[tauri::command]
+fn surface_content_size(
+    window: WebviewWindow,
+    content_fit: tauri::State<'_, windows::ContentFitState>,
+    collapsed: bool,
+    width: Option<f64>,
+    height: Option<f64>,
+) -> Result<(), Fault> {
+    let id = caller_world(&window)?;
+    let current_size = window
+        .inner_size()
+        .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+    let scale = window
+        .scale_factor()
+        .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+
+    let target_size = if collapsed {
+        let width = width.ok_or_else(|| {
+            Fault::new(
+                "INVALID_CONTENT_SIZE",
+                "collapsed titlebar width is required",
+            )
+        })?;
+        let height = height.ok_or_else(|| {
+            Fault::new(
+                "INVALID_CONTENT_SIZE",
+                "collapsed titlebar height is required",
+            )
+        })?;
+        if !width.is_finite()
+            || !(0.0..=10_000.0).contains(&width)
+            || !height.is_finite()
+            || !(0.0..=10_000.0).contains(&height)
+        {
+            return Err(Fault::new(
+                "INVALID_CONTENT_SIZE",
+                "collapsed content size must be finite and bounded",
+            ));
+        }
+
+        let monitor = window
+            .current_monitor()
+            .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+        let work_area = monitor.as_ref().map(|value| value.work_area());
+        let work_width = work_area
+            .as_ref()
+            .map(|area| f64::from(area.size.width) / scale)
+            .unwrap_or(2_400.0);
+        let work_height = work_area
+            .as_ref()
+            .map(|area| f64::from(area.size.height) / scale)
+            .unwrap_or(1_800.0);
+        let target = (
+            windows::bounded_content_width(width, work_width),
+            windows::bounded_content_height(height, work_height),
+        );
+        content_fit.set_collapsed_size(
+            id,
+            (
+                f64::from(current_size.width) / scale,
+                f64::from(current_size.height) / scale,
+            ),
+            target,
+        );
+        target
+    } else {
+        let Some(expanded) = content_fit.restore_expanded_size(id) else {
+            return Ok(());
+        };
+        expanded
+    };
+
+    content_fit.expect_height(id, target_size.1);
+    window
+        .set_size(LogicalSize::new(target_size.0, target_size.1))
+        .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+
+    let monitor = window
+        .current_monitor()
+        .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+    let work_area = monitor.as_ref().map(|monitor| monitor.work_area());
+    if let (Some(area), Ok(position)) = (work_area, window.outer_position()) {
+        let target_width = (target_size.0 * scale).ceil() as i32;
+        let target_height = (target_size.1 * scale).ceil() as i32;
+        let work_right = area.position.x.saturating_add(area.size.width as i32);
+        let work_bottom = area.position.y.saturating_add(area.size.height as i32);
+        let x = if position.x.saturating_add(target_width) > work_right {
+            work_right.saturating_sub(target_width).max(area.position.x)
+        } else {
+            position.x
+        };
+        let y = if position.y.saturating_add(target_height) > work_bottom {
+            work_bottom
+                .saturating_sub(target_height)
+                .max(area.position.y)
+        } else {
+            position.y
+        };
+        if (x, y) != (position.x, position.y) {
+            window
+                .set_position(PhysicalPosition::new(x, y))
+                .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn surface_content_height(
     window: WebviewWindow,
     state: tauri::State<'_, DesktopState>,
@@ -246,6 +353,7 @@ fn main() {
             surface_drag,
             surface_close,
             surface_minimize,
+            surface_content_size,
             surface_content_height
         ])
         .setup(move |app| {

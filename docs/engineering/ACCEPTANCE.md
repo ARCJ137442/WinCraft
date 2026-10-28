@@ -58,7 +58,7 @@
 | W20 | 固定/隐藏标题栏与 click-through 配置 | 滚动场景后标题栏仍固定；默认标题栏显示、click-through 关闭；provider 可分别切换两项并从 snapshot 观察；标题栏隐藏或穿透启用时，管理器接管恢复本地操作 |
 | W21 | 窗口文本选取默认值 | provider 可从 snapshot 读取 `text_selectable=true`，通过 `window.configure` 关闭/恢复；窗口内容遵循默认值，组件样式可覆盖，标题栏始终不可选；旧协议版本被严格拒绝 |
 | W22 | 托盘全局临时隐藏/显示 | 隐藏当前逻辑可见的窗口但不销毁 world、不改变 lease/`window.visible`；提供者在隐藏期间创建的窗口也保持隐藏；“显示全部”只恢复仍逻辑可见的窗口；再次打开管理器能聚焦已有 manager |
-| W23 | 标题栏单击折叠与拖动 | 单击标题区域（移动小于 5px）只折叠/展开内容；拖动超过阈值移动窗口；内容折叠时窗口高度随 renderer 实际内容收敛，展开后继续适配 |
+| W23 | 标题栏图标、折叠与拖动 | 标题栏品牌/最小化/关闭图标为 SVG 并与标题共用垂直中轴；单击标题区域（移动小于 5px）只折叠/展开；折叠后原生窗口收敛到标题栏所需宽高，不留大块空白；展开恢复折叠前宽度并继续按内容适配高度；拖动超过阈值才移动窗口 |
 | W24 | 健康状态降噪与恢复提示 | `online` host 行与空的健康 provider badge 隐藏；`stale`、`vacant`、来源暂停/过期/错误仍可见且可访问 |
 | W25 | 无标题栏 Obsidian Workspace HUD | `Obsidian Workspace` provider 以 `--hide-titlebar` 创建无自定义标题栏世界；内容、拖动/穿透恢复路径、托盘全局隐藏/显示仍符合相应能力与权限边界 |
 | W26 | Windows 虚拟桌面范围 | 默认只在当前桌面；provider 可显式请求所有桌面；若平台未实现请求必须明确报告 unsupported，不能把 Tauri no-op 记作通过。当前 Windows 公共 Tauri/tao API 不支持，整体保持未实现 |

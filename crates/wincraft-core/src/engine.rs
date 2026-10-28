@@ -512,15 +512,15 @@ impl Engine {
             .root
             .find(node_id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+        let Some(action) = node.props.get("native_window_action") else {
+            return Ok(None);
+        };
         if node.kind != Kind::Button {
             return Err(Fault::new(
                 "FORBIDDEN",
                 "native focus is only valid on buttons",
             ));
         }
-        let Some(action) = node.props.get("native_window_action") else {
-            return Ok(None);
-        };
         if world
             .writer
             .as_ref()

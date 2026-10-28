@@ -4,7 +4,7 @@ import {SceneRenderer} from './renderer.js';
 import {demoSnapshot,previewController} from './demo.js';
 import {initializeAccessibility} from './accessibility.js';
 import {getLocale,initializeLocale,setLocale,t} from './i18n.js';
-import {shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from './window_behavior.js';
+import {normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from './window_behavior.js';
 
 initializeAccessibility();
 initializeLocale();
@@ -15,6 +15,10 @@ const statusLine=status.parentElement as HTMLElement;
 const title=document.getElementById('title')!;
 title.textContent=t('status.startup');
 const dragBar=document.getElementById('drag')!;
+const chrome=document.getElementById('chrome')!;
+const brandMark=dragBar.querySelector<SVGSVGElement>('.brand-mark')!;
+const minimizeButton=document.getElementById('minimize')!;
+const closeButton=document.getElementById('close')!;
 const errors=document.getElementById('error')!;
 const actionStatus=document.getElementById('action-status')!;
 const preview=document.getElementById('preview')!;
@@ -26,6 +30,7 @@ let actionId:string|null=null;
 let actionFeedback:ActionFeedback|null=null;
 let fitFrame=0;
 let lastMeasuredHeight=0;
+let lastMeasuredCollapsedWidth=0;
 let contentCollapsed=false;
 let titlebarPointer:{pointerId:number;x:number;y:number;dragStarted:boolean}|null=null;
 const renderActionStatus=(snapshot:Snapshot|null=current):void=>{
@@ -70,8 +75,10 @@ function contentHeight():number {
   const frameStyle=getComputedStyle(frame);
   let height=(parseFloat(frameStyle.borderTopWidth)||0)+(parseFloat(frameStyle.borderBottomWidth)||0);
   for(const child of children){
-    if(child.hidden||getComputedStyle(child).display==='none')continue;
     const style=getComputedStyle(child);
+    if(child.hidden||style.display==='none')continue;
+    // Screen-reader-only nodes use clipped boxes and negative margins; they do not occupy visible window height.
+    if(child.classList.contains('sr-only'))continue;
     const margins=(parseFloat(style.marginTop)||0)+(parseFloat(style.marginBottom)||0);
     if(child===mount){
       const root=mount.firstElementChild as HTMLElement|null;
@@ -84,14 +91,40 @@ function contentHeight():number {
   }
   return Math.ceil(height);
 }
+function compactTitlebarWidth():number {
+  const frameStyle=getComputedStyle(frame);
+  const chromeStyle=getComputedStyle(chrome);
+  const dragStyle=getComputedStyle(dragBar);
+  const horizontalPadding=(parseFloat(chromeStyle.paddingLeft)||0)+(parseFloat(chromeStyle.paddingRight)||0);
+  const frameBorders=(parseFloat(frameStyle.borderLeftWidth)||0)+(parseFloat(frameStyle.borderRightWidth)||0);
+  const dragGap=parseFloat(dragStyle.columnGap||dragStyle.gap)||0;
+  const titleWidth=Math.max(title.scrollWidth,title.getBoundingClientRect().width);
+  return Math.ceil(frameBorders+horizontalPadding+brandMark.getBoundingClientRect().width+dragGap+titleWidth
+    +minimizeButton.getBoundingClientRect().width+closeButton.getBoundingClientRect().width);
+}
 function scheduleContentFit(force=false):void {
   if(!window.__TAURI__)return;
   if(fitFrame)cancelAnimationFrame(fitFrame);
   fitFrame=requestAnimationFrame(()=>{
     fitFrame=requestAnimationFrame(()=>{
       fitFrame=0;
-      const height=contentHeight();
-      if(!Number.isFinite(height)||height<80||height>10000||Math.abs(height-lastMeasuredHeight)<1)return;
+      const height=normalizeNativeContentHeight(contentHeight());
+      if(height===null)return;
+      if(contentCollapsed){
+        const width=normalizeNativeContentWidth(compactTitlebarWidth());
+        if(width===null||(!force&&Math.abs(height-lastMeasuredHeight)<1&&Math.abs(width-lastMeasuredCollapsedWidth)<1))return;
+        lastMeasuredHeight=height;lastMeasuredCollapsedWidth=width;
+        void window.__TAURI__!.core.invoke('surface_content_size',{collapsed:true,width,height}).catch(report);
+        return;
+      }
+      if(force){
+        lastMeasuredHeight=height;lastMeasuredCollapsedWidth=0;
+        void window.__TAURI__!.core.invoke('surface_content_size',{collapsed:false,width:null,height:null})
+          .then(()=>window.__TAURI__!.core.invoke('surface_content_height',{height,force:true}))
+          .catch(report);
+        return;
+      }
+      if(Math.abs(height-lastMeasuredHeight)<1)return;
       lastMeasuredHeight=height;
       void window.__TAURI__!.core.invoke('surface_content_height',{height,force}).catch(report);
     });
