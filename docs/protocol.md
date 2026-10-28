@@ -134,6 +134,6 @@ FORBIDDEN、WRITE_CONFLICT、STALE_LEASE、LEASE_EXPIRED、OPERATOR_HOLD、REVIS
 
 预览方法、字段与正反 fixture 见 [`protocol/preview-0.4/`](../protocol/preview-0.4/methods.json)。`scope.partition` 需要当前完整 writer、expected revision，且世界只有 partitioning provider 一个读成员；Host 校验子树根和数据命名空间不相交，原 writer 随后被 fencing。它返回单独的 world authority 和每个 scope 的邀请凭证。
 
-`scope.join` 取得指定 scope 的读快照或唯一写租约。`scope.snapshot` 对读者只返回本子树和本数据 namespace；scope-only member 无法读取完整 `world.snapshot`。Scope 写入使用独立 `scope_revision`，不会因另一个 scope 更新而冲突。当前 B07-01 preview 只支持 scope 内 props 更新和本 namespace 数据替换；结构操作与交互路由暂不提供。
+`scope.join` 取得指定 scope 的读快照或唯一写租约。`scope.snapshot` 对读者只返回本子树和本数据 namespace；scope-only member 无法读取完整 `world.snapshot`。Scope 写入使用独立 `scope_revision`，不会因另一个 scope 更新而冲突。B07-02 允许 scope 内原子 `props/insert/remove/replace/move`，并由 root authority 用 `scope.structure.patch` 改未归属布局、完整移动或删除子 scope 边界。跨 scope 搬移仍拒绝；删除会清理 namespace、撤销旧 grant，并以 `scope.revoked` 通知旧成员。读者的实时更新由服务端过滤为 `scope.snapshot` 事件。父 authority 释放、断线、过期或 rescue 会提升子 generation/epoch；旧子 lease 与旧 grant 都不能恢复写权。交互路由和 CAS 状态槽仍未实现。
 
 新方法不等于稳定兼容承诺。未选择 preview 的 0.3 SDK 不应调用 `scope.*`；即使 descriptor 列出 preview，仍需在 SDK 使用前验证 capability。

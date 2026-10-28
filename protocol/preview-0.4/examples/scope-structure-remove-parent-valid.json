@@ -1,0 +1,13 @@
+{
+  "id": "scope-structure-1",
+  "method": "scope.structure.patch",
+  "params": {
+    "world_id": "80000000-0000-4000-8000-000000000001",
+    "authority_lease": {
+      "id": "80000000-0000-4000-8000-000000000004",
+      "epoch": 3
+    },
+    "expected_revision": 12,
+    "ops": [{"op": "remove", "node_id": "focus-panel"}]
+  }
+}

@@ -56,6 +56,20 @@ def scope_scene() -> dict[str, Any]:
     }
 
 
+async def wait_for_scope_revision(
+    client: Client,
+    world_id: str,
+    scope_id: str,
+    minimum_revision: int,
+) -> dict[str, Any]:
+    for _ in range(100):
+        snapshot = client.scope_snapshots.get((world_id, scope_id))
+        if snapshot and snapshot.get("revision", -1) >= minimum_revision:
+            return snapshot
+        await asyncio.sleep(0.05)
+    raise AssertionError("reader did not receive the filtered scope.snapshot update")
+
+
 async def run(runtime: str) -> None:
     async with Client(
         runtime,
@@ -98,12 +112,35 @@ async def run(runtime: str) -> None:
             ):
                 focus_join = await focus.join_scope(world_id, grants["focus-panel"], "write")
                 tasks_join = await tasks.join_scope(world_id, grants["tasks-panel"], "write")
+                reader_join = await reader.join_scope(world_id, grants["focus-panel"], "read")
+                reader_scope_id = str(grants["focus-panel"]["scope_id"])
                 focus_result = await focus.patch_scope(
                     world_id,
                     focus_join["lease"],
                     focus_join["snapshot"]["revision"],
                     [{"op": "props", "node_id": "focus-value", "props": {"text": "focus updated"}}],
                 )
+                focus_structure = await focus.patch_scope(
+                    world_id,
+                    focus_join["lease"],
+                    focus_result["revision"],
+                    [
+                        {
+                            "op": "insert",
+                            "parent": "focus-panel",
+                            "index": 1,
+                            "node": {
+                                "id": "focus-extra",
+                                "kind": "text",
+                                "props": {"text": {"$path": "/value"}},
+                                "children": [],
+                            },
+                        },
+                        {"op": "move", "node_id": "focus-extra", "parent": "focus-panel", "index": 0},
+                    ],
+                )
+                if focus_structure["root"]["children"][0]["id"] != "focus-extra":
+                    raise AssertionError("scope-local insert/move did not update its subtree")
                 tasks_result = await tasks.patch_scope(
                     world_id,
                     tasks_join["lease"],
@@ -113,7 +150,7 @@ async def run(runtime: str) -> None:
                 focus_data = await focus.replace_scope_data(
                     world_id,
                     focus_join["lease"],
-                    focus_result["revision"],
+                    focus_structure["revision"],
                     {"value": "synthetic focus updated"},
                 )
                 tasks_data = await tasks.replace_scope_data(
@@ -122,19 +159,27 @@ async def run(runtime: str) -> None:
                     tasks_result["revision"],
                     {"value": "synthetic tasks updated"},
                 )
-                reader_join = await reader.join_scope(world_id, grants["focus-panel"], "read")
                 projection = reader_join["snapshot"]
                 serialized = str(projection)
                 if projection["root"]["id"] != "focus-panel":
                     raise AssertionError("reader projection does not start at its owned subtree")
-                if projection["data"] != {"value": "synthetic focus updated"}:
+                if projection["data"] != {"value": "synthetic focus"}:
                     raise AssertionError("reader projection did not keep its scoped data namespace")
                 if "tasks-panel" in serialized or "synthetic tasks" in serialized:
                     raise AssertionError("reader projection leaked a sibling scope")
-                if focus_data["revision"] != focus_join["snapshot"]["revision"] + 2:
+                if focus_data["revision"] != focus_join["snapshot"]["revision"] + 3:
                     raise AssertionError("focus scope revision did not advance independently")
                 if tasks_data["revision"] != tasks_join["snapshot"]["revision"] + 2:
                     raise AssertionError("tasks scope revision did not advance independently")
+                live_projection = await wait_for_scope_revision(
+                    reader,
+                    world_id,
+                    reader_scope_id,
+                    focus_data["revision"],
+                )
+                serialized_live = str(live_projection)
+                if "focus-extra" not in serialized_live or "tasks-panel" in serialized_live:
+                    raise AssertionError("live scope.snapshot was not filtered to the reader's scope")
 
                 legacy = Client(runtime, "scope-probe-legacy")
                 async with legacy:
@@ -152,10 +197,36 @@ async def run(runtime: str) -> None:
                     else:
                         raise AssertionError("stable whole-world writer joined a scoped world")
 
+                authority_snapshot = await owner.call("world.snapshot", {"world_id": world_id})
+                await owner.patch_structure(
+                    world_id,
+                    cleanup_lease,
+                    authority_snapshot["revision"],
+                    [{"op": "remove", "node_id": "tasks-panel"}],
+                )
+                while True:
+                    revoked = await asyncio.wait_for(tasks.events.get(), 5)
+                    if revoked.get("event") == "scope.revoked":
+                        if revoked.get("data", {}).get("scope_id") != grants["tasks-panel"]["scope_id"]:
+                            continue
+                        break
+                try:
+                    await tasks.patch_scope(
+                        world_id,
+                        tasks_join["lease"],
+                        tasks_data["revision"],
+                        [{"op": "props", "node_id": "tasks-value", "props": {"text": "must be rejected"}}],
+                    )
+                except RpcError as error:
+                    if error.code != "STALE_SCOPE":
+                        raise
+                else:
+                    raise AssertionError("parent structure removal did not revoke the child scope")
+
                 print(
                     "PASS: real Rust WebSocket scope preview; "
                     f"focus_revision={focus_data['revision']}, tasks_revision={tasks_data['revision']}, "
-                    "sibling data filtered, stable 0.3 writer refused"
+                    "scope-local structure, filtered live snapshots, parent revocation, and stable 0.3 refusal"
                 )
         finally:
             try:

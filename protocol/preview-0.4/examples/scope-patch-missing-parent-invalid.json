@@ -1,0 +1,15 @@
+{
+  "id": "scope-patch-invalid-1",
+  "method": "scope.patch",
+  "params": {
+    "world_id": "80000000-0000-4000-8000-000000000001",
+    "lease": {
+      "scope_id": "80000000-0000-4000-8000-000000000002",
+      "lease_id": "80000000-0000-4000-8000-000000000003",
+      "epoch": 1,
+      "generation": 1
+    },
+    "expected_scope_revision": 4,
+    "ops": [{"op": "move", "node_id": "focus-title", "index": 0}]
+  }
+}

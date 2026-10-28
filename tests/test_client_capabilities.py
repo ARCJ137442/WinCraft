@@ -1,3 +1,4 @@
+import asyncio
 import json
 import sys
 import tempfile
@@ -93,6 +94,88 @@ class CapabilityTests(unittest.TestCase):
             "version": 1,
         }
         client.require_component_leases()
+
+    def test_scope_structure_operations_and_parent_patch_are_capability_gated(self):
+        client = self.client_with({
+            "component_leases": {
+                "status": "preview",
+                "version": 1,
+                "scope_patch_operations": ["props"],
+            }
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.require_component_leases()
+        with self.assertRaisesRegex(RuntimeError, "component_scope_operation:insert"):
+            client.require_capabilities(component_scope_operations=("insert",))
+        with self.assertRaisesRegex(RuntimeError, "root_structure_patch:scope.structure.patch"):
+            client.require_capabilities(root_structure_patch=True)
+
+    def test_scope_patch_does_not_send_unadvertised_structure_operation(self):
+        client = self.client_with({
+            "component_leases": {
+                "status": "preview",
+                "version": 1,
+                "scope_patch_operations": ["props"],
+            }
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        async def unexpected_send(*_args, **_kwargs):
+            raise AssertionError("unadvertised operation reached the transport")
+        client.call = unexpected_send
+
+        with self.assertRaisesRegex(RuntimeError, "component_scope_operation:move"):
+            asyncio.run(client.patch_scope(
+                "world",
+                {"scope_id": "scope", "lease_id": "lease", "epoch": 1, "generation": 1},
+                3,
+                [{"op": "move", "node_id": "source", "parent": "target", "index": 0}],
+            ))
+
+    def test_scope_snapshot_cache_is_monotonic_and_parent_revocation_clears_it(self):
+        client = Client.__new__(Client)
+        client.scope_snapshots = {}
+        client.events = asyncio.Queue()
+        client.pending = {}
+
+        client._remember_scope_snapshot({
+            "world_id": "world",
+            "scope_id": "scope",
+            "generation": 1,
+            "revision": 4,
+            "data": {"value": "current"},
+        })
+        client._remember_scope_snapshot({
+            "world_id": "world",
+            "scope_id": "scope",
+            "generation": 1,
+            "revision": 3,
+            "data": {"value": "stale"},
+        })
+        self.assertEqual(client.scope_snapshots[("world", "scope")]["revision"], 4)
+
+        class FakeSocket:
+            def __init__(self, messages):
+                self.messages = iter(messages)
+
+            def __aiter__(self):
+                return self
+
+            async def __anext__(self):
+                try:
+                    return next(self.messages)
+                except StopIteration:
+                    raise StopAsyncIteration
+
+            async def close(self):
+                return None
+
+        client.socket = FakeSocket([json.dumps({
+            "event": "scope.revoked",
+            "data": {"world_id": "world", "scope_id": "scope", "generation": 2},
+        })])
+        asyncio.run(client._receive())
+        self.assertNotIn(("world", "scope"), client.scope_snapshots)
+        self.assertEqual(client.events.get_nowait()["event"], "scope.revoked")
 
     def test_preview_protocol_must_be_advertised_by_the_runtime_descriptor(self):
         descriptor = {

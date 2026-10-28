@@ -28,6 +28,9 @@
 | P11 | 旧 expected_revision 写入 | REVISION_CONFLICT；客户端先读取，不盲回放未知结果 |
 | P12 | 慢读者、消息超限、超速 | 有限队列/报错/断开；不能静默丢交互后伪称完成 |
 | P13 | 窗口销毁 | 已加入者收到删除；旧 ID 后续 NOT_FOUND |
+| P14 | 0.4-preview scope writer 动态结构 | 同一 scope 内 insert/remove/replace/move/props 逐批原子提交；绑定路径仍限于本 namespace；交互节点、固定 scope root 修改与跨 scope move 被拒；混合批次失败后 scene 和 local revision 不变 |
+| P15 | root authority 父结构事务与撤销 | `scope.structure.patch` 仅触及未归属布局；删除 scope root/祖先时同批移除子 scope/data namespace、发出 `scope.revoked`，旧子 lease 写被拒；parent release/disconnect/expiry/rescue 提升子 generation/epoch |
+| P16 | scope-only 读者更新 | 读者实时收到本 scope 的 `scope.snapshot`；不得收到全量 `world.snapshot` 或其他 scope 的节点/数据；父撤销后仅收到 stale 的本 scope 最终快照 |
 
 已有 `lease_probe.py` 覆盖其中一部分。探针成功不等于整表通过；P07/P12 等须补实际测试或注明待测。
 

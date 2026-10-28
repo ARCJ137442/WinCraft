@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-10-28",
+  "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B03-02 with a user-prioritized B04-02 native-window-action slice",
-  "next_action": "B04-01 remains VERIFIED. B04-02 includes work-area anchors, anchor-aware geometry events, guarded native window actions and position_control; the latest Tauri release passed 40 real-WebSocket checks, including native application of always_on_top false/true. GitHub Actions Windows validation is green after fixing LF/CRLF translation hashing and default-code-page JSON tests. The current release's visual stacking, tray opening/global hide-show, drag and current-build fold pixels remain NOT_RUN. Computer Use enumerated the manager but could not activate its window after a fresh selection. Prioritize the remaining manual W/R gates, then complete B03-02 Popup native acceptance.",
+  "active_batch": "B07-03 after verified B07-02; prepare the requested release EXE and Chinese acceptance guide checkpoint",
+  "next_action": "B07-02 L1-L2 acceptance is verified: scope-local atomic structure operations, root-authority boundary removal, parent revocation fencing, and filtered live scope snapshots pass on core, Rust WebSocket, and a real Rust headless provider probe. Build and independently run the current Tauri release, deliver its EXE and Chinese acceptance guide, then continue with B07-03/B07-04 and remaining NOT_RUN/BLOCKED tasks after the user resumes the explicitly requested checkpoint pause.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -35,7 +35,7 @@
     "B06-03": "IMPLEMENTED_UNVERIFIED",
     "B06-04": "IMPLEMENTED_UNVERIFIED",
     "B07-01": "VERIFIED",
-    "B07-02": "NOT_STARTED",
+    "B07-02": "VERIFIED",
     "B07-03": "NOT_STARTED",
     "B07-04": "NOT_STARTED",
     "B08-01": "NOT_STARTED",
@@ -110,7 +110,9 @@
     "ExoMind workbench provider models full/compact/mini plus idle using read-only projection; 13 fixture tests and one user-authorized GET/projection smoke passed. Native mode UI, steady-state dimensions and local world cleanup remain NOT_RUN.",
     "Current-release Computer Use retry found the manager window and accessibility text, but activation failed after a fresh selection; the screenshot was not trusted and no UI input was sent. Tray, global visibility, z-order, drag and current-build fold remain NOT_RUN.",
     "Fixed nine consecutive Windows GitHub Actions failures by making handoff translation hashes newline-independent and test JSON encoding explicit. Updated official actions to Node 24 releases; latest Windows hosted run passed npm run check:local.",
-    "2026-10-28: B07-01 component-lease preview is verified for its L1-L2 acceptance in opt-in protocol 0.4-preview.1: disjoint subtree writers advance independent revisions, stable 0.3 whole-world writers cannot mix into scoped mode, and readers receive only their subtree/data namespace. Core tests and a real Rust WebSocket headless provider probe pass; native UI is outside this task and remains subject to its own gates."
+    "2026-10-28: B07-01 component-lease preview is verified for its L1-L2 acceptance in opt-in protocol 0.4-preview.1: disjoint subtree writers advance independent revisions, stable 0.3 whole-world writers cannot mix into scoped mode, and readers receive only their subtree/data namespace. Core tests and a real Rust WebSocket headless provider probe pass; native UI is outside this task and remains subject to its own gates.",
+    "2026-10-29: B07-02 implemented and verified in 0.4-preview.1. Scope-owner insert/remove/replace/move/props patches are atomic and subtree-confined; root authority can move intact boundaries or remove a parent, which removes scoped data and emits scope.revoked. Parent release/disconnect/expiry/rescue fences child generations and epochs. Filtered live scope.snapshot events, client capability gates, Rust WebSocket integration, and real headless scope_probe all pass; action routing and stable 0.3 adoption remain deferred.",
+    "2026-10-29: B07-02 implemented and verified in 0.4-preview.1. Scope-owner insert/remove/replace/move/props patches are atomic and subtree-confined; root authority can move intact boundaries or remove a parent, which removes scoped data and emits scope.revoked. Parent release/disconnect/expiry/rescue fences child generations and epochs. Filtered live scope.snapshot events, client capability gates, Rust WebSocket integration, and real headless scope_probe pass; action routing and stable 0.3 adoption remain deferred."
   ],
   "history": [
     null,

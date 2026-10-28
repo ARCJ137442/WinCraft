@@ -211,9 +211,14 @@ not proof that Windows applied it; inspect the native report separately.
 
 Stable protocol 0.3 still has one writer for the whole world. The opt-in
 `0.4-preview.1` scope path adds filtered subtree snapshots and one writer per disjoint
-scope while retaining a separate world/window authority. It does not yet support
-cross-scope structure changes or action routing. Follow the [scope preview guide](references/component-scopes-preview.md)
-exactly; never bypass the capability gate or treat the preview wire methods as 0.3.
+scope while retaining a separate world/window authority. Scope writers can apply
+atomic insert/remove/replace/move/props patches only inside their fixed subtree;
+root authority edits only unowned layout through `scope.structure.patch`. Parent
+revocation fences descendant generations, and scope readers receive filtered live
+`scope.snapshot` events plus `scope.revoked` notices. Cross-scope moves and
+component action routing remain unsupported. Follow the
+[scope preview guide](references/component-scopes-preview.md) exactly; use the
+capability-aware SDK helpers and never treat preview methods as stable 0.3.
 
 ## Provider invariants
 

@@ -451,6 +451,7 @@ async fn serve_socket(mut socket: WebSocket, hub: Hub, mut shutdown: watch::Rece
     let mut count = 0u32;
     let mut subscriptions = BTreeMap::new();
     let mut last_snapshot_sequences = HashMap::<Uuid, u64>::new();
+    let mut last_scope_snapshots = HashMap::<(Uuid, Uuid), (u64, u64)>::new();
     'connection: loop {
         tokio::select! {
             incoming=socket.recv()=>{
@@ -493,16 +494,44 @@ async fn serve_socket(mut socket: WebSocket, hub: Hub, mut shutdown: watch::Rece
                         Ok(_)=>{},
                         Err(_)=>subscriptions.retain(|_,subscription|subscription.world_id!=change.world_id),
                     }
+                    let scope_snapshots = hub.read_scopes(sid, change.world_id).unwrap_or_default();
+                    last_scope_snapshots.retain(|(world_id, scope_id), _| {
+                        *world_id != change.world_id
+                            || scope_snapshots.iter().any(|snapshot| snapshot.scope_id == *scope_id)
+                    });
+                    for snapshot in scope_snapshots {
+                        let key = (snapshot.world_id, snapshot.scope_id);
+                        let version = (snapshot.generation, snapshot.revision);
+                        if last_scope_snapshots
+                            .get(&key)
+                            .is_some_and(|previous| *previous >= version)
+                        {
+                            continue;
+                        }
+                        last_scope_snapshots.insert(key, version);
+                        if !send(&mut socket, json!({"event":"scope.snapshot","data":snapshot})).await {
+                            break 'connection;
+                        }
+                    }
                 }
             },
             notice=events.recv()=>{
                 match notice {
                     Ok(Notice::Directed(target,event)) if target==sid=>{
+                        if event.get("event").and_then(Value::as_str)==Some("scope.revoked") {
+                            if let (Some(world_id),Some(scope_id))=(
+                                event.pointer("/data/world_id").and_then(Value::as_str).and_then(|id|Uuid::parse_str(id).ok()),
+                                event.pointer("/data/scope_id").and_then(Value::as_str).and_then(|id|Uuid::parse_str(id).ok()),
+                            ) {
+                                last_scope_snapshots.remove(&(world_id,scope_id));
+                            }
+                        }
                         if !send(&mut socket,event).await{break 'connection;}
                     },
                     Ok(Notice::Deleted{world_id,members})=>{
                         subscriptions.retain(|_,subscription|subscription.world_id!=world_id);
                         last_snapshot_sequences.remove(&world_id);
+                        last_scope_snapshots.retain(|(id,_),_|*id!=world_id);
                         if members.contains(&sid) && !send(&mut socket,json!({"event":"world.deleted","world_id":world_id})).await{break 'connection;}
                     },
                     Ok(_)=>{},
@@ -605,6 +634,33 @@ mod tests {
                 return value;
             }
         }
+    }
+
+    async fn next_event_matching(
+        socket: &mut TestSocket,
+        event_name: &str,
+        mut predicate: impl FnMut(&Value) -> bool,
+    ) -> Value {
+        timeout(Duration::from_secs(2), async {
+            loop {
+                let message = socket
+                    .next()
+                    .await
+                    .expect("socket remains open")
+                    .expect("WebSocket message is valid");
+                let Message::Text(text) = message else {
+                    continue;
+                };
+                let value: Value = serde_json::from_str(text.as_str()).expect("JSON event");
+                if value.get("event").and_then(Value::as_str) == Some(event_name)
+                    && predicate(&value)
+                {
+                    return value;
+                }
+            }
+        })
+        .await
+        .expect("matching event arrives")
     }
 
     #[test]
@@ -1019,6 +1075,14 @@ mod tests {
             "preview"
         );
         assert_eq!(capabilities["result"]["component_leases"]["version"], 1);
+        assert_eq!(
+            capabilities["result"]["component_leases"]["root_structure_patch"],
+            "scope.structure.patch"
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["filtered_scope_events"],
+            true
+        );
 
         let created = rpc(
             &mut owner,
@@ -1116,53 +1180,6 @@ mod tests {
         assert_eq!(tasks_join["ok"], true);
         let tasks_lease = tasks_join["result"]["lease"].clone();
 
-        let focus_update = rpc(
-            &mut owner,
-            "focus-update",
-            "scope.patch",
-            json!({
-                "world_id":world_id,
-                "lease":focus_lease,
-                "expected_scope_revision":focus_join["result"]["snapshot"]["revision"],
-                "ops":[{"op":"props","node_id":"focus-value","props":{"text":"Focus updated"}}]
-            }),
-        )
-        .await;
-        assert_eq!(focus_update["ok"], true);
-        let tasks_update = rpc(
-            &mut tasks_provider,
-            "tasks-update",
-            "scope.patch",
-            json!({
-                "world_id":world_id,
-                "lease":tasks_lease,
-                "expected_scope_revision":tasks_join["result"]["snapshot"]["revision"],
-                "ops":[{"op":"props","node_id":"tasks-value","props":{"text":"Tasks updated"}}]
-            }),
-        )
-        .await;
-        assert_eq!(tasks_update["ok"], true);
-
-        let (mut legacy, _) =
-            connect_test_provider(&server.descriptor, "legacy.scope-client").await;
-        let legacy_capabilities = rpc(
-            &mut legacy,
-            "legacy-capabilities",
-            "host.capabilities",
-            json!({}),
-        )
-        .await;
-        assert_eq!(legacy_capabilities["result"]["component_leases"], false);
-        let legacy_join = rpc(
-            &mut legacy,
-            "legacy-join",
-            "world.join",
-            json!({"world_id":world_id,"join_key":world_join_key,"mode":"write"}),
-        )
-        .await;
-        assert_eq!(legacy_join["ok"], false);
-        assert_eq!(legacy_join["error"]["code"], "SCOPE_REQUIRED");
-
         let (mut observer, _) = connect_test_provider_with_protocol(
             &server.descriptor,
             "scope.observer",
@@ -1187,6 +1204,9 @@ mod tests {
         assert!(scope_projection.contains("focus-secret"));
         assert!(!scope_projection.contains("tasks-secret"));
         assert!(!scope_projection.contains("tasks-panel"));
+        let observer_scope_revision = observer_join["result"]["snapshot"]["revision"]
+            .as_u64()
+            .unwrap();
         let full_snapshot = rpc(
             &mut observer,
             "observer-world-read",
@@ -1197,15 +1217,122 @@ mod tests {
         assert_eq!(full_snapshot["ok"], false);
         assert_eq!(full_snapshot["error"]["code"], "SCOPE_REQUIRED");
 
+        let focus_update = rpc(
+            &mut owner,
+            "focus-update",
+            "scope.patch",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "expected_scope_revision":focus_join["result"]["snapshot"]["revision"],
+                "ops":[{"op":"props","node_id":"focus-value","props":{"text":"Focus updated"}}]
+            }),
+        )
+        .await;
+        assert_eq!(focus_update["ok"], true);
+        let live_scope_snapshot = next_event_matching(&mut observer, "scope.snapshot", |event| {
+            event.pointer("/data/scope_id").and_then(Value::as_str) == focus["scope_id"].as_str()
+                && event
+                    .pointer("/data/revision")
+                    .and_then(Value::as_u64)
+                    .is_some_and(|revision| revision > observer_scope_revision)
+        })
+        .await;
+        assert_eq!(
+            live_scope_snapshot.pointer("/data/root/children/0/props/text"),
+            Some(&json!("Focus updated"))
+        );
+        let live_projection = serde_json::to_string(&live_scope_snapshot["data"]).unwrap();
+        assert!(live_projection.contains("focus-secret"));
+        assert!(!live_projection.contains("tasks-secret"));
+        let tasks_update = rpc(
+            &mut tasks_provider,
+            "tasks-update",
+            "scope.patch",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_lease.clone(),
+                "expected_scope_revision":tasks_join["result"]["snapshot"]["revision"],
+                "ops":[{"op":"props","node_id":"tasks-value","props":{"text":"Tasks updated"}}]
+            }),
+        )
+        .await;
+        assert_eq!(tasks_update["ok"], true);
+
+        let current_parent = rpc(
+            &mut owner,
+            "parent-snapshot-before-remove",
+            "world.snapshot",
+            json!({"world_id":world_id}),
+        )
+        .await;
+        let removed_parent = rpc(
+            &mut owner,
+            "parent-remove-tasks",
+            "scope.structure.patch",
+            json!({
+                "world_id":world_id,
+                "authority_lease":partitioned["result"]["authority_lease"],
+                "expected_revision":current_parent["result"]["revision"],
+                "ops":[{"op":"remove","node_id":"tasks-panel"}]
+            }),
+        )
+        .await;
+        assert_eq!(removed_parent["ok"], true);
+        assert!(removed_parent["result"]["scene"]["data"]
+            .get("tasks")
+            .is_none());
+        assert!(removed_parent["result"]["scene"]["root"]["children"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|node| node["id"] != "tasks-panel"));
+        let revoked_event = next_event_matching(&mut tasks_provider, "scope.revoked", |event| {
+            event.pointer("/data/scope_id").and_then(Value::as_str) == tasks["scope_id"].as_str()
+        })
+        .await;
+        assert_eq!(revoked_event["data"]["reason"], "parent_structure_removed");
+        let stale_tasks_patch = rpc(
+            &mut tasks_provider,
+            "tasks-after-parent-remove",
+            "scope.patch",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_lease,
+                "expected_scope_revision":tasks_update["result"]["revision"],
+                "ops":[{"op":"props","node_id":"tasks-value","props":{"text":"must be rejected"}}]
+            }),
+        )
+        .await;
+        assert_eq!(stale_tasks_patch["ok"], false);
+        assert_eq!(stale_tasks_patch["error"]["code"], "STALE_SCOPE");
+
+        let (mut legacy, _) =
+            connect_test_provider(&server.descriptor, "legacy.scope-client").await;
+        let legacy_capabilities = rpc(
+            &mut legacy,
+            "legacy-capabilities",
+            "host.capabilities",
+            json!({}),
+        )
+        .await;
+        assert_eq!(legacy_capabilities["result"]["component_leases"], false);
+        let legacy_join = rpc(
+            &mut legacy,
+            "legacy-join",
+            "world.join",
+            json!({"world_id":world_id,"join_key":world_join_key,"mode":"write"}),
+        )
+        .await;
+        assert_eq!(legacy_join["ok"], false);
+        assert_eq!(legacy_join["error"]["code"], "SCOPE_REQUIRED");
+
         let composed = hub.renderer_snapshot(world_id.parse().unwrap()).unwrap();
         assert_eq!(
             composed.scene.root.find("focus-value").unwrap().props["text"],
             "Focus updated"
         );
-        assert_eq!(
-            composed.scene.root.find("tasks-value").unwrap().props["text"],
-            "Tasks updated"
-        );
+        assert!(composed.scene.root.find("tasks-value").is_none());
         server.shutdown().await;
     }
 

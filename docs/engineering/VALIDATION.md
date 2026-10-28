@@ -38,6 +38,22 @@ B07-01 代码提交 `be7a50c` 的 Windows hosted run `40707844155` 随后完整�
 
 本机命令、退出码、工具版本及脱敏探针结论保存在默认忽略的 `evidence/local/nextgen-2026-10-28/b07-01-ci-validation-20261028.json`。`0.4-preview.1` 是显式 opt-in 的 scope 实验协议，不改变稳定 0.3；B07-01 已达到其 L1-L2 范围的三项验收，但不代表原生 UI 或后续结构/动作路由已通过。
 
+## 2026-10-29 B07-02 结构事务、父撤销与过滤快照
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Core ownership invariants | PASS | `cargo test -p wincraft-core --no-fail-fast`：8 个 core 单测、56 项 invariants 全通过。覆盖 scope 内原子结构变更、跨 scope 批量失败、根布局读取限制、父 release/disconnect/expiry fencing。|
+| Rust WebSocket scope integration | PASS | `cargo test -p wincraft-server preview_websocket_scopes_allow_disjoint_writers_and_filter_readers --no-fail-fast`：真实服务连接通过；读者收到过滤后的实时 `scope.snapshot`，root 删除通知 `scope.revoked`，旧子 lease 被拒绝。|
+| Python SDK / preview contracts | PASS | capability fail-closed、SDK scope cache/revoke 与 preview Schema 单测通过；结构操作和 root authority patch 均要求 Host 明确宣告能力。|
+| 真实 Rust headless provider probe | PASS | `scope_probe.py` 退出码 0：两个子树独立更新、scope 内 insert/move、过滤 live snapshot、父删除撤销通知、旧 lease 拒绝、稳定 0.3 writer 拒绝；临时世界由探针销毁。|
+| 本机完整 `npm run check:local` | PASS | 退出码 0：28 项 UI 测试、101 项 Rust 测试、86 项 Python 测试、离线合同与 19 个 Provider Skill 引用检查通过；包含 workspace fmt/check/test/Clippy `-D warnings`。|
+| 独立 Tauri release 构建 | PASS | `npm run desktop:build` 退出码 0，构建产物为 `target/release/wincraft-desktop.exe`。本记录提交前还需用该 release 独立启动并跑真实协议 probe。|
+| B07-02 hosted Actions | NOT_RUN（推送前） | 本机最终 gate 通过；当前改动尚未推送，需由下一次 GitHub CLI commit 触发 Windows Actions。|
+
+父 authority 的显式释放、断线、过期与本地 rescue 会推进子 generation/epoch 并轮换 scope grant；已加入读者保留只读资格并收到 stale scope 投影。删除布局父节点则移除对应 scope 与 data namespace，向既有成员发送 `scope.revoked`。稳定协议 0.3 行为未改变；组件动作路由、跨 scope move 与 CAS 状态槽仍未实现。
+
+逐命令版本、退出码、probe 清理检查和脱敏结果保存在默认忽略的 `evidence/local/nextgen-2026-10-29/b07-02-validation.json`。原生托盘/像素验收仍按下方矩阵区分人工门，不由 headless probe 或 release compile 代替。
+
 日期：2026-10-25。对应交接版本：0.1.0-alpha.1。这是原型制作环境记录，不是本地 Codex 的最终验收报告。
 
 ## 本机 Windows 验证摘要（2026-10-26）

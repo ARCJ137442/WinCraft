@@ -11,6 +11,19 @@ pub struct Engine {
     pub worlds: BTreeMap<Uuid, World>,
 }
 
+#[derive(Clone, Debug)]
+pub struct ScopeRevocation {
+    pub scope_id: Uuid,
+    pub generation: u64,
+    pub sessions: Vec<Uuid>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ScopedStructurePatchResult {
+    pub snapshot: Snapshot,
+    pub revoked_scopes: Vec<ScopeRevocation>,
+}
+
 fn valid_data_namespace(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 64
@@ -87,6 +100,72 @@ fn rewrite_scope_node_bindings(
     }
     for child in &mut node.children {
         rewrite_scope_node_bindings(child, namespace, to_global_path)?;
+    }
+    Ok(())
+}
+
+fn validate_parent_binding_value(value: &Value, namespaces: &[String]) -> Result<()> {
+    match value {
+        Value::Object(object) if object.contains_key("$path") => {
+            if object.len() != 1 {
+                return Err(Fault::new(
+                    "INVALID_SCENE",
+                    "a data binding must contain only $path",
+                ));
+            }
+            let path = object
+                .get("$path")
+                .and_then(Value::as_str)
+                .ok_or_else(|| Fault::new("INVALID_SCENE", "$path must be a string"))?;
+            if !path.is_empty() && !path.starts_with('/') {
+                return Err(Fault::new(
+                    "INVALID_SCENE",
+                    "a data binding must be a JSON pointer",
+                ));
+            }
+            if let Some(first) = path
+                .strip_prefix('/')
+                .and_then(|value| value.split('/').next())
+            {
+                let decoded = first.replace("~1", "/").replace("~0", "~");
+                if namespaces.iter().any(|namespace| namespace == &decoded) {
+                    return Err(Fault::new(
+                        "SCOPE_DATA_FORBIDDEN",
+                        "root layout cannot bind into a child scope namespace",
+                    ));
+                }
+            }
+            Ok(())
+        }
+        Value::Object(object) => {
+            for child in object.values() {
+                validate_parent_binding_value(child, namespaces)?;
+            }
+            Ok(())
+        }
+        Value::Array(values) => {
+            for child in values {
+                validate_parent_binding_value(child, namespaces)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn validate_parent_layout_bindings(
+    node: &Node,
+    owned_roots: &[Node],
+    namespaces: &[String],
+) -> Result<()> {
+    let inside_scope = owned_roots.iter().any(|root| root.find(&node.id).is_some());
+    if !inside_scope {
+        for value in node.props.values() {
+            validate_parent_binding_value(value, namespaces)?;
+        }
+    }
+    for child in &node.children {
+        validate_parent_layout_bindings(child, owned_roots, namespaces)?;
     }
     Ok(())
 }
@@ -461,6 +540,7 @@ impl Engine {
                 }
             }
         }
+        validate_parent_layout_bindings(&world.scene.root, &roots, &namespaces)?;
 
         let mut next_scene = world.scene.clone();
         if next_scene.data.is_null() {
@@ -567,6 +647,16 @@ impl Engine {
         if scope.join_key != join_key {
             return Err(Fault::new("FORBIDDEN", "scope grant key required"));
         }
+        if world
+            .authority
+            .as_ref()
+            .is_none_or(|authority| authority.expires_at <= now)
+        {
+            return Err(Fault::new(
+                "PARENT_AUTHORITY_REQUIRED",
+                "the world authority must be active before a child scope can be joined",
+            ));
+        }
         let lease = if mode == JoinMode::Write {
             if world.write_blocked {
                 return Err(Fault::new(
@@ -656,6 +746,26 @@ impl Engine {
         }
         Self::build_scope_snapshot(world, scope)
     }
+
+    pub fn read_scopes(&self, session: Uuid, world_id: Uuid) -> Result<Vec<ScopeSnapshot>> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        if world.system && !self.operator(session) {
+            return Err(Fault::new("FORBIDDEN", "system world is private"));
+        }
+        world
+            .scopes
+            .values()
+            .filter(|scope| scope.readers.contains_key(&session))
+            .map(|scope| Self::build_scope_snapshot(world, scope))
+            .collect()
+    }
     pub fn patch_scope(
         &mut self,
         session: Uuid,
@@ -685,15 +795,15 @@ impl Engine {
                 format!("expected {expected_scope_revision}, actual {current_revision}"),
             ));
         }
-        let scope_root = world.scene.root.find(&root_node_id).ok_or_else(|| {
-            Fault::new(
-                "STALE_SCOPE",
-                "scope root component is no longer in the scene",
-            )
-        })?;
-        let mut scoped_ops = Vec::with_capacity(ops.len());
+        let mut next_scene = world.scene.clone();
         for operation in ops {
-            match operation {
+            let scope_root = next_scene.root.find(&root_node_id).ok_or_else(|| {
+                Fault::new(
+                    "STALE_SCOPE",
+                    "scope root component is no longer in the scene",
+                )
+            })?;
+            let scoped_operation = match operation {
                 SceneOp::Props { node_id, props } => {
                     if scope_root.find(node_id).is_none() {
                         return Err(Fault::new(
@@ -705,26 +815,348 @@ impl Engine {
                     for value in props.values_mut() {
                         rewrite_scope_binding_value(value, &namespace, true)?;
                     }
-                    scoped_ops.push(SceneOp::Props {
+                    SceneOp::Props {
                         node_id: node_id.clone(),
                         props,
-                    });
+                    }
                 }
-                _ => {
-                    return Err(Fault::new(
-                        "SCOPE_STRUCTURE_LOCKED",
-                        "scope structure edits are not available in B07-01",
-                    ));
+                SceneOp::Insert {
+                    parent,
+                    index,
+                    node,
+                } => {
+                    if scope_root.find(parent).is_none() {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "insert parent is outside this component scope",
+                        ));
+                    }
+                    if !scope_is_read_only(node) {
+                        return Err(Fault::new(
+                            "SCOPE_INTERACTIONS_UNAVAILABLE",
+                            "component actions are not routed by scope owner yet",
+                        ));
+                    }
+                    let mut node = node.clone();
+                    rewrite_scope_node_bindings(&mut node, &namespace, true)?;
+                    SceneOp::Insert {
+                        parent: parent.clone(),
+                        index: *index,
+                        node,
+                    }
                 }
-            }
+                SceneOp::Remove { node_id } => {
+                    if node_id == &root_node_id {
+                        return Err(Fault::new(
+                            "SCOPE_ROOT_IMMUTABLE",
+                            "only the world authority may remove a scope root",
+                        ));
+                    }
+                    if scope_root.find(node_id).is_none() {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "remove target is outside this component scope",
+                        ));
+                    }
+                    SceneOp::Remove {
+                        node_id: node_id.clone(),
+                    }
+                }
+                SceneOp::Replace { node_id, node } => {
+                    if scope_root.find(node_id).is_none() {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "replace target is outside this component scope",
+                        ));
+                    }
+                    if node_id == &root_node_id && node.id != root_node_id {
+                        return Err(Fault::new(
+                            "SCOPE_ROOT_IMMUTABLE",
+                            "a scope replacement must preserve its root component ID",
+                        ));
+                    }
+                    if !scope_is_read_only(node) {
+                        return Err(Fault::new(
+                            "SCOPE_INTERACTIONS_UNAVAILABLE",
+                            "component actions are not routed by scope owner yet",
+                        ));
+                    }
+                    let mut node = node.clone();
+                    rewrite_scope_node_bindings(&mut node, &namespace, true)?;
+                    SceneOp::Replace {
+                        node_id: node_id.clone(),
+                        node,
+                    }
+                }
+                SceneOp::Move {
+                    node_id,
+                    parent,
+                    index,
+                } => {
+                    if node_id == &root_node_id {
+                        return Err(Fault::new(
+                            "SCOPE_ROOT_IMMUTABLE",
+                            "only the world authority may move a scope root",
+                        ));
+                    }
+                    if scope_root.find(node_id).is_none() || scope_root.find(parent).is_none() {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "move source and destination must both be inside this scope",
+                        ));
+                    }
+                    SceneOp::Move {
+                        node_id: node_id.clone(),
+                        parent: parent.clone(),
+                        index: *index,
+                    }
+                }
+            };
+            next_scene = next_scene.patch(std::slice::from_ref(&scoped_operation))?;
         }
-        let next_scene = world.scene.patch(&scoped_ops)?;
+        let final_scope_root = next_scene.root.find(&root_node_id).ok_or_else(|| {
+            Fault::new(
+                "STALE_SCOPE",
+                "scope root component is no longer in the scene",
+            )
+        })?;
+        if !scope_is_read_only(final_scope_root) {
+            return Err(Fault::new(
+                "SCOPE_INTERACTIONS_UNAVAILABLE",
+                "component actions are not routed by scope owner yet",
+            ));
+        }
         world.scene = next_scene;
         let scope = world.scopes.get_mut(&key.scope_id).unwrap();
         scope.revision += 1;
         world.touch();
         Self::build_scope_snapshot(world, world.scopes.get(&key.scope_id).unwrap())
     }
+    pub fn patch_scope_structure(
+        &mut self,
+        session: Uuid,
+        world_id: Uuid,
+        authority_lease: &LeaseKey,
+        expected_revision: u64,
+        ops: &[SceneOp],
+        now: u64,
+    ) -> Result<ScopedStructurePatchResult> {
+        self.require_component_leases_protocol(session)?;
+        let world = self.authority_writable(session, world_id, authority_lease, now)?;
+        Self::revision(world, expected_revision)?;
+        let mut next_scene = world.scene.clone();
+        let mut revoked_ids = Vec::<Uuid>::new();
+
+        for operation in ops {
+            let active_scopes = world
+                .scopes
+                .iter()
+                .filter(|(scope_id, _)| !revoked_ids.contains(scope_id))
+                .map(|(_, scope)| scope)
+                .collect::<Vec<_>>();
+            let node_is_inside_scope = |node_id: &str| {
+                active_scopes.iter().any(|scope| {
+                    next_scene
+                        .root
+                        .find(&scope.root_node_id)
+                        .is_some_and(|root| root.find(node_id).is_some())
+                })
+            };
+
+            let root_operation = match operation {
+                SceneOp::Props { node_id, props } => {
+                    if node_is_inside_scope(node_id) {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "world authority cannot patch props inside a child scope",
+                        ));
+                    }
+                    let target = next_scene
+                        .root
+                        .find(node_id)
+                        .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+                    if target.kind.interactive()
+                        || target.kind == Kind::KeyValue && props.contains_key("action")
+                    {
+                        return Err(Fault::new(
+                            "SCOPE_INTERACTIONS_UNAVAILABLE",
+                            "composition structure does not yet route component actions",
+                        ));
+                    }
+                    let namespaces = active_scopes
+                        .iter()
+                        .map(|scope| scope.data_namespace.clone())
+                        .collect::<Vec<_>>();
+                    for value in props.values() {
+                        validate_parent_binding_value(value, &namespaces)?;
+                    }
+                    operation.clone()
+                }
+                SceneOp::Insert {
+                    parent,
+                    index,
+                    node,
+                } => {
+                    if node_is_inside_scope(parent) {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "world authority cannot insert into a child scope",
+                        ));
+                    }
+                    if !scope_is_read_only(node) {
+                        return Err(Fault::new(
+                            "SCOPE_INTERACTIONS_UNAVAILABLE",
+                            "composition structure does not yet route component actions",
+                        ));
+                    }
+                    let namespaces = active_scopes
+                        .iter()
+                        .map(|scope| scope.data_namespace.clone())
+                        .collect::<Vec<_>>();
+                    validate_parent_layout_bindings(node, &[], &namespaces)?;
+                    SceneOp::Insert {
+                        parent: parent.clone(),
+                        index: *index,
+                        node: node.clone(),
+                    }
+                }
+                SceneOp::Remove { node_id } => {
+                    let target = next_scene
+                        .root
+                        .find(node_id)
+                        .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+                    let is_scope_root = active_scopes
+                        .iter()
+                        .any(|scope| scope.root_node_id == *node_id);
+                    if node_is_inside_scope(node_id) && !is_scope_root {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "world authority cannot remove a descendant owned by a child scope",
+                        ));
+                    }
+                    for scope in &active_scopes {
+                        if target.find(&scope.root_node_id).is_some()
+                            && !revoked_ids.contains(&scope.id)
+                        {
+                            revoked_ids.push(scope.id);
+                        }
+                    }
+                    SceneOp::Remove {
+                        node_id: node_id.clone(),
+                    }
+                }
+                SceneOp::Replace { node_id, node } => {
+                    let target = next_scene
+                        .root
+                        .find(node_id)
+                        .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+                    if node_is_inside_scope(node_id)
+                        || active_scopes
+                            .iter()
+                            .any(|scope| target.find(&scope.root_node_id).is_some())
+                    {
+                        return Err(Fault::new(
+                            "SCOPE_BOUNDARY",
+                            "replace cannot rewrite a node that contains a child scope; remove it explicitly to revoke the child",
+                        ));
+                    }
+                    if !scope_is_read_only(node) {
+                        return Err(Fault::new(
+                            "SCOPE_INTERACTIONS_UNAVAILABLE",
+                            "composition structure does not yet route component actions",
+                        ));
+                    }
+                    let namespaces = active_scopes
+                        .iter()
+                        .map(|scope| scope.data_namespace.clone())
+                        .collect::<Vec<_>>();
+                    validate_parent_layout_bindings(node, &[], &namespaces)?;
+                    SceneOp::Replace {
+                        node_id: node_id.clone(),
+                        node: node.clone(),
+                    }
+                }
+                SceneOp::Move {
+                    node_id,
+                    parent,
+                    index,
+                } => {
+                    next_scene
+                        .root
+                        .find(node_id)
+                        .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+                    let is_scope_root = active_scopes
+                        .iter()
+                        .any(|scope| scope.root_node_id == *node_id);
+                    if node_is_inside_scope(node_id) && !is_scope_root {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "world authority may move a child scope root, not its internal nodes",
+                        ));
+                    }
+                    if node_is_inside_scope(parent) {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "world authority cannot move layout into a child scope",
+                        ));
+                    }
+                    SceneOp::Move {
+                        node_id: node_id.clone(),
+                        parent: parent.clone(),
+                        index: *index,
+                    }
+                }
+            };
+            next_scene = next_scene.patch(std::slice::from_ref(&root_operation))?;
+        }
+
+        let mut revoked_scopes = Vec::new();
+        for scope_id in &revoked_ids {
+            let Some(scope) = world.scopes.get(scope_id) else {
+                continue;
+            };
+            let mut sessions = scope.readers.keys().copied().collect::<Vec<_>>();
+            if let Some(writer) = &scope.writer {
+                sessions.push(writer.session);
+            }
+            sessions.sort_unstable();
+            sessions.dedup();
+            revoked_scopes.push(ScopeRevocation {
+                scope_id: *scope_id,
+                generation: scope.generation,
+                sessions,
+            });
+            let data = next_scene.data.as_object_mut().ok_or_else(|| {
+                Fault::new("INVALID_SCOPE", "composed scene data must be an object")
+            })?;
+            data.remove(&scope.data_namespace);
+        }
+        next_scene.validate()?;
+
+        for scope_id in &revoked_ids {
+            world.scopes.remove(scope_id);
+        }
+        for revocation in &revoked_scopes {
+            for session in &revocation.sessions {
+                let still_joined = world
+                    .scopes
+                    .values()
+                    .any(|scope| scope.readers.contains_key(session));
+                if !still_joined
+                    && world.authority.as_ref().map(|authority| authority.session) != Some(*session)
+                {
+                    world.readers.remove(session);
+                }
+            }
+        }
+        world.scene = next_scene;
+        world.touch();
+        Ok(ScopedStructurePatchResult {
+            snapshot: Self::authority_snapshot(world),
+            revoked_scopes,
+        })
+    }
+
     pub fn replace_scope_data(
         &mut self,
         session: Uuid,
@@ -958,11 +1390,21 @@ impl Engine {
         let scope = world
             .scopes
             .get(&key.scope_id)
-            .ok_or_else(|| Fault::new("NOT_FOUND", "scope missing"))?;
+            .ok_or_else(|| Fault::new("STALE_SCOPE", "scope has been revoked"))?;
         if scope.generation != key.generation {
             return Err(Fault::new(
                 "STALE_SCOPE",
                 "scope generation no longer matches",
+            ));
+        }
+        if world
+            .authority
+            .as_ref()
+            .is_none_or(|authority| authority.expires_at <= now)
+        {
+            return Err(Fault::new(
+                "PARENT_AUTHORITY_REVOKED",
+                "the parent world authority is no longer active",
             ));
         }
         let lease = scope
@@ -1073,6 +1515,7 @@ impl Engine {
             let world = self.authority_writable(session, id, key, now)?;
             world.authority = None;
             world.epoch += 1;
+            Self::revoke_scopes_for_parent(world);
             world.touch();
             return Ok(Self::authority_snapshot(world));
         }
@@ -1091,6 +1534,7 @@ impl Engine {
             if world.authority.as_ref().map(|authority| authority.session) == Some(session) {
                 world.authority = None;
                 world.epoch += 1;
+                Self::revoke_scopes_for_parent(world);
                 world.touch();
             }
             let mut scope_changed = false;
@@ -1201,9 +1645,7 @@ impl Engine {
         if !w.system {
             Self::revoke(w, "local operator revoked write lease");
             w.authority = None;
-            for scope in w.scopes.values_mut() {
-                revoke_component_scope(scope);
-            }
+            Self::revoke_scopes_for_parent(w);
             w.write_blocked = true;
         }
         w.window.visible = true;
@@ -1263,6 +1705,7 @@ impl Engine {
             if w.authority.as_ref().map(|x| x.session) == Some(session) {
                 w.authority = None;
                 w.epoch += 1;
+                Self::revoke_scopes_for_parent(w);
                 w.touch();
             }
             let mut scope_changed = false;
@@ -1298,6 +1741,7 @@ impl Engine {
             {
                 w.authority = None;
                 w.epoch += 1;
+                Self::revoke_scopes_for_parent(w);
                 w.touch();
             }
             let mut scope_changed = false;
@@ -1605,6 +2049,18 @@ impl Engine {
         w.native = report;
         w.sequence += 1;
         true
+    }
+
+    fn revoke_scopes_for_parent(world: &mut World) {
+        for scope in world.scopes.values_mut() {
+            if let Some(writer) = scope.writer.take() {
+                scope.readers.insert(writer.session, JoinMode::Read);
+            }
+            scope.epoch += 1;
+            scope.generation += 1;
+            scope.revision += 1;
+            scope.join_key = scope_join_key();
+        }
     }
     pub fn observe_geometry(
         &mut self,

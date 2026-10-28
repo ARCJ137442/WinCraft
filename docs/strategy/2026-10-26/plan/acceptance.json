@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-28",
+  "updated_at": "2026-10-29",
   "cases": [
     {
       "id": "B00-01-A1",
@@ -1225,7 +1225,8 @@
       ],
       "level": "L1-L2",
       "criterion": "不能把无权节点移动进自有子树偷取",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: core invariant scoped_writer_cannot_target_a_sibling_or_change_scope_structure and real Rust scope_probe verify a writer cannot move a sibling into its subtree; cross-boundary move fails with SCOPE_FORBIDDEN."
     },
     {
       "id": "B07-02-A2",
@@ -1237,7 +1238,8 @@
       ],
       "level": "L1-L2",
       "criterion": "跨子树失败整批不部分提交",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: cross_scope_move_fails_the_whole_scope_patch_without_revision_change applies a valid props op before a forbidden sibling move and verifies scene plus local revision remain unchanged; root structural transactions also clone and commit only after final validation."
     },
     {
       "id": "B07-02-A3",
@@ -1249,7 +1251,8 @@
       ],
       "level": "L1-L2",
       "criterion": "父撤销后任何旧子lease写入被拒绝",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: core tests cover explicit parent release, disconnect and expiry while child leases remain live. Real Rust WebSocket integration verifies scope.structure.patch removes the namespace, emits scope.revoked, and rejects the old child lease; scope_probe verifies filtered live snapshots and cleanup."
     },
     {
       "id": "B07-03-A1",

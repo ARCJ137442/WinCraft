@@ -13,6 +13,7 @@
     "scope.join",
     "scope.snapshot",
     "scope.patch",
+    "scope.structure.patch",
     "scope.data.replace",
     "scope.renew",
     "scope.leave"
@@ -21,7 +22,11 @@
     "max_scopes_per_world": 32,
     "scope_roots_must_be_disjoint": true,
     "scope_data_namespace": "unique top-level scene.data key",
-    "scope_patch_operations": ["props"],
+    "scope_patch_operations": ["props", "insert", "remove", "replace", "move"],
+    "root_structure_patch": "scope.structure.patch",
+    "parent_revocation": "generation_fence",
+    "scope_snapshot_events": "filtered_per_reader",
+    "interactive_scope_components": false,
     "stable_0_3_world_writer_and_scope_writers_may_not_coexist": true
   }
 }

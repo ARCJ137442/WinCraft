@@ -1,6 +1,6 @@
 # Component scope leases: 0.4 preview
 
-**Status:** experimental preview, not part of stable protocol 0.3. The implementation is the B07-01 slice; structural transactions and owner-routed interactions are not included yet.
+**Status:** experimental preview, not part of stable protocol 0.3. B07-01/02 implement disjoint scope writers, scoped structural transactions, parent revocation, and filtered live snapshots. Component action routing and typed shared state remain future work.
 
 ## Opt in explicitly
 
@@ -66,14 +66,33 @@ Each scope admits one writer and any number of readers. A scoped lease contains 
 
 `scope.snapshot` returns only the granted subtree and its local data namespace. Paths are localized within that projection (`/value` rather than `/focus/value`). A scope-only member receives `SCOPE_REQUIRED` from full `world.snapshot`; it cannot read sibling subtree contents or sibling namespace data.
 
-The B07-01 preview accepts `props` patches for nodes inside the scope and full replacement of that scope's own data namespace. Cross-scope writes return a permission error. Cross-scope insert/move/delete/replace and parent-scope revocation are intentionally deferred to B07-02. Interactive components are rejected during partition because action routing by component owner is not implemented until B07-04.
+`scope.patch` supports atomic `props`, `insert`, `remove`, `replace`, and `move` batches inside the caller's subtree. The scope root itself cannot be removed or moved by its child writer. Inserted/replaced nodes must remain display-only until component action routing is implemented. Data bindings are localized on snapshots and written back under the scope's own namespace.
 
-The root authority may configure window properties and destroy its world, but it cannot use stable whole-scene replacement to overwrite the child scopes. Its snapshot is redacted to remove child content and scoped data. The trusted local operator can still render and inspect the aggregate window.
+The root authority may configure window properties and use `scope.structure.patch` on unowned layout. It may move an intact child root/group between unowned layout parents. It cannot patch inside a child scope or move a scope into another scope. Removing a child root or an unowned ancestor containing it atomically removes that scope and its data namespace, fences its grant, and sends `scope.revoked` to joined readers/writers. Replacing a parent that still contains child scopes is rejected; remove it explicitly so the scopes are revoked.
+
+Releasing, disconnecting, expiring, or rescuing the root authority increments child generations/epochs, rotates grants, and fences active child writers. Existing readers receive a final filtered `scope.snapshot` with stale status. Old grants cannot reacquire access; recreate the temporary composition world to issue new grants. The root authority snapshot is redacted to remove child content and scoped data. The trusted local operator can still render and inspect the aggregate window.
+
+Joined scope readers receive server-filtered `scope.snapshot` events as their scope changes. They do not receive a complete `world.snapshot` and then hide siblings in the client. The SDK cache is keyed by `(world_id, scope_id)` and accepts only newer `(generation, revision)` snapshots; `scope.revoked` clears that entry.
+
+Use the capability-aware helpers before each optional feature:
+
+```python
+await client.patch_scope(world_id, scope_lease, scope_revision, [
+    {"op": "insert", "parent": "focus-panel", "index": 1,
+     "node": {"id": "focus-note", "kind": "text", "props": {"text": "synthetic"}, "children": []}}
+])
+await client.patch_structure(world_id, authority_lease, world_revision, [
+    {"op": "remove", "node_id": "obsolete-panel"}
+])
+```
+
+The SDK checks the advertised operation list and root structure capability before sending those requests. Cross-scope moves and unsupported features fail closed in the host.
 
 ## Failure and recovery
 
 - A timeout has an unknown outcome; read the affected scope snapshot before deciding what happened.
-- Disconnect, expiry, or explicit leave fences the old scoped lease. Rejoin with the grant key in a new session and use the returned lease and scope generation.
+- A child writer's own disconnect/expiry fences its lease; while root authority remains active, it may rejoin with its current grant and receive a new lease epoch.
+- Parent authority release, disconnect, expiry, rescue, or deletion of a containing layout node invalidates child generations/grants. Old writers cannot reacquire under that parent; use the updated filtered snapshot for read-only recovery or rebuild the composition world to issue new grants.
 - Local rescue holds the world and revokes root and scoped writers. A provider cannot reclaim until the user releases the hold.
 - A composition world cannot silently revert to stable whole-world ownership. Destroy it and rebuild a new world in exclusive mode, or use a future explicit migration operation.
 
@@ -83,4 +102,4 @@ Run the synthetic real-host probe with an actual local descriptor:
 python examples/python/scope_probe.py --runtime "<actual runtime descriptor path>"
 ```
 
-It verifies preview negotiation, independent writers, filtered readers, stable 0.3 refusal, and destruction of only its own temporary world. It does not prove Tauri pixels or native window presentation.
+It verifies preview negotiation, independent writers, scope-local insert/move, filtered live reader updates, stable 0.3 refusal, root-authority scope deletion/revocation, stale-lease rejection, and destruction of only its own temporary world. It does not prove Tauri pixels or native window presentation.

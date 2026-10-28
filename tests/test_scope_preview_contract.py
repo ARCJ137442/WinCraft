@@ -23,14 +23,25 @@ class ComponentScopePreviewContractTests(unittest.TestCase):
         errors = list(jsonschema.Draft202012Validator(schema).iter_errors(request))
         self.assertTrue(errors)
 
-    def test_scope_props_patch_is_valid_and_move_is_rejected(self):
+    def test_scope_patch_schema_accepts_structural_ops_but_engine_enforces_ownership(self):
         schema = load_json(PREVIEW / "scope-request.schema.json")
         validator = jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker())
-        valid = load_json(PREVIEW / "examples/scope-patch-valid.json")
-        invalid_move = load_json(PREVIEW / "examples/scope-patch-cross-scope-move-invalid.json")
+        valid_props = load_json(PREVIEW / "examples/scope-patch-valid.json")
+        valid_structure = load_json(PREVIEW / "examples/scope-patch-structure-valid.json")
+        cross_scope_move = load_json(PREVIEW / "examples/scope-patch-cross-scope-move-invalid.json")
+        malformed_move = load_json(PREVIEW / "examples/scope-patch-missing-parent-invalid.json")
 
-        self.assertEqual(list(validator.iter_errors(valid)), [])
-        self.assertTrue(list(validator.iter_errors(invalid_move)))
+        self.assertEqual(list(validator.iter_errors(valid_props)), [])
+        self.assertEqual(list(validator.iter_errors(valid_structure)), [])
+        # A structurally valid move is rejected by the live engine when its source is outside the caller's scope.
+        self.assertEqual(list(validator.iter_errors(cross_scope_move)), [])
+        self.assertTrue(list(validator.iter_errors(malformed_move)))
+
+    def test_root_structure_patch_schema_uses_world_authority(self):
+        schema = load_json(PREVIEW / "scope-request.schema.json")
+        request = load_json(PREVIEW / "examples/scope-structure-remove-parent-valid.json")
+        jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).validate(request)
+        self.assertEqual(request["method"], "scope.structure.patch")
 
 
 if __name__ == "__main__":

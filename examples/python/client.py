@@ -146,12 +146,12 @@ class Client:
                         self.snapshots[snapshot["id"]] = snapshot
                 elif message.get("event") == "scope.snapshot":
                     snapshot = message["data"]
-                    key = (str(snapshot.get("world_id", "")), str(snapshot.get("scope_id", "")))
-                    previous = self.scope_snapshots.get(key)
-                    if previous is None or (
-                        snapshot.get("generation", -1), snapshot.get("revision", -1)
-                    ) > (previous.get("generation", -1), previous.get("revision", -1)):
-                        self.scope_snapshots[key] = snapshot
+                    self._remember_scope_snapshot(snapshot)
+                elif message.get("event") == "scope.revoked":
+                    data = message.get("data", {})
+                    key = (str(data.get("world_id", "")), str(data.get("scope_id", "")))
+                    self.scope_snapshots.pop(key, None)
+                    self.events.put_nowait(message)
                 else:
                     if message.get("event") == "resync_required":
                         raise ConnectionError("Slow consumer: reconnect and reconstruct explicitly")
@@ -174,6 +174,14 @@ class Client:
                 if not future.done():
                     future.set_exception(ConnectionError("WebSocket closed"))
             self.pending.clear()
+
+    def _remember_scope_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        key = (str(snapshot.get("world_id", "")), str(snapshot.get("scope_id", "")))
+        previous = self.scope_snapshots.get(key)
+        if previous is None or (
+            snapshot.get("generation", -1), snapshot.get("revision", -1)
+        ) > (previous.get("generation", -1), previous.get("revision", -1)):
+            self.scope_snapshots[key] = dict(snapshot)
 
     async def _heartbeat(self) -> None:
         try:
@@ -201,7 +209,9 @@ class Client:
                              scene_features: tuple[str, ...] = (),
                              window_properties: tuple[str, ...] = (),
                              event_types: tuple[str, ...] = (),
-                             component_leases_version: int | None = None) -> None:
+                             component_leases_version: int | None = None,
+                             component_scope_operations: tuple[str, ...] = (),
+                             root_structure_patch: bool = False) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -213,6 +223,7 @@ class Client:
         advertised_window_properties = capabilities.get("window_properties")
         event_subscriptions = capabilities.get("event_subscriptions")
         advertised_events = event_subscriptions.get("events") if isinstance(event_subscriptions, dict) else None
+        component_leases = capabilities.get("component_leases")
         component_set = {value for value in advertised_components if isinstance(value, str)} \
             if isinstance(advertised_components, list) else set()
         shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
@@ -234,14 +245,28 @@ class Client:
         missing.extend(f"window_property:{value}" for value in window_properties if value not in window_property_set)
         missing.extend(f"event:{value}" for value in event_types if value not in event_type_set)
         if component_leases_version is not None:
-            scope_capability = capabilities.get("component_leases")
             if (
                 self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
-                or not isinstance(scope_capability, dict)
-                or scope_capability.get("status") != "preview"
-                or scope_capability.get("version") != component_leases_version
+                or not isinstance(component_leases, dict)
+                or component_leases.get("status") != "preview"
+                or component_leases.get("version") != component_leases_version
             ):
                 missing.append(f"component_leases:preview-v{component_leases_version}")
+        advertised_scope_operations = component_leases.get("scope_patch_operations") \
+            if isinstance(component_leases, dict) else None
+        scope_operation_set = {
+            value for value in advertised_scope_operations if isinstance(value, str)
+        } if isinstance(advertised_scope_operations, list) else set()
+        missing.extend(
+            f"component_scope_operation:{value}"
+            for value in component_scope_operations
+            if value not in scope_operation_set
+        )
+        if root_structure_patch and (
+            not isinstance(component_leases, dict)
+            or component_leases.get("root_structure_patch") != "scope.structure.patch"
+        ):
+            missing.append("root_structure_patch:scope.structure.patch")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
 
@@ -282,21 +307,25 @@ class Client:
         self.require_component_leases()
         if mode not in ("read", "write"):
             raise ValueError("scope mode must be 'read' or 'write'")
-        return await self.call("scope.join", {
+        result = await self.call("scope.join", {
             "world_id": world_id,
             "scope_id": grant["scope_id"],
             "generation": grant["generation"],
             "join_key": grant["join_key"],
             "mode": mode,
         })
+        self._remember_scope_snapshot(result["snapshot"])
+        return result
 
     async def read_scope(self, world_id: str, scope_id: str, generation: int) -> dict[str, Any]:
         self.require_component_leases()
-        return await self.call("scope.snapshot", {
+        snapshot = await self.call("scope.snapshot", {
             "world_id": world_id,
             "scope_id": scope_id,
             "generation": generation,
         })
+        self._remember_scope_snapshot(snapshot)
+        return snapshot
 
     async def patch_scope(
         self,
@@ -306,10 +335,34 @@ class Client:
         ops: list[dict[str, Any]],
     ) -> dict[str, Any]:
         self.require_component_leases()
-        return await self.call("scope.patch", {
+        operations = tuple(sorted({
+            operation.get("op")
+            for operation in ops
+            if isinstance(operation, Mapping) and isinstance(operation.get("op"), str)
+        } - {"props"}))
+        if operations:
+            self.require_capabilities(component_scope_operations=operations)
+        result = await self.call("scope.patch", {
             "world_id": world_id,
             "lease": lease,
             "expected_scope_revision": expected_scope_revision,
+            "ops": ops,
+        })
+        self._remember_scope_snapshot(result)
+        return result
+
+    async def patch_structure(
+        self,
+        world_id: str,
+        authority_lease: dict[str, Any],
+        expected_revision: int,
+        ops: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        self.require_capabilities(component_leases_version=1, root_structure_patch=True)
+        return await self.call("scope.structure.patch", {
+            "world_id": world_id,
+            "authority_lease": authority_lease,
+            "expected_revision": expected_revision,
             "ops": ops,
         })
 
@@ -321,12 +374,14 @@ class Client:
         data: Any,
     ) -> dict[str, Any]:
         self.require_component_leases()
-        return await self.call("scope.data.replace", {
+        result = await self.call("scope.data.replace", {
             "world_id": world_id,
             "lease": lease,
             "expected_scope_revision": expected_scope_revision,
             "data": data,
         })
+        self._remember_scope_snapshot(result)
+        return result
 
     async def leave_scope(self, world_id: str, scope_id: str) -> dict[str, Any]:
         self.require_component_leases()

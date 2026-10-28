@@ -1,0 +1,39 @@
+{
+  "id": "scope-patch-structure-1",
+  "method": "scope.patch",
+  "params": {
+    "world_id": "80000000-0000-4000-8000-000000000001",
+    "lease": {
+      "scope_id": "80000000-0000-4000-8000-000000000002",
+      "lease_id": "80000000-0000-4000-8000-000000000003",
+      "epoch": 1,
+      "generation": 1
+    },
+    "expected_scope_revision": 4,
+    "ops": [
+      {
+        "op": "insert",
+        "parent": "focus-panel",
+        "index": 1,
+        "node": {
+          "id": "focus-details",
+          "kind": "text",
+          "props": {"text": {"$path": "/details"}},
+          "children": []
+        }
+      },
+      {"op": "move", "node_id": "focus-details", "parent": "focus-panel", "index": 0},
+      {
+        "op": "replace",
+        "node_id": "focus-details",
+        "node": {
+          "id": "focus-details-final",
+          "kind": "badge",
+          "props": {"text": {"$path": "/status"}, "tone": "success"},
+          "children": []
+        }
+      },
+      {"op": "remove", "node_id": "focus-details-final"}
+    ]
+  }
+}

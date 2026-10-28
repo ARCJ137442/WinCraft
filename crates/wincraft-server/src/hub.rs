@@ -483,6 +483,14 @@ struct ScopePatchParams {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ScopeStructureParams {
+    world_id: Uuid,
+    authority_lease: LeaseKey,
+    expected_revision: u64,
+    ops: Vec<SceneOp>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ScopeDataParams {
     world_id: Uuid,
     lease: ScopedLeaseKey,
@@ -699,6 +707,9 @@ impl Hub {
             .map(World::snapshot)
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))
     }
+    pub fn read_scopes(&self, session: Uuid, id: Uuid) -> Result<Vec<ScopeSnapshot>> {
+        self.lock().read_scopes(session, id)
+    }
     pub fn capabilities(&self) -> Value {
         self.capabilities_for(ProtocolVersion::Stable03)
     }
@@ -712,7 +723,10 @@ impl Hub {
             button_features.push("external_window_actions");
         }
         let component_leases = if protocol.supports_component_leases() {
-            json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true})
+            json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true,
+                "scope_patch_operations":["props","insert","remove","replace","move"],
+                "root_structure_patch":"scope.structure.patch","filtered_scope_events":true,
+                "parent_revocation":"generation_fence"})
         } else {
             json!(false)
         };
@@ -787,6 +801,7 @@ impl Hub {
         };
         let mut changed = None;
         let mut deleted = None;
+        let mut directed = Vec::new();
         let value = match method {
             "session.ping" => {
                 let mut renewed = vec![];
@@ -961,6 +976,32 @@ impl Hub {
                 changed = Some(p.world_id);
                 encode(result)?
             }
+            "scope.structure.patch" => {
+                let p: ScopeStructureParams = decode(params)?;
+                let result = e.patch_scope_structure(
+                    sid,
+                    p.world_id,
+                    &p.authority_lease,
+                    p.expected_revision,
+                    &p.ops,
+                    now,
+                )?;
+                for revoked in result.revoked_scopes {
+                    for target in revoked.sessions {
+                        directed.push((
+                            target,
+                            json!({"event":"scope.revoked","data":{
+                                "world_id":p.world_id,
+                                "scope_id":revoked.scope_id,
+                                "generation":revoked.generation,
+                                "reason":"parent_structure_removed"
+                            }}),
+                        ));
+                    }
+                }
+                changed = Some(p.world_id);
+                encode(result.snapshot)?
+            }
             "scope.data.replace" => {
                 let p: ScopeDataParams = decode(params)?;
                 let result = e.replace_scope_data(
@@ -991,6 +1032,9 @@ impl Hub {
         drop(e);
         if let Some((id, sequence)) = changed {
             self.changed_at(id, sequence, source, cause_id);
+        }
+        for (target, event) in directed {
+            let _ = self.events.send(Notice::Directed(target, event));
         }
         if let Some((id, members)) = deleted {
             self.deleted(id, members);

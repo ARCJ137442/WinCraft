@@ -44,14 +44,14 @@ human 模式允许本地拖动；提供者试图改位置/尺寸会收到 HUMAN_
 
 ## 组件子树借用的实施顺序
 
-先保持稳定协议 0.3 的整窗独占语义；B07-01 只在显式 0.4 preview 协商后启用 root/window authority 与不相交子树写租约。组件租约不会隐式授予父容器删除权或窗口移动权。父节点移除时的子租约撤销、跨子树搬移、结构事务和按 owner 路由动作仍由 B07-02/B07-04 完成；仅把锁粒度改成 NodeId 不算完成。
+先保持稳定协议 0.3 的整窗独占语义；显式 0.4 preview 才启用 root/window authority 与不相交子树写租约。B07-02 的 `scope.patch` 原子操作只触及自身子树；root authority 的 `scope.structure.patch` 负责未归属布局和明确的边界移动/删除。删除父节点会原子撤销受影响子 scope、清除其数据 namespace 并通知成员。跨 scope 搬移仍拒绝；按 owner 路由动作仍由 B07-04 完成。仅把锁粒度改成 NodeId 不算完成。
 
 ## `0.4-preview.1` 当前边界
 
 - Stable `0.3` 的 world lease 和既有客户端语义保持不变。Provider 必须在 `hello` 明确选择 `0.4-preview.1`，并验证 Host `component_leases` capability；无 capability 时 SDK 失败关闭。
 - 当前 preview 允许 root authority 将一个独占世界原子分区成至少两个不相交子树；旧 world lease 被 fencing，root authority 与子树租约使用不同的 key 类型。
 - 每个 scope 具有自己的 generation 和 revision，并绑定唯一顶层 `scene.data` namespace。scope snapshot 只返回本子树和本 namespace；普通读者不能通过 `world.snapshot` 取得完整组合场景。
-- B07-01 目前只接受 scope 内现有节点的 props 更新和本 namespace 的数据替换。scope 根节点必须是只读展示组件；交互动作、插入/删除/移动、父子撤销、CAS 状态槽与跨 scope 结构事务尚未实现。
+- B07-02 允许 scope 内 display-only 节点的原子 props/insert/remove/replace/move，并通过 `scope.structure.patch` 执行父布局事务。scope owner 不能移动/删除固定根、跨 scope 偷取节点或插入交互组件；root authority 只能移动完整 scope 根/祖先或删除边界，不能改 scope 内部 props。父 authority 撤销会 fence 子 generation/epoch；已加入读者收到过滤后的 stale `scope.snapshot`，被删除的 scope 收到 `scope.revoked`。跨 scope move、按组件 owner 路由动作、CAS 状态槽仍未实现。
 - Composition world 不会静默合回 0.3 整窗租约。当前回退方法是由本地管理器销毁该临时世界，再以新 world ID 重建 exclusive 模式。
 
 可复现的真实 Rust WebSocket 验证入口：`examples/python/scope_probe.py`。它使用 synthetic 数据，不连接外部业务来源。
