@@ -26,7 +26,7 @@ export function demoSnapshot(manager=false):Snapshot {
     node('meta','key_value',{items:[{key:'窗口策略',value:'人类可拖动 · 托盘可找回'},{key:'写入模型',value:'窗口级独占租约'},{key:'演示边界',value:'无 Rust 服务、无原生窗口控制'}]})
   ]),data:{clock:'24:18',done:7,progress:58,button:'暂停',note:''}};
   return {id:manager?'preview-manager':'preview-world',revision:1,sequence:1,window_revision:1,epoch:1,system:manager,writer:'demo',status:'online',
-    window:{title:manager?'窗构 · 世界管理器':'专注与后台任务',width:620,height:700,position:null,anchor:null,always_on_top:true,visible:true,resizable:true,title_bar_visible:true,background_drag_enabled:true,text_selectable:true,decorations:false,skip_taskbar:true,click_through:false,geometry_control:'human',surface_opacity:0.8},
+    window:{title:manager?'窗构 · 世界管理器':'专注与后台任务',width:620,height:700,position:null,anchor:null,always_on_top:true,visible:true,resizable:true,title_bar_visible:true,background_drag_enabled:true,text_selectable:true,decorations:false,skip_taskbar:true,click_through:false,geometry_control:'human',position_control:null,surface_opacity:0.8},
     scene,native:{state:'preview',applied_window_revision:null,error:null},actions:[]};
 }
 export function previewController(snapshot:Snapshot,accept:(s:Snapshot)=>void):(id:string,value:unknown,source:'click'|'context_menu'|'escape'|'control_enter')=>Promise<string> {

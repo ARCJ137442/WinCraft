@@ -155,6 +155,8 @@ pub struct WindowSpec {
     pub skip_taskbar: bool,
     pub click_through: bool,
     pub geometry_control: GeometryControl,
+    /// Optional independent owner for placement; absent values inherit `geometry_control`.
+    pub position_control: Option<GeometryControl>,
     /// Alpha for the rendered surface over the transparent native window.
     pub surface_opacity: f64,
 }
@@ -176,11 +178,16 @@ impl Default for WindowSpec {
             skip_taskbar: true,
             click_through: false,
             geometry_control: GeometryControl::Human,
+            position_control: None,
             surface_opacity: 0.8,
         }
     }
 }
 impl WindowSpec {
+    pub fn effective_position_control(&self) -> GeometryControl {
+        self.position_control.unwrap_or(self.geometry_control)
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.title.chars().count() > 100 {
             return Err(Fault::new("INVALID_WINDOW", "title too long"));
@@ -233,20 +240,24 @@ pub struct WindowPatch {
     pub skip_taskbar: Option<bool>,
     pub click_through: Option<bool>,
     pub geometry_control: Option<GeometryControl>,
+    pub position_control: Option<GeometryControl>,
     pub surface_opacity: Option<f64>,
 }
 impl WindowPatch {
     pub fn apply(&self, old: &WindowSpec) -> Result<WindowSpec> {
-        let control = self.geometry_control.unwrap_or(old.geometry_control);
-        if control == GeometryControl::Human
-            && (self.position.is_some()
-                || self.anchor.is_some()
-                || self.width.is_some()
-                || self.height.is_some())
-        {
+        let size_control = self.geometry_control.unwrap_or(old.geometry_control);
+        let position_control = self
+            .position_control
+            .or(old.position_control)
+            .unwrap_or(size_control);
+        let human_size_write = size_control == GeometryControl::Human
+            && (self.width.is_some() || self.height.is_some());
+        let human_position_write = position_control == GeometryControl::Human
+            && (self.position.is_some() || self.anchor.is_some());
+        if human_size_write || human_position_write {
             return Err(Fault::new(
                 "HUMAN_GEOMETRY",
-                "set geometry_control=provider explicitly to program geometry",
+                "set geometry_control=provider for size or position_control=provider for placement",
             ));
         }
         let mut next = old.clone();
@@ -267,6 +278,9 @@ impl WindowPatch {
             geometry_control,
             surface_opacity
         );
+        if let Some(position_control) = self.position_control {
+            next.position_control = Some(position_control);
+        }
         if let Some(p) = &self.position {
             next.position = Some(p.clone());
         }

@@ -86,17 +86,26 @@ For the Popup-Ask form pattern, check every optional behavior before creating it
 Bind values with JSON Pointer `{"$path":"/..."}` or send a complete `data.replace`.
 Keep IDs stable and unique: the renderer uses them to preserve component identity.
 The default window belongs to the human: it is resizable, and a user's horizontal
-resize remains in effect while content height is recalculated. Do not repeatedly send
-window geometry to imitate user layout; request provider geometry control only when
-the integration genuinely owns placement and size.
+resize remains in effect while content height is recalculated. `geometry_control`
+controls size ownership. An optional `position_control` independently selects who may
+set placement; when omitted it inherits `geometry_control`, preserving older providers.
+Check `client.require_capabilities(window_properties=("position_control",))` before
+using the split. For a fixed-size but user-movable HUD, request
+`geometry_control="provider"`, `position_control="human"`, and `resizable=false`.
+With `background_drag_enabled=true`, blank non-text, non-interactive regions can move
+the native window even when the custom title bar is hidden. Buttons, links, inputs,
+text, and an active text selection are excluded as drag surfaces. Do not repeatedly send
+window geometry to imitate user layout; request provider ownership only for the
+dimension the integration genuinely owns.
 Window snapshots expose `surface_opacity`, defaulting to `0.8`. Set it with
 `window.configure` only when the provider has a clear reason to change visual opacity;
 the property affects the rendered surface while the native window remains transparent.
-In provider geometry mode, a window can use `anchor: {corner, margin_x, margin_y}` instead
-of fixed `position`. The corner is relative to the selected monitor work area and margins
-are logical pixels scaled by that monitor's DPI. The host clamps the result into the work
-area. Human geometry mode rejects anchors; local rescue clears the anchor and returns
-geometry control to the operator. This property is capability-gated as `window_property:anchor`.
+With provider position control, a window can use `anchor: {corner, margin_x, margin_y}`
+instead of fixed `position`. The corner is relative to the selected monitor work area and
+margins are logical pixels scaled by that monitor's DPI. The host clamps the result into
+the work area. Human position control rejects provider position/anchor writes; a local
+move clears an existing anchor. Local rescue clears the anchor and restores human control.
+Anchors remain capability-gated as `window_property:anchor`.
 Window visibility is observable runtime state. A local minimize hides the native
 window while keeping the world and lease alive; your next snapshot reports
 `window.visible=false`. A current writer may restore it with `window.configure`

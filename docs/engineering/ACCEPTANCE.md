@@ -42,7 +42,7 @@
 | W05 | 点击按钮、提交中文输入 | 事件含源节点/场景版本/epoch，发给当前写者；pending 到真实 ack；IME 不被刷新打断 |
 | W06 | UI发动作后让 provider 断线或不 ack | 显示失败/超时；不显示虚假的业务成功；旧动作不能落到新提供者 |
 | W07 | human 模式拖动/resize，同时 provider 更新业务；单独只调整宽度 | 默认可调整宽度；用户宽度在数据更新后保留，内容高度随新宽度重新测量；仅竖向人工改高可接管高度；修改后的真实坐标可观察；跨 DPI 不持续抖动 |
-| W08 | provider模式配置坐标/大小 | 原生应用反馈；拖拽被禁用；显式切回human后可拖动 |
+| W08 | provider尺寸/人类位置分权 | 旧 provider geometry（省略 `position_control`）仍禁止人类移动；显式设 `geometry_control=provider`、`position_control=human`、`resizable=false`、`background_drag_enabled=true` 后可移动但不能手动改尺寸；用户移动只更新 position，provider size 保持，provider 的 position/anchor 写入返回 `HUMAN_GEOMETRY` |
 | W09 | 设置click_through后从托盘救援 | 可恢复可点击、可见、屏幕内；原写者失权且被hold，反复join也不能夺回 |
 | W10 | 本地解除hold，提供者重新申请写 | 新epoch；没有永久封禁或隐藏关联 |
 | W11 | 负坐标副屏、125/150/200%DPI、拔插显示器 | 看得见可找回；位置与尺寸单位正确；重试失败不伪成功 |
@@ -60,7 +60,7 @@
 | W22 | 托盘全局临时隐藏/显示 | 隐藏当前逻辑可见的窗口但不销毁 world、不改变 lease/`window.visible`；提供者在隐藏期间创建的窗口也保持隐藏；“显示全部”只恢复仍逻辑可见的窗口；再次打开管理器能聚焦已有 manager |
 | W23 | 标题栏图标、折叠与拖动 | 标题栏品牌/最小化/关闭图标为 SVG 并与标题共用垂直中轴；单击标题区域（移动小于 5px）只折叠/展开；折叠后原生窗口收敛到标题栏所需宽高，不留大块空白；展开恢复折叠前宽度并继续按内容适配高度；拖动超过阈值才移动窗口 |
 | W24 | 健康状态降噪与恢复提示 | `online` host 行与空的健康 provider badge 隐藏；`stale`、`vacant`、来源暂停/过期/错误仍可见且可访问 |
-| W25 | 无标题栏 Obsidian Workspace HUD | `Obsidian Workspace` provider 以 `--hide-titlebar` 创建无自定义标题栏世界；内容、拖动/穿透恢复路径、托盘全局隐藏/显示仍符合相应能力与权限边界 |
+| W25 | 无标题栏 Obsidian Workspace HUD | `Obsidian Workspace` 以 `--hide-titlebar`、provider geometry、`position_control=human`、`resizable=false`、`background_drag_enabled=true` 创建窗口；无标题栏时未配置动作的非文本背景可拖动，文本/按钮/输入与选中内容不启动移动；穿透恢复和托盘全局隐藏/显示仍可用 |
 | W26 | Windows 虚拟桌面范围 | 默认只在当前桌面；provider 可显式请求所有桌面；若平台未实现请求必须明确报告 unsupported，不能把 Tauri no-op 记作通过。当前 Windows 公共 Tauri/tao API 不支持，整体保持未实现 |
 | W27 | 提供者原生窗口动作 | 仅响应用户点击；宿主只对已存在、可见的 allowlisted 应用窗口执行 `activate`/`maximize`/`restore`/`minimize`；可选标题子串生效；无匹配或系统拒绝时显示失败；不启动进程、不执行命令、不记录真实标题。Obsidian Workspace 标题是 Obsidian `activate` 的实测用例 |
 

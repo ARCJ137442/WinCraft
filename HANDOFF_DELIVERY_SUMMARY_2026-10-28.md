@@ -8,7 +8,7 @@ audience: maintainer, release-validator
 
 # WinCraft next-generation handoff delivery summary
 
-This workspace integrates the `<handoff-dir> 2026-10-26` handoff package and records the current implementation and evidence boundary. It is a local development handoff, not release authorization.
+This workspace integrates the 2026-10-26 platform evolution handoff package and records the current implementation and evidence boundary. It is a local development handoff, not release authorization.
 
 ## Task status
 
@@ -35,44 +35,46 @@ The 48 tasks are all represented in the generated acceptance matrix: 147 accepta
 - Session-scoped shortcut intent registry with conflict/reserved-key rejection and disconnect cleanup; no OS hook is installed.
 - Pack, inventory, usage observation, web-chat observation and voice-session draft schemas with positive/negative fixtures.
 - Pure adaptive planner and submission eligibility guard; no Host mutation or adapter execution.
-- Corrected the ordinary-input native-action guard and folded-height minimum; added SVG titlebar icons and a temporary compact-width overlay that preserves the expanded window size. Automated UI/Rust checks pass; the latest native collapsed-width/expand path remains unverified because Computer Use could not route a click to the target window.
+- Corrected the ordinary-input native-action guard and folded-height measurement; added centered SVG titlebar icons, a compact-width overlay that restores expanded size, `background_drag_enabled` gating for blank non-text surfaces, and capability-gated `position_control` separate from provider size control. Automated UI/Rust/headless protocol checks pass; native collapsed-width and hidden-titlebar drag pixels remain unverified because Computer Use could not route a click to the target window.
+- Added a fixture-tested, read-only ExoMind workbench provider prototype. It projects the active timeblock through GET and changes only the local WinCraft world layout. Fixture tests pass; live behavior for this newer prototype remains NOT_RUN.
+- Added per-checkout CodeGraph commands and ignore rules, a single `npm run check:local` validation path, Windows push/PR CI, and a behavior/evidence-focused PR template. The local index is fresh; its database is intentionally untracked.
+- Distilled the supplied study material into WinCraft-specific delivery and evidence practices. Original private source material, personal paths and evaluation answer keys were not copied into this public repository.
 
 ## Reproduction commands
 
 ```powershell
-cargo fmt --all -- --check
-cargo test --workspace --no-fail-fast
-cargo clippy --workspace --all-targets -- -D warnings
-npm run check
-python -m unittest discover -s tests -v
-python scripts/check_contracts.py
-python skills/wincraft-provider/scripts/verify.py
+npm ci
+python -m pip install -r requirements-dev.txt -r examples/python/requirements.txt
+npm run check:local
 ```
+
+CodeGraph: `npm run codegraph:init` once per new checkout, then `npm run codegraph:explore -- "<query>"`; after code changes use `npm run codegraph:sync` and confirm `npm run codegraph:status`.
 
 ## Stage release artifact
 
-- `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`
-- 11,793,408 bytes
-- SHA-256: `46349C9BC403A6899A3AB1A8DFADE77441C2172ACA62E4E047CF73FC5D86E122`
-- Built from commit `e6c45fd`; this latest build has not been launched after the titlebar width bound correction. The preceding build was launched for the real ExoMind read-only projection. It is a local validation artifact, not a published release.
+- `target/release/wincraft-desktop.exe`
+- 11,806,720 bytes
+- SHA-256: `3BAA25F64D32C207CFC3C9467921F9F983ECF505A073C24D28055F64A05D41C7`
+- Built from the working tree based on commit `24161e2`, including the `position_control` and background-drag changes that are part of this checkpoint. `npm run desktop:build` passed. The new executable was launched with `--open-manager` and the real Tauri manager appeared in UIA; a separate no-argument run kept the process alive with zero target windows. It is a local validation artifact, not a published release.
 - Chinese manual acceptance guide: [`验收指南-阶段性release-2026-10-28.md`](验收指南-阶段性release-2026-10-28.md)
 
-The final isolated headless Rust probe passed 38 `lease_probe.py` checks. Local evidence is under `evidence/local/nextgen-2026-10-27/` and contains no runtime token, descriptor contents, note body or telemetry.
+The freshly built Tauri release host passed 39 real-WebSocket `lease_probe.py` checks. Local evidence is under `evidence/local/nextgen-2026-10-27/` and `evidence/local/nextgen-2026-10-28/`; these records exclude runtime tokens, descriptor contents, note bodies and telemetry. Tray menu activation, global hide/show, collapse width on the latest release, background dragging pixels, DPI/multi-monitor, and user-driven acceptance remain open.
 
 ## Open gates
 
 - Current release tray manager open/focus, global hide/show, graceful exit and redacted UIA/manual acceptance.
-- Latest W23 native compact-width/expanded-width restoration and pixel-level titlebar alignment. Height-to-titlebar was observed at 480×50 on the preceding release; the latest combined build's width click was blocked because Computer Use targeted the Edge overlay after one recovery retry.
+- Latest W23 native compact-width/expanded-width restoration, pixel-level titlebar alignment, provider-size/human-position split and hidden-titlebar background drag. Height-to-titlebar was observed at 480×50 on the preceding release; latest width/drag click was blocked because Computer Use targeted the Edge overlay after one recovery retry.
 - Popup real release success/cancel, position reuse, keyboard/IME/UIA and concurrent-window acceptance.
 - Obsidian Workspace/TrafficMonitor real external-window clicks and Windows foreground-denial path.
 - Multi-monitor/DPI pixels, monitor detach migration, click-through rescue and virtual desktop behavior.
 - Native RegisterHotKey/IME, Windows voice APIs, browser bridge, TeamSense, TouchAI and SysTorch integrations.
-- ExoMind currently has a verified live read-only active-timeblock projection; a broader workbench replica and any write behavior remain unimplemented. RT build hash differs from the skill's recorded hash.
+- A previous user-authorized read-only smoke exercised the ExoMind active-timeblock projection. No profile identifier, current block state, returned content, or RT connection details are included here. The newer workbench provider's tests use synthetic fixtures; live behavior remains NOT_RUN.
 - Runtime pack import/preview/submit/rollback and second-machine migration.
 - Long-run process/resource measurements, signing/installer/ACL and macOS/Linux builds.
+- Future idea only: a read-only TeamSense status card, with TeamSense retaining business truth and authorization; no credential-file or private-web-page access. This does not expand the current release scope.
 
 These remain `NOT_RUN`, `BLOCKED` or `IMPLEMENTED_UNVERIFIED` in the matrix. They must not be converted to PASS from browser previews, headless tests, compile success or design prose.
 
 ## Checkpoint and rollback
 
-The titlebar/size implementation and follow-up width-bound correction are committed and pushed to the existing public `ARCJ137442/WinCraft` `dev` branch as `5d64341` and `e6c45fd`; the summary update was pushed as `e1ab753`. No release upload, release tag, installer publication, license change or remote permission change is included. The code changes remain reversible by reverting these checkpoints; provider business data and external installations were not modified.
+This checkpoint extends the existing public `ARCJ137442/WinCraft` `dev` history from base `24161e2` with position-control, the read-only ExoMind provider prototype, CodeGraph/toolchain setup, and the updated validation/acceptance documentation. The EXE is delivered as a local handoff artifact, not uploaded as a GitHub release. No release tag, installer publication, license change or remote permission change is included. Provider business data and external installations were not modified.

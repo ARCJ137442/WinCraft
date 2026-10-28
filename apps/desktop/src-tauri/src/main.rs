@@ -118,14 +118,77 @@ fn surface_interact(
     )
 }
 #[tauri::command]
-fn surface_drag(window: WebviewWindow, state: tauri::State<'_, DesktopState>) -> Result<(), Fault> {
+fn surface_drag(
+    window: WebviewWindow,
+    state: tauri::State<'_, DesktopState>,
+    drag_source: String,
+) -> Result<(), Fault> {
     let s = state.hub.renderer_snapshot(caller_world(&window)?)?;
-    if s.window.geometry_control != GeometryControl::Human || s.window.click_through {
-        return Err(Fault::new("FORBIDDEN", "human drag is not enabled"));
-    }
+    validate_drag_request(
+        &drag_source,
+        s.window.effective_position_control(),
+        s.window.click_through,
+        s.window.background_drag_enabled,
+    )?;
     window
         .start_dragging()
         .map_err(|e| Fault::new("NATIVE_ERROR", e.to_string()))
+}
+
+fn validate_drag_request(
+    drag_source: &str,
+    position_control: GeometryControl,
+    click_through: bool,
+    background_drag_enabled: bool,
+) -> Result<(), Fault> {
+    let source_allowed = match drag_source {
+        "titlebar" => true,
+        "background" => background_drag_enabled,
+        _ => return Err(Fault::new("INVALID_PARAMS", "unknown window drag source")),
+    };
+    if !source_allowed || position_control != GeometryControl::Human || click_through {
+        return Err(Fault::new(
+            "FORBIDDEN",
+            "window dragging is disabled by the current configuration",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod drag_permission_tests {
+    use super::validate_drag_request;
+    use wincraft_core::GeometryControl;
+
+    #[test]
+    fn titlebar_and_background_drag_use_their_own_permissions() {
+        assert!(validate_drag_request("titlebar", GeometryControl::Human, false, false).is_ok());
+        assert!(validate_drag_request("background", GeometryControl::Human, false, true).is_ok());
+        assert_eq!(
+            validate_drag_request("background", GeometryControl::Human, false, false)
+                .unwrap_err()
+                .code,
+            "FORBIDDEN"
+        );
+        assert_eq!(
+            validate_drag_request("background", GeometryControl::Provider, false, true)
+                .unwrap_err()
+                .code,
+            "FORBIDDEN"
+        );
+        assert_eq!(
+            validate_drag_request("titlebar", GeometryControl::Human, true, true)
+                .unwrap_err()
+                .code,
+            "FORBIDDEN"
+        );
+        assert_eq!(
+            validate_drag_request("unknown", GeometryControl::Human, false, true)
+                .unwrap_err()
+                .code,
+            "INVALID_PARAMS"
+        );
+    }
 }
 #[tauri::command]
 fn surface_close(

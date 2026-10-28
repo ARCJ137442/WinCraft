@@ -10,7 +10,7 @@ export interface WorkAreaAnchor { corner:WorkAreaCorner; margin_x:number; margin
 export interface WindowSpec {
   title:string; width:number; height:number; position:{x:number;y:number}|null; anchor:WorkAreaAnchor|null;
   always_on_top:boolean; visible:boolean; resizable:boolean; title_bar_visible:boolean; background_drag_enabled:boolean; text_selectable:boolean; decorations:boolean;
-  skip_taskbar:boolean; click_through:boolean; geometry_control:'provider'|'human'; surface_opacity:number;
+  skip_taskbar:boolean; click_through:boolean; geometry_control:'provider'|'human'; position_control:'provider'|'human'|null; surface_opacity:number;
 }
 export interface Snapshot {
   id:string; revision:number; sequence:number; window_revision:number; epoch:number;

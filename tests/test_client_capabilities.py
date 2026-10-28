@@ -18,11 +18,11 @@ class CapabilityTests(unittest.TestCase):
             "keyboard_shortcuts": ["escape", "ctrl_enter"],
             "button_features": ["selection_groups", "appearance_variants", "key_value_actions"],
             "scene_features": ["theme_tokens", "rich_key_value"],
-            "window_properties": ["background_drag_enabled", "anchor"],
+            "window_properties": ["background_drag_enabled", "anchor", "position_control"],
         })
         client.require_capabilities(components=("textarea", "icon", "bar_chart"), keyboard_shortcuts=("escape", "ctrl_enter"),
                                     button_features=("selection_groups", "appearance_variants", "key_value_actions"), scene_features=("theme_tokens", "rich_key_value"),
-                                    window_properties=("background_drag_enabled", "anchor"))
+                                    window_properties=("background_drag_enabled", "anchor", "position_control"))
 
     def test_missing_capability_fails_before_provider_uses_feature(self):
         client = self.client_with({"components": ["input"], "keyboard_shortcuts": [], "button_features": []})
@@ -51,6 +51,11 @@ class CapabilityTests(unittest.TestCase):
         client = self.client_with({"components": [], "window_properties": ["background_drag_enabled"]})
         with self.assertRaisesRegex(RuntimeError, "window_property:anchor"):
             client.require_capabilities(window_properties=("anchor",))
+
+    def test_position_control_fails_closed_when_host_does_not_advertise_it(self):
+        client = self.client_with({"components": [], "window_properties": ["background_drag_enabled"]})
+        with self.assertRaisesRegex(RuntimeError, "window_property:position_control"):
+            client.require_capabilities(window_properties=("position_control",))
 
     def test_advertised_window_state_events_are_accepted(self):
         client = self.client_with({"event_subscriptions": {"events": [

@@ -11,6 +11,13 @@
     "ui:dev": "node scripts/dev-server.mjs",
     "test:ui": "npm run ui:build && node --test tests/*.test.mjs",
     "check:contracts": "python scripts/check_contracts.py",
+    "check:rust": "cargo fmt --all -- --check && cargo check --workspace --all-targets && cargo test --workspace --no-fail-fast && cargo clippy --workspace --all-targets -- -D warnings",
+    "check:python": "python -m unittest discover -s tests -v && python skills/wincraft-provider/scripts/verify.py",
+    "check:local": "npm run check && npm run check:rust && npm run check:python",
+    "codegraph:init": "codegraph init .",
+    "codegraph:explore": "codegraph explore",
+    "codegraph:sync": "codegraph sync .",
+    "codegraph:status": "codegraph status .",
     "desktop:dev": "cd apps/desktop && tauri dev",
     "desktop:build": "cd apps/desktop && tauri build --no-bundle",
     "check": "npm run test:ui && npm run check:contracts"

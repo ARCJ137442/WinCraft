@@ -4,6 +4,26 @@ export const MAX_NATIVE_CONTENT_WIDTH_PX = 2_400;
 export const MIN_NATIVE_CONTENT_HEIGHT_PX = 50;
 export const MAX_NATIVE_CONTENT_HEIGHT_PX = 10_000;
 
+export type BackgroundDragPolicy = {
+  enabled: boolean;
+  positionControl: 'human' | 'provider';
+  clickThrough: boolean;
+  titleBar: boolean;
+  interactive: boolean;
+  text: boolean;
+  selectionActive: boolean;
+};
+
+export function allowsBackgroundWindowDrag(policy: BackgroundDragPolicy): boolean {
+  return policy.enabled
+    && policy.positionControl === 'human'
+    && !policy.clickThrough
+    && !policy.titleBar
+    && !policy.interactive
+    && !policy.text
+    && !policy.selectionActive;
+}
+
 export function normalizeNativeContentWidth(width: number): number | null {
   if (!Number.isFinite(width) || width < 0) return null;
   return Math.min(MAX_NATIVE_CONTENT_WIDTH_PX, Math.max(MIN_NATIVE_CONTENT_WIDTH_PX, width));

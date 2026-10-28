@@ -112,6 +112,11 @@ mod capability_tests {
             .unwrap()
             .iter()
             .any(|feature| feature == "selection_groups"));
+        assert!(capabilities["window_properties"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|property| property == "position_control"));
         assert!(capabilities["scene_features"]
             .as_array()
             .unwrap()
@@ -672,7 +677,7 @@ impl Hub {
             "keyboard_shortcuts":["escape","ctrl_enter"],
             "button_features":button_features,
             "scene_features":["theme_tokens","rich_key_value"],
-            "window_properties":["title","width","height","position","anchor","always_on_top","visible","resizable","title_bar_visible","background_drag_enabled","text_selectable","decorations","skip_taskbar","click_through","geometry_control","surface_opacity"],
+            "window_properties":["title","width","height","position","anchor","always_on_top","visible","resizable","title_bar_visible","background_drag_enabled","text_selectable","decorations","skip_taskbar","click_through","geometry_control","position_control","surface_opacity"],
             "not_implemented":["component_leases","follow_cursor","attach_to_foreign_window","native_opacity","arbitrary_code","builtin_tls"]})
     }
     pub fn reply(&self, sid: Uuid, req: Request) -> Value {

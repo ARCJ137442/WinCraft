@@ -462,7 +462,7 @@ async def run(args: argparse.Namespace) -> None:
             components=('textarea',),
             keyboard_shortcuts=('escape', 'ctrl_enter'),
             button_features=('selection_groups',),
-            window_properties=('background_drag_enabled', 'anchor'),
+            window_properties=('background_drag_enabled', 'anchor', 'position_control'),
             event_types=('window.geometry_changed', 'window.visibility_changed'),
         )
         checks.append('host_advertises_textarea_escape_and_window_event_capabilities')
@@ -486,6 +486,7 @@ async def run(args: argparse.Namespace) -> None:
         assert default_window['text_selectable'] is True
         assert default_window['click_through'] is False
         assert default_window['anchor'] is None
+        assert default_window['position_control'] is None
         checks.append('default_window_appearance_properties')
         await check_legacy_protocol_rejected(a)
         checks.append('previous_protocol_version_is_rejected')
@@ -660,10 +661,37 @@ async def run(args: argparse.Namespace) -> None:
                 assert geometry_event['source'] == 'provider'
                 assert geometry_event['cause_id']
                 await assert_no_window_event(b, subscription_id)
-                await a.mutate(
-                    'window.configure', world_id, original_lease,
-                    patch={'geometry_control': 'human'},
+                split_controls = await a.mutate(
+                    'window.configure',
+                    world_id,
+                    original_lease,
+                    patch={
+                        'position_control': 'human',
+                        'resizable': False,
+                        'width': 420,
+                    },
                 )
+                assert split_controls['window']['geometry_control'] == 'provider'
+                assert split_controls['window']['position_control'] == 'human'
+                assert split_controls['window']['width'] == 420
+                assert split_controls['window']['resizable'] is False
+                position_event = await wait_for_window_event(
+                    b, subscription_id, 'window.geometry_changed'
+                )
+                assert position_event['payload']['geometry_control'] == 'provider'
+                assert position_event['payload']['position_control'] == 'human'
+                await expect_code(
+                    a,
+                    'window.configure',
+                    {
+                        'world_id': world_id,
+                        'lease': original_lease,
+                        'expected_revision': split_controls['revision'],
+                        'patch': {'position': {'x': 10, 'y': 20}},
+                    },
+                    'HUMAN_GEOMETRY',
+                )
+                checks.append('provider_size_human_position_control_round_trips_and_fences_provider_position_writes')
                 await assert_no_window_event(b, subscription_id)
                 checks.append('geometry_state_event_is_typed_latest_and_coalescible')
 

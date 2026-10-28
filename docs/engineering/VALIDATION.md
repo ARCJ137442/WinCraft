@@ -1,5 +1,19 @@
 # 制作环境实际验证记录
 
+本地开发与 CI 的统一命令、CodeGraph 使用方式及证据边界见 [开发规范与工具链](DEVELOPMENT_TOOLCHAIN.md)。该命令的 CI 结果不替代本文件记录的真实宿主、release 和人工验收。
+
+## 2026-10-28 开发工具链核验
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `npm ci` | PASS | 用已提交的 `package-lock.json` 干净安装成功；未改动依赖清单。|
+| `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、74 项 Python 测试、19 个 Skill 引用检查通过。|
+| Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、88 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
+| CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
+| CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,489 个节点、4,334 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
+
+这次只验证工具链、文档与既有自动化测试；没有据此重新宣称桌面 release、托盘、原生窗口、外部业务数据或人工验收通过。逐机命令和环境记录位于默认忽略的 `evidence/local/nextgen-2026-10-28/`。
+
 日期：2026-10-25。对应交接版本：0.1.0-alpha.1。这是原型制作环境记录，不是本地 Codex 的最终验收报告。
 
 ## 本机 Windows 验证摘要（2026-10-26）
@@ -10,24 +24,24 @@
 |---|---|---|
 | UI/离线契约 | PASS | `npm run check`：24 项 Node 测试、10 项离线契约/locale 检查；Chromium smoke 27 项编译 renderer DOM 检查，覆盖标题栏单击折叠/拖动阈值、健康状态与空徽标隐藏、状态播报、Tab 停靠与异步回执焦点；含 theme token/可信 chrome、字体缩放、forced-colors 与 reduced-motion 模拟；非原生验收 |
 | Host UI 国际化 | PASS（B02 UIA） | Rust 管理器和 TypeScript chrome 共读 `zh-CN`/`en-US` catalog；fallback/key/placeholder 与 provider 文本测试通过。先前 B02 单实例测试进程的 UIA 树显示管理器动作；实际切到英文观察标题/按钮变化并恢复中文。最终版同含此 UI 代码，但未成功取得最终版 UIA 树。|
-| Python provider/Agent skill | PASS | 最新 44 项 Python 单测、Provider Skill 自检 19 条唯一仓库引用；TrafficMonitor 与 Obsidian Workspace vault 的 Obsidian Workspace 均已重连到当前 lifecycle release，日志只留连接/修订/计数摘要 |
+| Python provider/Agent skill | PASS | 最新 44 项 Python 单测、Provider Skill 自检 19 条唯一仓库引用；provider 的 live smoke 结果按脱敏记录保留，不在公开文档写入用户来源标识或业务投影内容 |
 | Rust workspace | PASS | `cargo fmt --check`、workspace release 58 项测试、workspace Clippy `-D warnings`；含撤销幂等、跨 session lease fencing、world.list 可见性、theme contrast、scene atomicity 与全局临时窗口可见性状态 |
-| Tauri release | PASS（已启动） | shutdown 版 `E:/tmp/wincraft-nextgen-lifecycle-20261026/release/wincraft-desktop.exe` 当前 PID 41616，窗口标题「窗构 · 世界管理器」；`lease_probe.py` 对此 Tauri 宿主 28 项全通过。tray Exit 的 UIA 人工路径仍待验收 |
+| Tauri release | PASS（已启动） | 先前独立 Tauri release 启动了世界管理器，`lease_probe.py` 对真实 Tauri 宿主 28 项通过。托盘退出与原生输入仍需单独验收 |
 | 最终宿主 descriptor ACL | NOT_RUN | 通过 `client.py` 在内存中读取当前 descriptor 以连接，未输出或保存其内容；当前 descriptor ACL 未检查。此前 locale-enabled build 的 ACL 证据不能外推 |
 | 真实协议 | PASS | `lease_probe.py` 分别对独立 headless Rust host 和当前 Tauri 启动的真实 Rust host 各完成 28 项；当前 Tauri host 额外报告 `native_windows=true`，窗口修订等待 native adapter 应用。未覆盖实际点击穿透救援、像素布局、托盘退出 |
 | B01-02 撤销生命周期 | PASS | Rust core release 回归覆盖重复断线/离开幂等、其他 session/world 不受影响、pending action 撤销和旧 lease fencing；transport shutdown 测试确认活跃 WebSocket 断开、session/lease 清理、listener/housekeeping 停止及 descriptor 删除 |
 | B01-03 世界发现 | IMPLEMENTED_UNVERIFIED | 当前 0.3 `world.list` 仅列当前成员及非系统 open_authenticated worlds；invite-only 未加入项隐藏，open-world listing 仍需 `world.join` 才能读取。provider type/version/capability/freshness registry 仍为 proposal |
 | B01-04 公共 SDK 与诊断 | PASS（L1-L2） | Schema/SDK/shared fixtures 与真实 Rust headless 一致；renderer 保留节点身份和草稿；Popup action-ack 断线时的合成敏感正文 sentinel 不回显 |
 | 教程 provider | PASS（启动/清理），原生交互 PARTIAL | `provider_tutorial.py` 在真实 headless 与先前 B02 Tauri host 创建 ordinary invited world 并接受首个 scene；UIA 树显示五课首页。Ctrl+C 清理确认，随后 `world.list` 匹配数为 0；动态课/主题/隐藏恢复的 UIA 输入未完成 |
-| TrafficMonitor | PASS（当前 release） | 新建 x64 1.8.6.0 临时副本、未复用原配置；从当前源码重编的桥接 DLL 通过 `OnMonitorInfo` 持续发布；provider PID 36592 在线，snapshot 和窗口报告 1.8.6.0，generation/revision 递增。证据不含遥测数值 |
-| Obsidian Obsidian Workspace | PASS（当前 release） | 明确选择 `Obsidian Workspace` vault；`Obsidian Workspace-tools` 0.14.7 仪表盘投影 5 个关注项和 4 组提醒，自动刷新活动，native report 为 applied；未写笔记/插件设置，证据不含标题或正文 |
+| TrafficMonitor | PASS（此前本机 smoke） | 临时 x64 provider 与本地桥接曾报告来源在线且采样更新；本公开记录不含本机进程标识或遥测数据 |
+| Obsidian Obsidian Workspace | PASS（此前本机 smoke） | 用户明确选择的只读仪表盘投影曾成功更新并应用到窗口；不在公共仓库记录 vault 标识、投影数量、任务标题或笔记内容 |
 | Python focus demo | PASS（连接），动作回执 NOT_RUN | `focus_demo.py` 已连到当前 Rust host 并创建合成世界；窗口可用于人工测试动态组件替换与动作回执。没有代替用户点击按钮 |
 | GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
 | 原生人工门 | PARTIAL | UIA 树可读出管理器/教程窗口 role、名称、状态与动作；manager 中英切换已实际操作并恢复。Computer Use 对 tutorial 窗口两次恢复后仍报 `failed to activate captured window`；隐藏/找回、Popup Tab→备注→Ctrl+Enter/Escape、IME/屏幕阅读器、多 DPI、休眠恢复和穿透救援仍未完成人工验收 |
-| ExoMind | PARTIAL（真实档案只读联调） | `exomind-monitor` 脚本自动发现本机 RT/profile；只读快照确认当前时间块，`exomind_readonly.py` 从真实 GET 接口投影到 WinCraft 并报告来源读取成功。未调用外心写 API；当前 runtime 版本与技能记录的构建哈希不同；本轮没有保存档案 ID、任务内容或截图 |
+| ExoMind | PARTIAL（只读 smoke） | 用户授权的只读读取曾成功投影到 WinCraft，未调用 ExoMind 写 API。公开记录不保留 profile、当前状态、返回内容、连接参数或 runtime build 标识；较新的工作台 provider 尚未进行 live 验收 |
 
-shutdown 版 release 为 `E:/tmp/wincraft-nextgen-lifecycle-20261026/release/wincraft-desktop.exe`，11,438,080 字节，SHA-256 `6216eaedb720e8fe5e710baaf9539dc1925fe6cde102f62c2e71876a228d7403`。它当前以 PID 41616 运行。旧 PID 48464 在正常关闭请求后仅隐藏到托盘，之后按准确 exe 路径结束；PID 58140 和 31256 为清理/替换临时提供者而结束，PID 58680 更早已结束。旧进程可能留下本地 runtime descriptor；一次删除尝试被本机策略拒绝，未读取或写入 descriptor 内容；headless 测试 runtime 均在 shutdown 后为空。
+Lifecycle release 与临时 provider 的进程清理曾在本机完成。一个过期 runtime descriptor 的删除尝试被本机策略拒绝；该文件内容未读取。逐机进程、路径和 descriptor 清理证据仅保存在本地忽略目录。
 
 ## 已实际执行
 
@@ -91,7 +105,7 @@ python scripts/browser_smoke.py
 | UI、Schema、Provider Python | PASS | `npm run check`：24 Node tests、10 项离线检查；Python 单测 44 项；Provider Skill 自检 19 条唯一引用 |
 | Rust core/server/desktop | PASS | rustfmt；workspace check；release 58 项测试；workspace Clippy `-D warnings` |
 | 编译 renderer DOM | PASS | Chromium 27 项离线检查，含多行草稿、选项组键盘、标题栏点击折叠与拖动阈值、健康状态徽标隐藏、主题 token/宿主 chrome 隔离、本机缩放、forced-colors/reduced-motion、状态语义和焦点不抢夺。Mock provider，不是 native 证明 |
-| 独立 Tauri release | PASS（构建、启动） | shutdown 版 `E:/tmp/wincraft-nextgen-lifecycle-20261026/release/wincraft-desktop.exe`，11,438,080 字节，SHA-256 `6216eaedb720e8fe5e710baaf9539dc1925fe6cde102f62c2e71876a228d7403`；当前 PID 41616 在管理器模式运行 |
+| 独立 Tauri release | PASS（构建、启动） | 先前独立 release 在管理器模式启动，真实 Tauri host 协议探针通过；机器专属路径与进程号不放在公开记录 |
 | Scene theme tokens | IMPLEMENTED_UNVERIFIED | `scene.theme` capability、Rust 对比度/范围验证、renderer 内容区作用域、forced-colors/reduced-motion 与本机 Ctrl 缩放已实现；DOM/headless probe 通过，Windows 原生偏好仍待验收 |
 | Theme demo provider | PASS（unit） | `examples/python/theme_demo.py` 仅展示合成主题；能力门、默认/示例主题、低对比负例由 3 项单测覆盖，尚未在新 Tauri release 上运行 |
 | Provider 五课教程 | IMPLEMENTED_UNVERIFIED | `examples/python/provider_tutorial.py` 含创建/隐藏找回、动态插入、交互回执、主题、发现/加入边界；44 项 Python 测试包含六项教程回归；headless 与先前 B02 Tauri host 均接受初始 scene，UIA 显示首页控件，provider 清理已验证；完整 Tauri 五课互动仍待用户验收 |
@@ -115,7 +129,7 @@ python scripts/browser_smoke.py
 | 原生 manager language toggle | PASS（UIA tree） | 单实例 Tauri manager 从中文切换为英文并在 UIA 中观察到标题/动作文本更新，之后观察到中文已恢复。|
 | 教程隐藏恢复/Popup键盘/IME/读屏 | NOT_RUN | Computer Use 对唯一教程窗口执行首次点击与一次重新激活仍失败；没有再尝试其它 UI 输入通道。manager、tutorial UIA 树的控件名已读取，截图回传错窗后丢弃且未保存。|
 
-当前 PID 41616 正运行 shutdown-enabled lifecycle release 的 manager。PID 48464 已按准确可执行路径结束；PID 58140、31256 为清理临时世界/替换桥接后结束，PID 58680 更早已结束。Computer Use 恢复失败后没有再发送键鼠输入。UIA/IME/屏幕阅读器和五课完整交互仍待人工验收。
+此前的 manager/provider 进程已按所属项目范围清理。Computer Use 恢复失败后没有再发送键鼠输入。UIA/IME/屏幕阅读器和五课完整交互仍待人工验收。
 
 ## B02-03 / B02-04 本轮增量（2026-10-26）
 
@@ -127,7 +141,7 @@ python scripts/browser_smoke.py
 | 连接状态可访问性语义 | PASS（DOM） | `#status` 标记 `role=status`、`aria-live=polite`、`aria-atomic=true`；主窗口移除无用途的额外 Tab 停靠，滚动组件区仍可键盘聚焦。|
 | Windows UIA/原生键盘/IME/读屏 | PARTIAL | manager 与 synthetic tutorial 的 UIA 树已读；manager 语言切换可用。Computer Use 对 tutorial 的索引点击报 `coordinate input geometry is unavailable`，重新选择后激活报 `failed to activate captured window`；没有继续键鼠操作，IME/读屏和完整课程保持 NOT_RUN。|
 
-shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026` 构建，现以 PID 41616 单实例运行。Computer Use 曾无法激活教程窗，未绕过该限制继续发送键鼠；人工 UIA/IME/读屏/五课验收仍待完成。
+shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use 曾无法激活教程窗，未绕过该限制继续发送键鼠；人工 UIA/IME/读屏/五课验收仍待完成。
 
 ## B03-01 Popup 兼容适配（2026-10-26）
 
@@ -144,12 +158,12 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 
 ## 2026-10-26 Lifecycle release：真实 Tauri host 协议验证
 
-- `Start-Process -FilePath <lifecycle release exe> -ArgumentList '--open-manager'` — 当前实例 PID 41616。进程路径为 `E:/tmp/wincraft-nextgen-lifecycle-20261026/release/wincraft-desktop.exe`，窗口标题为「窗构 · 世界管理器」。文件 11,438,080 字节，SHA-256 `6216eaedb720e8fe5e710baaf9539dc1925fe6cde102f62c2e71876a228d7403`。
-- `python examples/python/lease_probe.py --runtime <descriptor emitted by current PID 41616>` — exit 0，28 项 PASS。运行时 descriptor 仅用于进程内认证连接；内容、路径和业务数值没有写入本地证据。
+- 先前 lifecycle release 使用 `--open-manager` 成功启动「窗构 · 世界管理器」；真实 Tauri host 上的 `lease_probe.py` 28 项通过。
+- `lease_probe.py` 通过进程内读取当前运行时 descriptor 认证连接；不在公开文档记录 descriptor 内容、路径或业务数值。
 - 同一宿主的短连接只输出 `native_windows=true`。探针通过 native adapter 修订状态检查了 provider 隐藏/恢复、透明度、标题栏/点击穿透设置；这验证原生适配状态已应用，不证明像素布局正确，也不证明真实鼠标穿透或救援操作。
-- 本轮主动尝试关闭旧 manager PID 48464 后，它只隐藏到托盘，三秒后仍在运行；按准确 exe 路径结束该进程。PID 58140、31256 后来分别为清理临时世界和换入重编桥接而结束；删除旧 runtime descriptor 的组合命令被本机策略拒绝，文件内容未读。当前唯一 WinCraft 桌面进程是 PID 41616。手动托盘退出、键盘/IME/读屏、多 DPI、多屏、教程完整交互与 Popup 键盘流仍待验收。
-- 新 x64 TrafficMonitor 临时副本 PID 58332 通过重编桥接提供实时读取；provider PID 36592 在线并报告版本 1.8.6.0。Obsidian `Obsidian Workspace` vault 的 0.14.7 仪表盘提供者 PID 15052 在线，投影 5 条关注项与 4 组提醒；focus demo PID 21584 正运行。上述 PID 和投影数量是本次运行时观察，进程退出后需重新核验。
-- `examples/trafficmonitor/build_bridge.ps1 -OutputDirectory E:\tmp\wincraft-tm-build-20261026-final` — exit 0，x64 DLL SHA-256 `d5bb77687806e5c9a4f08847b276281ea5419b04ee17b9656cb43e56f39baec9`。替换为全新 staging copy 后，桥接 JSON 的 `app_version` 为 1.8.6.0，provider 窗口不再显示未知版本。
+- 旧 manager 与临时 provider 曾按项目范围清理；一个本机策略拒绝的过期 descriptor 删除操作没有读取文件内容。手动托盘退出、键盘/IME/读屏、多 DPI、多屏、教程完整交互与 Popup 键盘流仍待验收。
+- TrafficMonitor、Obsidian Workspace 和 focus demo 的本机 provider smoke 曾观察到来源在线与窗口更新；公共记录省略 vault/source 标识、进程号、投影数量、真实标题与遥测值。
+- TrafficMonitor x64 bridge 曾以本机源码重编并在隔离 staging copy 中验证；具体本机路径与实时遥测值留在忽略的本地证据。
 - 本次环境：Windows 11 Pro 10.0.22000 x64、Python 3.11.4、Node v22.23.4、npm 11.19.0、Cargo 1.93.0、rustc 1.93.0。脱敏结果位于被忽略的 `evidence/local/nextgen-2026-10-26/lifecycle-tauri-lease-probe.json`。
 
 ## 2026-10-27 原生窗口动作与 Obsidian Workspace 联调
@@ -159,12 +173,12 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 | UI / schema / provider | PASS | `npm run check`：24 Node tests、10 项离线契约检查；Python 全套 58 tests；`scripts/check_contracts.py` PASS；Provider Skill 引用检查 19 项 PASS。Schema 与 Rust 接受 `obsidian`/`traffic_monitor` 及 `activate`/`maximize`/`restore`/`minimize` 枚举。|
 | Renderer DOM | PASS（非原生） | Chromium offline DOM 28 项通过，包含可点击标题、title 外观、allowlisted SVG、状态图表、动态结构和健康状态徽标；Mock provider 不验证 Tauri/Win32。|
 | Rust core/server/desktop | PASS | `cargo fmt --all -- --check`、`cargo check --workspace`、`cargo test --workspace`、`cargo clippy --workspace --all-targets -- -D warnings` 全部通过；workspace 测试 66 项。新增回归覆盖应用映像映射、大小写无关标题筛选、操作 allowlist、stale/revoked/disabled/context guards、headless capability 拒绝，以及 manager 列出 invite Popup world 不改变其 writer/epoch。|
-| 独立 Tauri release | PASS（构建、启动） | `E:/tmp/wincraft-nextgen-ui-20261027/release/wincraft-desktop.exe`，11,573,248 字节，SHA-256 `941ccb951fdc235a92571c715872ff6d715a035e0c489bb199fa090ddd93904`；默认托盘模式运行，runtime descriptor 未读入或写入证据。|
-| 当前源码 release | PASS（构建）／NOT_RUN（启动） | `E:/tmp/wincraft-nextgen-ui-20261027-current-source/release/wincraft-desktop.exe`，11,569,152 字节，SHA-256 `de5245d73fa3a55d996980c0a0954e27047fbc580f6416b10678876dd4c7c84d`。未与现有托盘宿主并行启动；当前人工验收窗口仍由上一行的 release 提供。|
+| 独立 Tauri release | PASS（构建、启动） | 历史独立 release 默认托盘模式运行；机器专属产物路径与 runtime descriptor 未写入公开记录。|
+| 当前源码 release | PASS（构建）／NOT_RUN（启动） | 当时从当前源码构建成功；机器专属产物路径仅保存在本地证据。|
 | 当前 release 的真实 Tauri host | PASS（协议） | `lease_probe.py` 31 项通过；`native_windows=true` 时宣告 `external_window_actions`。完整协议探针仍使用合成数据，不证明人工鼠标路径。|
 | 当前代码的真实 headless Rust host | PASS（协议） | `lease_probe.py` 31 项通过；`native_windows=false` 时不宣告并拒绝外部窗口动作。临时 headless 进程已退出；临时目录尚有一个 descriptor 文件，内容未读取，也未复制进仓库或证据。|
 | TrafficMonitor provider | PASS（真实来源链路） | 新 x64 TrafficMonitor 副本仍运行；新 provider 连上本次 release，状态为空、age=0、generation/revision 持续增长并报告 1.8.6.0。日志没有记录指标读数。|
-| Obsidian Obsidian Workspace 数据链路 | PASS（只读） | 明确的 `Obsidian Workspace` vault 与 `Obsidian Workspace-tools` 0.14.7 仪表盘连接；投影包含最多 5 项和 4 组提醒，native window report 为 applied，采样持续更新。没有保存任务标题、笔记正文或 runtime 内容。当前 provider 进程是在默认标题筛选改为 `Obsidian Workspace` 之前启动的，因此本次运行不带标题子串；代码中的后续启动默认筛选该标题，当前只记录了可见匹配窗口计数。|
+| Obsidian Obsidian Workspace 数据链路 | PASS（只读） | 用户选择的仪表盘只读投影曾持续更新并获得 native applied 回执；公共记录不含 vault 标识、投影数量、笔记内容或 runtime 信息。|
 | Popup-Ask 并发配额子项 | PASS（unit/cross-process） | Windows 本机会话命名互斥体限制一个 Popup-Ask provider；同进程、独立子进程竞争和 busy-before-client/create 均有回归。server unit 还确认 manager scene 会列出 invite Popup world 且不改变其 writer/epoch；当前 release 的真实管理器可见性与不抢焦点仍 NOT_RUN，故 B03-02-A3 总体验收维持 NOT_RUN。|
 | Popup provider 状态机与 headless wire | PASS（自动） | 22 项 Popup 专项测试覆盖成功 ACK 后单次销毁、重复 submit、取消/Escape/窗口关闭、超过 10 秒的整体等待、断线、ACK未知、busy 时错误退出与清理失败；Rust manager unit 确认 invite Popup world 出现在管理器 scene 且 writer/epoch 不变；真实 Rust headless host + 安装的 Popup-Ask skill 对合成请求验证 timeout/world.destroy 与并发 busy 拒绝，关闭后 descriptor count=0。首次 PowerShell 汇总器对空 stderr 调用 `.Contains` 而退出 1；后续 Python 结构化解析确认了所有结果字段，失败与复核均保存在本机证据。真实 Tauri Popup 的成功/取消、键盘/IME/读屏、管理器可见性及 native position reopen 仍 NOT_RUN。|
 | 原生窗口动作人工点击 | NOT_RUN | 当前 release 的 Obsidian Workspace 标题声明 `obsidian/activate`；等待用户点击标题确认确实激活现有 Obsidian 窗口。后台 Python 进程直接调用 `SetForegroundWindow` 的诊断失败，故已移除提供者直接操作路径，改由接收用户点击的 Tauri 宿主执行。|
@@ -186,7 +200,7 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 | `cargo check --workspace` / `cargo clippy --workspace --all-targets -- -D warnings` | PASS | 两项退出码 0；Windows Tauri adapter 成功编译。|
 | `npm run check` | PASS | 24 Node tests 与 10 项离线契约检查通过，包含新 maximize scene fixture/schema。|
 | `python skills/wincraft-provider/scripts/verify.py` | PASS | 19 项 Provider Skill 链接/引用检查通过。|
-| `npm run desktop:build` | PASS（构建）／NOT_RUN（启动） | `E:/tmp/wincraft-native-window-actions-20261027/release/wincraft-desktop.exe`，11,571,200 bytes，SHA-256 `b559cb4574d89ca0f14c67802549443dcb46e695751779824741e0c7bad59014`。构建使用独立 `CARGO_TARGET_DIR`；本机已有一个 WinCraft 宿主进程，所以没有启动第二份。|
+| `npm run desktop:build` | PASS（构建）／NOT_RUN（启动） | 使用独立 target 构建成功；机器专属产物路径与进程状态仅保存在本地证据。|
 | 人工触发外部窗口最大化 | NOT_RUN | 自动校验和 release 编译不能证明真实目标窗口的鼠标操作；需要在单实例 release 中用已登记目标实际点击。 |
 
 环境：Windows 11 Pro 10.0.22000 x64、Python 3.11.4、Node v22.23.4、npm 11.19.0、Cargo 1.93.0、rustc 1.93.0。命令结果和 build 元数据保存在被忽略的 `evidence/local/nextgen-2026-10-27/native-window-actions-extension.json`；未读取或记录 runtime descriptor、令牌、Obsidian 笔记或 TrafficMonitor 指标。
@@ -204,14 +218,14 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 | `python -m unittest discover -s tests -v` | PASS | 63 tests passed，包含 Python capability gate 与 bounded event queue coalescing。|
 | `python skills/wincraft-provider/scripts/verify.py` | PASS | 19 个 Provider Skill 引用有效。|
 | 真实 headless Rust WebSocket `lease_probe.py` | PASS | 36 checks：读者订阅仍无写权；geometry/visibility 类型状态、leave/destroy/unsubscribe 清理、租约栅栏和慢消费者 disconnect 均通过。临时描述文件随 headless 退出删除；未读取或记录令牌。|
-| `npm run desktop:build` | PASS（构建）／NOT_RUN（启动） | `<repo>/target/codex-b04-01-release-20261027/release/wincraft-desktop.exe`，11,766,784 bytes，SHA-256 `b5d79d518fbc7c90fd38a60c9166163ae242ffb19d1038a75612f4dd600a7e01`。本机已有一个宿主进程，未启动第二个托盘实例。|
+| `npm run desktop:build` | PASS（构建）／NOT_RUN（启动） | 使用独立 target 构建成功；本机已有宿主进程时没有并行启动第二个托盘实例。|
 
 修复记录：一次 WebSocket 测试用跨会话写者 lease 得到 `STALE_LEASE`，按内核真实拒绝码修正断言；事件实现的首轮编译发现 MutexGuard 跨 await，已修复。第一次 release target 放在 E: 后因空间不足失败；本机策略拒绝清理该次失败 target，未尝试绕过，改在 H: 独立 target 构建成功。检查时 E: 约剩 0.04 GiB，失败 target 占约 1.32 GB；没有触碰 E: 其他目录。
 
 环境：Windows 11 Pro 10.0.22000 x64、Python 3.11.4、Node v22.23.4、npm 11.19.0、Cargo 1.93.0、rustc 1.93.0。脱敏命令摘要见忽略的 `evidence/local/nextgen-2026-10-27/window-events-b04-01.json`。真实 Tauri 窗口像素、托盘交互和 native UIA 不由 headless WebSocket 测试证明。
 ## 2026-10-27 提供者路线与原生窗口选择收紧
 
-交接包目录 `<handoff-dir> 2026-10-26` 已解压核对，仓库 `docs/strategy/2026-10-26` 覆盖交接包 97 个文件；额外文件仅为本地采用记录和生成缓存。新增 [provider-journey.md](../provider-journey.md) 作为 Agent 提供者分层教程入口，未改变协议 0.3。
+2026-10-26 平台演进交接包已核对并整合到 `docs/strategy/2026-10-26`；新增 [provider-journey.md](../provider-journey.md) 作为 Agent 提供者分层教程入口，未改变协议 0.3。
 
 跨应用 `native_window_action` 的窗口选择已改为失败关闭：单一可见匹配直接执行；多匹配仅当前前台窗口也属于匹配集合时执行，否则返回要求收窄标题筛选的错误，不按枚举顺序盲选。
 
@@ -276,23 +290,29 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 
 ## 2026-10-28 标题栏轴线与折叠尺寸
 
-标题栏品牌、最小化和关闭图标改为内联 SVG，固定 viewBox 与尺寸，CSS 让图形盒和标题共享 48 px 标题栏的垂直中轴。折叠尺寸采用独立的本机展示覆盖：收起时按标题栏内容测量宽度、按可见内容测量高度；展开恢复收起前尺寸。临时 compact size 不覆盖提供者或用户保存的展开尺寸。`docs/engineering/ACCEPTANCE.md` 的 W23 已纳入 SVG 中轴与折叠宽高标准。
+标题栏品牌、最小化和关闭图标改为内联 SVG，固定 viewBox 与尺寸，CSS 让图形盒和标题共享 48 px 标题栏的垂直中轴。折叠尺寸采用独立的本机展示覆盖：收起时按标题栏内容测量宽度、按可见内容测量高度；展开恢复收起前尺寸。临时 compact size 不覆盖提供者或用户保存的展开尺寸。`background_drag_enabled` 已接入空白非文本区域与 Tauri IPC，两侧都检查权限。
+
+新增可选 `position_control` 并由 `window_properties` capability 宣告；缺省时继承旧 `geometry_control`，不改变旧提供者行为。此后可表达 provider 控尺寸、human 控位置，且拖动只更新 position、不改尺寸；operator rescue 恢复默认继承。`docs/engineering/ACCEPTANCE.md` 的 W08/W23/W25 已纳入拆分所有权、图标中轴、折叠宽高和无标题栏拖动标准。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `npm run check` | PASS | 27 项 UI 测试、离线契约与交接包检查通过；含 icon-vector/中轴布局、折叠宽度边界测试。|
+| `npm run check` | PASS | 28 项 UI 测试、离线契约与交接包检查通过；含 SVG/中轴、折叠宽度边界与背景拖动权限 predicate 测试。|
 | `cargo fmt --all -- --check` | PASS | exit 0。|
-| `cargo test -p wincraft-desktop --no-fail-fast` | PASS | 17 tests passed；新增折叠尺寸恢复、provider 尺寸变化和工作区宽度上限测试。|
-| `cargo clippy -p wincraft-desktop --all-targets -- -D warnings` | PASS | exit 0。|
-| 独立 release 构建 | PASS（build） | `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`，11,793,408 bytes，SHA-256 `46349C9BC403A6899A3AB1A8DFADE77441C2172ACA62E4E047CF73FC5D86E122`；包含 e6c45fd 紧凑宽度上限修复。最新二进制尚未启动。|
+| `cargo test --workspace --no-fail-fast` | PASS | 88 tests passed：core 8 unit + 44 invariants、desktop 18、server 18；含 provider-size/human-position split 和 background drag 权限边界。|
+| `cargo clippy --workspace --all-targets -- -D warnings` | PASS | exit 0。|
+| Python suite / Provider Skill verifier | PASS | `python -m unittest discover -s tests -v`：74 tests；Provider Skill verifier：19 references。|
+| 最新 Tauri release `lease_probe.py` | PASS | 对刚构建的 release 真实 Rust WebSocket host 完成 39 checks，包含 provider-size/human-position 读写栅栏、动态 patch、显隐、透明度、文本选择和背景拖动配置。|
+| 独立 release 构建 | PASS | `target/release/wincraft-desktop.exe`，11,806,720 bytes，SHA-256 `3BAA25F64D32C207CFC3C9467921F9F983ECF505A073C24D28055F64A05D41C7`；当前阶段性构建产物，链接见中文验收指南。|
+| Release 启动 smoke | PASS（进程/UIA） | 带 `--open-manager` 的真实 Tauri manager 可见；无参数启动时进程常驻且目标窗口数为 0。托盘菜单点击仍待用户验收。|
+| 背景拖动授权门 | PASS（unit） | UI policy 测试文字/交互/选中/穿透/provider 位置控制拒绝；Rust command policy 测试标题栏与 background 拖动使用独立授权。Tauri 原生拖动尚未运行。|
 | 折叠高度原生观察 | PASS（前一版 build） | 真实外心只读投影窗口从 480×1104 收到 480×50，标题栏高度通过；最新含宽度恢复的合并 build 尚未复测这个尺寸。|
-| 折叠宽度原生观察 | NOT_RUN | Computer Use 两次点击管理器均命中 Edge 覆盖窗（point 2199,416），激活并刷新后仍未发出目标点击；不记为通过。|
-| 展开恢复与中轴像素检查 | NOT_RUN | Rust 状态回归、静态 SVG/CSS 测试通过；最新合并 build 的原生展开恢复和像素中心线仍待 UI 自动化成功或人工检查。|
+| 折叠宽度/隐藏标题背景拖动/位置尺寸分权原生观察 | NOT_RUN | 新 release manager 可见；Computer Use 随后被物理 Escape 停止，未发出折叠/拖动测试输入。此前目标点击误落 Edge 的结果仍不是通过证据。|
+| 展开恢复与中轴像素检查 | NOT_RUN | Rust 状态回归、静态 SVG/CSS 测试通过；最新 build 的原生展开恢复和像素中心线仍待用户本机验收。|
 
 ## 2026-10-28 ExoMind 真实档案只读联调
 
-用户明确授权当前档案研究后，使用 `exomind-monitor` 的 `get-config.js` 自动选择本机运行的 ExoMind RT，并以配置的 profile 发起只读 `monitor.js snapshot`。一次快照为 active/running、未暂停；稍后快照为 active/paused。两个结果都只读取时间块状态，没有调用 start/stop/end/pause/resume、任务写入或 eventlog 写入接口。RT 报告 0.3.0、git hash `dbca9432`、build 2026-08-24，与技能记录的 0.3.0 / `d7fedac` / 2026-04-22 不同，需持续注意该版本差异。
+用户曾明确授权一次本机只读 ExoMind 调研。该次只读检查没有调用时间块或任务写接口；profile、当前状态、返回数据和 RT build identifiers 不保留在公开记录中。
 
-`examples/python/exomind_readonly.py` 使用当前配置的实际 RT/profile，通过 `GET /timeblocks/active` 连接 WinCraft release；UIA 可观察到来源读取成功和真实字段投影。未把 profile ID、时间块标题/正文、运行时描述文件或截图写入证据。此为单字段只读桥接 PASS；更完整的 ExoMind 工作台复刻由独立观察任务继续，WinCraft 内部映射和写能力未实现。
+`examples/python/exomind_readonly.py` 曾通过 `GET /timeblocks/active` 完成单字段只读桥接 smoke；该证据不代表新的工作台 provider 已 live 验收。公开记录不含 profile ID、当前时间块内容、descriptor 或截图。
 
 脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。

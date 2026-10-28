@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from '../apps/desktop/dist/window_behavior.js';
+import {allowsBackgroundWindowDrag,normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from '../apps/desktop/dist/window_behavior.js';
 
 test('healthy connection status is omitted while recovery states remain visible',()=>{
   assert.equal(shouldShowConnectionStatus('online'),false);
@@ -29,4 +29,16 @@ test('collapsed titlebar width respects native minimum and maximum bounds',()=>{
   assert.equal(normalizeNativeContentWidth(2_400),2_400);
   assert.equal(normalizeNativeContentWidth(2_401),2_400);
   assert.equal(normalizeNativeContentWidth(Number.NaN),null);
+});
+
+test('background drag requires an enabled human-owned non-text non-interactive surface',()=>{
+  const enabled={enabled:true,positionControl:'human',clickThrough:false,titleBar:false,interactive:false,text:false,selectionActive:false};
+  assert.equal(allowsBackgroundWindowDrag(enabled),true);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,enabled:false}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,positionControl:'provider'}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,clickThrough:true}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,titleBar:true}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,interactive:true}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,text:true}),false);
+  assert.equal(allowsBackgroundWindowDrag({...enabled,selectionActive:true}),false);
 });

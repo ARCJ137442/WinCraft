@@ -1,5 +1,16 @@
 # 本地 Codex 工作合同
 
+<!-- CODEGRAPH_START -->
+## CodeGraph
+
+WinCraft uses a per-checkout CodeGraph index for source navigation. The database is generated locally and must not be committed.
+
+- Before grep/find or opening source files to understand or locate code, use `codegraph explore "<symbol or question>"`; ask for exact symbols/files when practical.
+- If the local index is missing, run `npm run codegraph:init`. After source edits, run `npm run codegraph:sync`, then `npm run codegraph:status` to confirm it is current.
+- If CodeGraph returns no useful result or is unavailable, continue with `rg` and direct file inspection. The source files remain authoritative.
+- `.codegraph/` is ignored by Git. Do not add its database to commits or evidence bundles.
+<!-- CODEGRAPH_END -->
+
 ## WinCraft 提供者 Skill
 
 当任务要接入或实现 WinCraft provider 时，先按 [`skills/wincraft-provider/SKILL.md`](skills/wincraft-provider/SKILL.md) 的逐课教程走一遍，再复用 `examples/python/client.py`。业务真相仍归外部提供者；不要将 HTML/JavaScript 或可执行代码传给宿主。
@@ -15,6 +26,8 @@
 默认不允许：创建远程仓库、改外心安装目录或真实业务数据、用外心写 API 测试、将 token 写入证据、开放公网端口、悄悄改变许可、宣称未经实测的资源占用或原生能力。提交/推送需用户当轮明确授权；获得授权后也只操作已核实的既有仓库与 remote。
 
 质量规则：每次变更写明原因；优先通过 core/server 测试再进入 Tauri；记录实际命令、退出码、环境和未验证项；保留 `NOT_RUN` 而不是填造绿色结果。浏览器演示与真实协议测试必须分别报告。引入的 lockfile 由本机实际依赖解析生成，不编造它们。
+
+本地开发环境与统一验证入口见 [`docs/engineering/DEVELOPMENT_TOOLCHAIN.md`](docs/engineering/DEVELOPMENT_TOOLCHAIN.md)。功能变更先写一个可观察的 Given/When/Then 场景，再用对应层级的行为测试验证；静态检查、fixture、真实宿主和人工验收分开记录。
 
 不要泄漏 `.runtime.json`。资料保存在 `evidence/local/`，发布摘要须脱敏；本地验证使用独立档案或默认只读桥接。当前包本身只授权本地交接，不构成发布授权；用户另行授权的提交/推送不等于创建远程仓库或发布产品。
 

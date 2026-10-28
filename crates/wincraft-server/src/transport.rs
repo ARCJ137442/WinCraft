@@ -153,7 +153,9 @@ fn events_for_snapshot(
         && (previous.window.position != current.window.position
             || previous.window.anchor != current.window.anchor
             || previous.window.width != current.window.width
-            || previous.window.height != current.window.height)
+            || previous.window.height != current.window.height
+            || previous.window.geometry_control != current.window.geometry_control
+            || previous.window.position_control != current.window.position_control)
     {
         events.push(TypedWindowEvent {
             event_id: Uuid::new_v4(),
@@ -169,7 +171,9 @@ fn events_for_snapshot(
                 "position":&current.window.position,
                 "anchor":&current.window.anchor,
                 "width":current.window.width,
-                "height":current.window.height
+                "height":current.window.height,
+                "geometry_control":current.window.geometry_control,
+                "position_control":current.window.position_control
             }),
         });
     }
@@ -648,6 +652,8 @@ mod tests {
         assert_eq!(events[0].delivery, EventDeliveryClass::State);
         assert_eq!(events[0].payload["position"]["x"], 900);
         assert_eq!(events[0].payload["width"], 540.0);
+        assert_eq!(events[0].payload["geometry_control"], "human");
+        assert_eq!(events[0].payload["position_control"], Value::Null);
         assert!(events_for_snapshot(
             subscription_id,
             &mut subscription,
@@ -700,6 +706,8 @@ mod tests {
         assert_eq!(events[0].payload["position"], Value::Null);
         assert_eq!(events[0].payload["anchor"]["corner"], "bottom_right");
         assert_eq!(events[0].payload["anchor"]["margin_x"], 24.0);
+        assert_eq!(events[0].payload["geometry_control"], "provider");
+        assert_eq!(events[0].payload["position_control"], Value::Null);
     }
 
     #[tokio::test]

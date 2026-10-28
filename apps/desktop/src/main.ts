@@ -4,7 +4,7 @@ import {SceneRenderer} from './renderer.js';
 import {demoSnapshot,previewController} from './demo.js';
 import {initializeAccessibility} from './accessibility.js';
 import {getLocale,initializeLocale,setLocale,t} from './i18n.js';
-import {normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from './window_behavior.js';
+import {allowsBackgroundWindowDrag,normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from './window_behavior.js';
 
 initializeAccessibility();
 initializeLocale();
@@ -32,7 +32,8 @@ let fitFrame=0;
 let lastMeasuredHeight=0;
 let lastMeasuredCollapsedWidth=0;
 let contentCollapsed=false;
-let titlebarPointer:{pointerId:number;x:number;y:number;dragStarted:boolean}|null=null;
+type DragSource='titlebar'|'background';
+let pointerGesture:{pointerId:number;x:number;y:number;dragStarted:boolean;source:DragSource}|null=null;
 const renderActionStatus=(snapshot:Snapshot|null=current):void=>{
   const feedback=displayActionFeedback(snapshot?.actions??[],actionId,actionFeedback);
   actionStatus.textContent=feedback?.message??'';
@@ -153,10 +154,10 @@ function accept(next:Snapshot):void {
   frame.style.opacity=String(next.window.surface_opacity);
   frame.style.setProperty('--world-text-selection',next.window.text_selectable?'text':'none');
   frame.dataset.textSelectable=String(next.window.text_selectable);
-  document.body.dataset.geometry=next.window.geometry_control;
+  document.body.dataset.geometry=next.window.position_control??next.window.geometry_control;
   document.body.dataset.system=String(next.system);
   document.body.dataset.titleBarVisible=String(next.window.title_bar_visible);
-  document.getElementById('drag')!.setAttribute('aria-label',t(next.window.geometry_control==='human'?'geometry.drag_human':'geometry.drag_provider'));
+  document.getElementById('drag')!.setAttribute('aria-label',t((next.window.position_control??next.window.geometry_control)==='human'?'geometry.drag_human':'geometry.drag_provider'));
   renderer.render(next);
   const tracked=actionId?next.actions.find(item=>item.id===actionId):undefined;
   if(tracked && tracked.status!=='pending')actionFeedback=null;
@@ -185,27 +186,46 @@ async function start():Promise<void>{
   await api.event.listen<Snapshot>('world/snapshot',event=>accept(event.payload));
   accept(await api.core.invoke<Snapshot>('surface_snapshot'));
 }
-dragBar.addEventListener('pointerdown',event=>{
-  if(event.button!==0 || (event.target instanceof Element && event.target.closest('button')))return;
-  titlebarPointer={pointerId:event.pointerId,x:event.clientX,y:event.clientY,dragStarted:false};
-});
+const interactiveTargetSelector='button,input,textarea,select,a,[role="button"],[contenteditable="true"]';
+const textTargetSelector='#status-line,footer,#error,#action-status,.sr-only,.block-text,.block-badge,.metric-label,.metric-value,.metric-unit,.metric-caption,.progress-label,.chart-label,.chart-row-label,.chart-row-value,.kv-key-label,.kv-primary,.kv-secondary,.block-input label';
+function isBackgroundDragAllowed(target:EventTarget|null):boolean {
+  if(!(target instanceof Element)||!current)return false;
+  const selection=window.getSelection();
+  return allowsBackgroundWindowDrag({
+    enabled:current.window.background_drag_enabled,
+    positionControl:current.window.position_control??current.window.geometry_control,
+    clickThrough:current.window.click_through,
+    titleBar:target.closest('#chrome')!==null,
+    interactive:target.closest(interactiveTargetSelector)!==null,
+    text:target.closest(textTargetSelector)!==null,
+    selectionActive:!!selection&&!selection.isCollapsed,
+  });
+}
+function beginPointerGesture(event:PointerEvent,source:DragSource):void {
+  if(event.button!==0)return;
+  if(source==='titlebar'&&event.target instanceof Element&&event.target.closest('button'))return;
+  if(source==='background'&&!isBackgroundDragAllowed(event.target))return;
+  pointerGesture={pointerId:event.pointerId,x:event.clientX,y:event.clientY,dragStarted:false,source};
+}
+dragBar.addEventListener('pointerdown',event=>beginPointerGesture(event,'titlebar'));
+frame.addEventListener('pointerdown',event=>beginPointerGesture(event,'background'));
 window.addEventListener('pointermove',event=>{
-  const gesture=titlebarPointer;
+  const gesture=pointerGesture;
   if(!gesture||gesture.pointerId!==event.pointerId||gesture.dragStarted)return;
   if(!titlebarMovementExceedsDragThreshold(gesture.x,gesture.y,event.clientX,event.clientY))return;
   gesture.dragStarted=true;
-  if(current?.window.geometry_control==='human'&&!current.window.click_through&&window.__TAURI__){
-    void window.__TAURI__.core.invoke('surface_drag').catch(report);
+  if(current&&(current.window.position_control??current.window.geometry_control)==='human'&&!current.window.click_through&&window.__TAURI__){
+    void window.__TAURI__.core.invoke('surface_drag',{dragSource:gesture.source}).catch(report);
   }
 });
 window.addEventListener('pointerup',event=>{
-  const gesture=titlebarPointer;
+  const gesture=pointerGesture;
   if(!gesture||gesture.pointerId!==event.pointerId)return;
-  titlebarPointer=null;
-  if(!gesture.dragStarted)toggleContentCollapse();
+  pointerGesture=null;
+  if(gesture.source==='titlebar'&&!gesture.dragStarted)toggleContentCollapse();
 });
 window.addEventListener('pointercancel',event=>{
-  if(titlebarPointer?.pointerId===event.pointerId)titlebarPointer=null;
+  if(pointerGesture?.pointerId===event.pointerId)pointerGesture=null;
 });
 dragBar.addEventListener('keydown',event=>{
   if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleContentCollapse();}

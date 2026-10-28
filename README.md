@@ -27,7 +27,7 @@
 | 交互 | 组件动作回到当前写入者；等待/确认/失败/超时；拒绝过时界面的动作 |
 | 自用管理器 | 宿主内部提供者生成的管理与设置世界；共享同一组件树和渲染器；明确的本地接管/解除接管/关闭 |
 | 网络 | 统一健康检查与鉴权发现、协议握手、双向 WebSocket；非本机提供者可通过 SSH 隧道接入 |
-| 开发支撑 | 可独立运行的 headless Rust 宿主；Python 示例、真实协议验收探针、只读外心桥接；CI 草案 |
+| 开发支撑 | 可独立运行的 headless Rust 宿主；Python 示例、真实协议验收探针、只读外心桥接；Windows 自动化验证 CI |
 
 上述是**源码覆盖范围**，不是全部运行验收通过的功能清单。尤其 Tauri/Win32、WS 端到端与外心实机链路必须由本地 Codex 验证。
 
@@ -36,13 +36,13 @@
 准备 Rust stable、Node.js 22、Python 3.11+；Windows 桌面构建另需微软 C++ 构建工具与 WebView2。先依据 Tauri 官方 prerequisites 完成机器环境。
 
 ```powershell
-npm install
-npm run test:ui
-python -m pip install jsonschema
-python scripts/check_contracts.py
-cargo test -p wincraft-core -p wincraft-server
+npm ci
+python -m pip install -r requirements-dev.txt -r examples/python/requirements.txt
+npm run check:local
 npm run desktop:dev
 ```
+
+本地开发规范、CodeGraph 索引和分层验证边界见 [`docs/engineering/DEVELOPMENT_TOOLCHAIN.md`](docs/engineering/DEVELOPMENT_TOOLCHAIN.md)。
 
 桌面启动后默认只有托盘，不自动弹出主界面。从托盘打开“世界管理器”，获取连接描述文件的路径。
 

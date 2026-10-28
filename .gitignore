@@ -1,6 +1,7 @@
 /target/
 /.venv/
 /node_modules/
+/.codegraph/
 /apps/desktop/node_modules/
 /apps/desktop/dist/
 /apps/desktop/src-tauri/gen/

@@ -1501,6 +1501,13 @@
             "human"
           ]
         },
+        "position_control": {
+          "anyOf": [
+            {"enum": ["provider", "human"]},
+            {"type": "null"}
+          ],
+          "default": null
+        },
         "surface_opacity": {
           "type": "number",
           "minimum": 0.15,
@@ -1573,6 +1580,9 @@
             "provider",
             "human"
           ]
+        },
+        "position_control": {
+          "enum": ["provider", "human"]
         },
         "surface_opacity": {
           "type": "number",

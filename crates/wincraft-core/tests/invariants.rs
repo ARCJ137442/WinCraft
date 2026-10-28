@@ -790,6 +790,88 @@ fn human_mode_requires_explicit_handback() {
 }
 
 #[test]
+fn provider_size_and_human_position_controls_are_independent() {
+    let (mut engine, provider, _, created) = setup();
+    let lease = created.lease.unwrap();
+    let initial = engine.read(provider, created.world.id).unwrap();
+    let controlled = engine
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            initial.revision,
+            &WindowPatch {
+                geometry_control: Some(GeometryControl::Provider),
+                position_control: Some(GeometryControl::Human),
+                resizable: Some(false),
+                width: Some(480.0),
+                height: Some(320.0),
+                ..WindowPatch::default()
+            },
+            1,
+        )
+        .unwrap();
+    assert_eq!(
+        controlled.window.geometry_control,
+        GeometryControl::Provider
+    );
+    assert_eq!(
+        controlled.window.effective_position_control(),
+        GeometryControl::Human
+    );
+    assert!(!controlled.window.resizable);
+
+    let resized_by_provider = engine
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            controlled.revision,
+            &WindowPatch {
+                width: Some(500.0),
+                height: Some(340.0),
+                ..WindowPatch::default()
+            },
+            2,
+        )
+        .unwrap();
+    assert_eq!(resized_by_provider.window.width, 500.0);
+    assert_eq!(resized_by_provider.window.height, 340.0);
+    assert_eq!(
+        engine
+            .configure(
+                provider,
+                created.world.id,
+                &lease,
+                resized_by_provider.revision,
+                &WindowPatch {
+                    position: Some(Position { x: 12, y: 24 }),
+                    ..WindowPatch::default()
+                },
+                3,
+            )
+            .unwrap_err()
+            .code,
+        "HUMAN_GEOMETRY"
+    );
+
+    assert!(engine.native_report(
+        created.world.id,
+        resized_by_provider.window_revision,
+        NativeReport {
+            state: "applied".into(),
+            applied_window_revision: Some(resized_by_provider.window_revision),
+            error: None,
+        },
+    ));
+    assert!(engine.observe_geometry(created.world.id, Position { x: 80, y: 96 }, 700.0, 600.0,));
+    let moved = engine.read(provider, created.world.id).unwrap();
+    assert_eq!(moved.window.position, Some(Position { x: 80, y: 96 }));
+    assert_eq!(moved.window.width, 500.0);
+    assert_eq!(moved.window.height, 340.0);
+}
+
+#[test]
 fn provider_can_anchor_only_after_taking_geometry_control_and_operator_rescue_clears_it() {
     let (mut engine, provider, _, created) = setup();
     let lease = created.lease.unwrap();

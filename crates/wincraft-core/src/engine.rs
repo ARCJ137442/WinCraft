@@ -385,6 +385,7 @@ impl Engine {
         w.window.visible = true;
         w.window.click_through = false;
         w.window.geometry_control = GeometryControl::Human;
+        w.window.position_control = None;
         w.window.anchor = None;
         w.window.title_bar_visible = true;
         w.window.text_selectable = true;
@@ -754,15 +755,22 @@ impl Engine {
         let Some(w) = self.worlds.get_mut(&id) else {
             return false;
         };
-        if w.window.geometry_control != GeometryControl::Human
+        let human_position = w.window.effective_position_control() == GeometryControl::Human;
+        let human_size = w.window.geometry_control == GeometryControl::Human;
+        if (!human_position && !human_size)
             || w.native.applied_window_revision != Some(w.window_revision)
         {
             return false;
         }
         let mut next = w.window.clone();
-        next.position = Some(position);
-        next.width = width;
-        next.height = height;
+        if human_position {
+            next.position = Some(position);
+            next.anchor = None;
+        }
+        if human_size {
+            next.width = width;
+            next.height = height;
+        }
         if next.validate().is_err() || next == w.window {
             return false;
         }

@@ -40,7 +40,14 @@
                   ]
                 },
                 "width": {"type": "number", "minimum": 0},
-                "height": {"type": "number", "minimum": 0}
+                "height": {"type": "number", "minimum": 0},
+                "geometry_control": {"enum": ["provider", "human"]},
+                "position_control": {
+                  "anyOf": [
+                    {"enum": ["provider", "human"]},
+                    {"type": "null"}
+                  ]
+                }
               },
               "required": ["position", "width", "height"],
               "additionalProperties": false
