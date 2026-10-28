@@ -10,7 +10,7 @@
 | `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、78 项 Python 测试、19 个 Skill 引用检查通过。|
 | Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
-| GitHub Actions Windows CI | PASS | 最新 run `40687743702`（commit `f63adfd`）完整通过，`npm run check:local` 成功，耗时 5m49s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
+| GitHub Actions Windows CI | PASS | 最新 run `40689344687`（commit `f4122f4`）完整通过，`npm run check:local` 成功，耗时 5m50s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
 | CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,505 个节点、4,428 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
 
 这次只验证工具链、文档与既有自动化测试；没有据此重新宣称桌面 release、托盘、原生窗口、外部业务数据或人工验收通过。逐机命令和环境记录位于默认忽略的 `evidence/local/nextgen-2026-10-28/`。
