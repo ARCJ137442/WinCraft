@@ -10,7 +10,7 @@
 | `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、78 项 Python 测试、19 个 Skill 引用检查通过。|
 | Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
-| GitHub Actions Windows CI | PASS | 当前基线最新 run `40690440438`（commit `7610b80`）完整通过，`npm run check:local` 成功，耗时 6m1s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
+| GitHub Actions Windows CI | PASS | B07-01 源码提交 run `40707844155`（commit `be7a50c`）完整通过，`npm run check:local` 成功，耗时 6m16s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
 | CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,505 个节点、4,428 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
 
 这次只验证工具链、文档与既有自动化测试；没有据此重新宣称桌面 release、托盘、原生窗口、外部业务数据或人工验收通过。逐机命令和环境记录位于默认忽略的 `evidence/local/nextgen-2026-10-28/`。
@@ -21,7 +21,9 @@
 
 修复提交 `5e5f7e9` 将翻译源 hash 改为显式 UTF-8 文本 hash，并新增 LF/CRLF 等价回归；维护测试的 JSON 读写现在显式使用 UTF-8。该提交的 hosted run `40686753524` 通过。随后提交 `f63adfd` 将 Actions 更新为 checkout `v7.0.1`、setup-node/setup-python `v7.1.0`（均声明 Node 24）；run `40687743702` 再次完整通过，且不再出现 Node 20 deprecation 告警。
 
-之后的文档同步提交也连续通过：`40689344687`（`f4122f4`）和 `40690440438`（`7610b80`）。因此，前述九连败已在 Windows 换行/编码回归修复后恢复为四次连续绿色；不能据此宣称当前未提交代码已通过 hosted CI。
+之后的文档同步提交也连续通过：`40689344687`（`f4122f4`）和 `40690440438`（`7610b80`）。前述九连败因此在 Windows 换行/编码回归修复后恢复为四次连续绿色；当时尚未推送的后续代码由单独的 hosted run 验证。
+
+B07-01 代码提交 `be7a50c` 的 Windows hosted run `40707844155` 随后完整通过，耗时 6m16s。它覆盖了本机 gate 捕获并修复的 Clippy 回归、scope 协议实现和所有现有自动检查。
 
 ## 2026-10-28 B07-01 scope preview 与本机 CI 回归
 
@@ -32,7 +34,7 @@
 | 最终 `npm run check:local` | PASS | 退出码 0：28 项 UI 测试、离线合同、Rust fmt/check、95 项 workspace Rust 测试、Clippy `-D warnings`、82 项 Python 测试和 19 个 Provider Skill 引用检查。|
 | 真实 Rust headless `scope_probe.py` | PASS | 真实 WebSocket 对两个不相交子树分别写入，revision 独立递增至 4；读者只收到自身 subtree/namespace；稳定 0.3 整窗 writer 被拒绝；探针销毁自身世界并由 `world.list` 确认不存在。退出码 0。|
 | Headless 停止与临时 descriptor 清理 | PASS（清理核实） | PTY 中 Ctrl+C 会把会话退出码报告为 1；随后核实 headless 进程数为 0、此次专用临时 runtime descriptor 不存在。未读取或保存 descriptor 内容。|
-| 本次代码的 hosted Actions | NOT_RUN（提交前） | 最新既有绿色 run `40690440438` 早于 B07-01 改动；当前代码须由后续 push 触发新的 Windows Actions，结果单独记录。|
+| B07-01 hosted Actions | PASS | run `40707844155` 对提交 `be7a50c` 执行完整 Windows `npm run check:local`，退出码 0，耗时 6m16s。|
 
 本机命令、退出码、工具版本及脱敏探针结论保存在默认忽略的 `evidence/local/nextgen-2026-10-28/b07-01-ci-validation-20261028.json`。`0.4-preview.1` 是显式 opt-in 的 scope 实验协议，不改变稳定 0.3；B07-01 已达到其 L1-L2 范围的三项验收，但不代表原生 UI 或后续结构/动作路由已通过。
 
