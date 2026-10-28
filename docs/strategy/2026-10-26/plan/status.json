@@ -3,7 +3,7 @@
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
   "active_batch": "B03-02 with a user-prioritized B04-02 native-window-action slice",
-  "next_action": "B04-01 remains VERIFIED. B04-02 includes work-area anchors, anchor-aware geometry events, guarded native window actions and position_control; the latest Tauri release passed 40 real-WebSocket checks, including native application of always_on_top false/true. The current release's visual stacking, tray opening/global hide-show, drag and current-build fold pixels remain NOT_RUN. Computer Use enumerated the manager but could not activate its window after a fresh selection. Prioritize the remaining manual W/R gates, then complete B03-02 Popup native acceptance.",
+  "next_action": "B04-01 remains VERIFIED. B04-02 includes work-area anchors, anchor-aware geometry events, guarded native window actions and position_control; the latest Tauri release passed 40 real-WebSocket checks, including native application of always_on_top false/true. GitHub Actions Windows validation is green after fixing LF/CRLF translation hashing and default-code-page JSON tests. The current release's visual stacking, tray opening/global hide-show, drag and current-build fold pixels remain NOT_RUN. Computer Use enumerated the manager but could not activate its window after a fresh selection. Prioritize the remaining manual W/R gates, then complete B03-02 Popup native acceptance.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -109,7 +109,8 @@
     "Popup provider now has a delayed-action regression: submit delivered after 10.2 seconds succeeds before a 20-second request deadline; this separates human wait from the ordinary 10-second component ACK. Real Tauri input still NOT_RUN.",
     "Latest release defaults both provider worlds and the internal manager to always_on_top=true; a 40-check Tauri-hosted probe observed native application for false/true. Actual z-order against normal and topmost windows remains NOT_RUN.",
     "ExoMind workbench provider models full/compact/mini plus idle using read-only projection; 13 fixture tests and one user-authorized GET/projection smoke passed. Native mode UI, steady-state dimensions and local world cleanup remain NOT_RUN.",
-    "Current-release Computer Use retry found the manager window and accessibility text, but activation failed after a fresh selection; the screenshot was not trusted and no UI input was sent. Tray, global visibility, z-order, drag and current-build fold remain NOT_RUN."
+    "Current-release Computer Use retry found the manager window and accessibility text, but activation failed after a fresh selection; the screenshot was not trusted and no UI input was sent. Tray, global visibility, z-order, drag and current-build fold remain NOT_RUN.",
+    "Fixed nine consecutive Windows GitHub Actions failures by making handoff translation hashes newline-independent and test JSON encoding explicit. Updated official actions to Node 24 releases; latest Windows hosted run passed npm run check:local."
   ],
   "history": [
     null,

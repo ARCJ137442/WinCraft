@@ -10,9 +10,16 @@
 | `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、78 项 Python 测试、19 个 Skill 引用检查通过。|
 | Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
+| GitHub Actions Windows CI | PASS | 最新 run `40687743702`（commit `f63adfd`）完整通过，`npm run check:local` 成功，耗时 5m49s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
 | CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,505 个节点、4,428 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
 
 这次只验证工具链、文档与既有自动化测试；没有据此重新宣称桌面 release、托盘、原生窗口、外部业务数据或人工验收通过。逐机命令和环境记录位于默认忽略的 `evidence/local/nextgen-2026-10-28/`。
+
+## 2026-10-28 GitHub Actions 失败调查
+
+`dev` 上连续 9 次 Windows Actions 运行在 `npm run check:local` 中失败，范围从 `596a758` 到 `2bcb588`。setup、依赖安装和 Rust 工具链均成功；日志稳定指向两项 Windows 可复现问题：交接包校验对源 Markdown 原始字节做 SHA-256，导致 checkout 的 LF/CRLF 转换被误报为过期翻译；维护测试对 UTF-8 JSON 使用系统默认 CP1252 编码读取。
+
+修复提交 `5e5f7e9` 将翻译源 hash 改为显式 UTF-8 文本 hash，并新增 LF/CRLF 等价回归；维护测试的 JSON 读写现在显式使用 UTF-8。该提交的 hosted run `40686753524` 通过。随后提交 `f63adfd` 将 Actions 更新为 checkout `v7.0.1`、setup-node/setup-python `v7.1.0`（均声明 Node 24）；run `40687743702` 再次完整通过，且不再出现 Node 20 deprecation 告警。
 
 日期：2026-10-25。对应交接版本：0.1.0-alpha.1。这是原型制作环境记录，不是本地 Codex 的最终验收报告。
 
