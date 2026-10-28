@@ -15,6 +15,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 PROTOCOL_VERSION = "0.3"
+COMPONENT_LEASES_PREVIEW_PROTOCOL = "0.4-preview.1"
+SUPPORTED_PROTOCOLS = (PROTOCOL_VERSION, COMPONENT_LEASES_PREVIEW_PROTOCOL)
 
 class RpcError(RuntimeError):
     def __init__(self, error: dict[str, Any]):
@@ -46,10 +48,28 @@ class EventQueue(asyncio.Queue[dict[str, Any]]):
         super().put_nowait(item)
 
 class Client:
-    def __init__(self, runtime: str | Path, name: str, ws_url: str | None = None):
+    def __init__(
+        self,
+        runtime: str | Path,
+        name: str,
+        ws_url: str | None = None,
+        protocol_version: str | None = None,
+    ):
         self.descriptor = json.loads(Path(runtime).read_text(encoding="utf-8"))
         if self.descriptor.get("protocol") != PROTOCOL_VERSION:
             raise ValueError("Unsupported runtime descriptor protocol")
+        advertised_protocols = self.descriptor.get("supported_protocols", [PROTOCOL_VERSION])
+        if not isinstance(advertised_protocols, list) or not all(
+            isinstance(value, str) for value in advertised_protocols
+        ):
+            raise ValueError("Runtime descriptor has an invalid supported_protocols list")
+        self.protocol_version = protocol_version or PROTOCOL_VERSION
+        if self.protocol_version not in SUPPORTED_PROTOCOLS:
+            raise ValueError("Unsupported protocol selection")
+        if self.protocol_version not in advertised_protocols:
+            raise ValueError(
+                f"Host does not advertise requested protocol {self.protocol_version}"
+            )
         self.url = ws_url or self.descriptor["ws_url"]
         parsed = urlparse(self.url)
         if parsed.scheme not in ("ws", "wss"):
@@ -60,6 +80,7 @@ class Client:
         self.pending: dict[str, asyncio.Future[Any]] = {}
         self.events: asyncio.Queue[dict[str, Any]] = EventQueue(maxsize=128)
         self.snapshots: dict[str, dict[str, Any]] = {}
+        self.scope_snapshots: dict[tuple[str, str], dict[str, Any]] = {}
         self.socket: Any = None
         self.reader: asyncio.Task[Any] | None = None
         self.heartbeat: asyncio.Task[Any] | None = None
@@ -75,9 +96,14 @@ class Client:
             max_size=1_048_576, open_timeout=5, ping_interval=10)
         self.reader = asyncio.create_task(self._receive())
         try:
-            self.ready = await self.call("hello", {"protocol": PROTOCOL_VERSION, "provider_name": self.name})
+            self.ready = await self.call(
+                "hello",
+                {"protocol": self.protocol_version, "provider_name": self.name},
+            )
             if self.ready["host_id"] != self.descriptor["host_id"]:
                 raise RuntimeError("Descriptor host_id does not match the server; refuse stale/wrong endpoint")
+            if self.ready.get("protocol", self.protocol_version) != self.protocol_version:
+                raise RuntimeError("Server negotiated a different protocol than requested")
             self.heartbeat = asyncio.create_task(self._heartbeat())
         except BaseException:
             await self.close()
@@ -118,6 +144,14 @@ class Client:
                     previous = self.snapshots.get(snapshot["id"])
                     if previous is None or snapshot["sequence"] > previous["sequence"]:
                         self.snapshots[snapshot["id"]] = snapshot
+                elif message.get("event") == "scope.snapshot":
+                    snapshot = message["data"]
+                    key = (str(snapshot.get("world_id", "")), str(snapshot.get("scope_id", "")))
+                    previous = self.scope_snapshots.get(key)
+                    if previous is None or (
+                        snapshot.get("generation", -1), snapshot.get("revision", -1)
+                    ) > (previous.get("generation", -1), previous.get("revision", -1)):
+                        self.scope_snapshots[key] = snapshot
                 else:
                     if message.get("event") == "resync_required":
                         raise ConnectionError("Slow consumer: reconnect and reconstruct explicitly")
@@ -166,7 +200,8 @@ class Client:
                              button_features: tuple[str, ...] = (),
                              scene_features: tuple[str, ...] = (),
                              window_properties: tuple[str, ...] = (),
-                             event_types: tuple[str, ...] = ()) -> None:
+                             event_types: tuple[str, ...] = (),
+                             component_leases_version: int | None = None) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -198,8 +233,21 @@ class Client:
         missing.extend(f"scene_feature:{value}" for value in scene_features if value not in scene_feature_set)
         missing.extend(f"window_property:{value}" for value in window_properties if value not in window_property_set)
         missing.extend(f"event:{value}" for value in event_types if value not in event_type_set)
+        if component_leases_version is not None:
+            scope_capability = capabilities.get("component_leases")
+            if (
+                self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+                or not isinstance(scope_capability, dict)
+                or scope_capability.get("status") != "preview"
+                or scope_capability.get("version") != component_leases_version
+            ):
+                missing.append(f"component_leases:preview-v{component_leases_version}")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
+
+    def require_component_leases(self, version: int = 1) -> None:
+        """Fail closed unless this connection negotiated the matching scope-lease preview."""
+        self.require_capabilities(component_leases_version=version)
 
     async def subscribe_events(self, world_id: str, types: tuple[str, ...]) -> dict[str, Any]:
         """Subscribe to connection-scoped window state events for an already joined world."""
@@ -209,6 +257,80 @@ class Client:
     async def unsubscribe_events(self, subscription_id: str) -> dict[str, Any]:
         """Cancel a subscription; it also disappears automatically when this session ends."""
         return await self.call("event.unsubscribe", {"subscription_id": subscription_id})
+
+    async def partition_scopes(
+        self,
+        world_id: str,
+        lease: dict[str, Any],
+        expected_revision: int,
+        scopes: list[dict[str, str]],
+    ) -> dict[str, Any]:
+        self.require_component_leases()
+        return await self.call("scope.partition", {
+            "world_id": world_id,
+            "lease": lease,
+            "expected_revision": expected_revision,
+            "scopes": scopes,
+        })
+
+    async def join_scope(
+        self,
+        world_id: str,
+        grant: Mapping[str, Any],
+        mode: str = "read",
+    ) -> dict[str, Any]:
+        self.require_component_leases()
+        if mode not in ("read", "write"):
+            raise ValueError("scope mode must be 'read' or 'write'")
+        return await self.call("scope.join", {
+            "world_id": world_id,
+            "scope_id": grant["scope_id"],
+            "generation": grant["generation"],
+            "join_key": grant["join_key"],
+            "mode": mode,
+        })
+
+    async def read_scope(self, world_id: str, scope_id: str, generation: int) -> dict[str, Any]:
+        self.require_component_leases()
+        return await self.call("scope.snapshot", {
+            "world_id": world_id,
+            "scope_id": scope_id,
+            "generation": generation,
+        })
+
+    async def patch_scope(
+        self,
+        world_id: str,
+        lease: dict[str, Any],
+        expected_scope_revision: int,
+        ops: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        self.require_component_leases()
+        return await self.call("scope.patch", {
+            "world_id": world_id,
+            "lease": lease,
+            "expected_scope_revision": expected_scope_revision,
+            "ops": ops,
+        })
+
+    async def replace_scope_data(
+        self,
+        world_id: str,
+        lease: dict[str, Any],
+        expected_scope_revision: int,
+        data: Any,
+    ) -> dict[str, Any]:
+        self.require_component_leases()
+        return await self.call("scope.data.replace", {
+            "world_id": world_id,
+            "lease": lease,
+            "expected_scope_revision": expected_scope_revision,
+            "data": data,
+        })
+
+    async def leave_scope(self, world_id: str, scope_id: str) -> dict[str, Any]:
+        self.require_component_leases()
+        return await self.call("scope.leave", {"world_id": world_id, "scope_id": scope_id})
 
     async def mutate(self, method: str, world_id: str, lease: dict[str, Any], **payload: Any) -> dict[str, Any]:
         """Only retry explicit revision rejection, never a timeout or native failure."""

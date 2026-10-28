@@ -454,6 +454,49 @@ struct DataParams {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ScopePartitionParams {
+    world_id: Uuid,
+    lease: LeaseKey,
+    expected_revision: u64,
+    scopes: Vec<ScopeDefinition>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopeReadParams {
+    world_id: Uuid,
+    scope_id: Uuid,
+    generation: u64,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopeLeaseParams {
+    world_id: Uuid,
+    lease: ScopedLeaseKey,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopePatchParams {
+    world_id: Uuid,
+    lease: ScopedLeaseKey,
+    expected_scope_revision: u64,
+    ops: Vec<SceneOp>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopeDataParams {
+    world_id: Uuid,
+    lease: ScopedLeaseKey,
+    expected_scope_revision: u64,
+    data: Value,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopeLeaveParams {
+    world_id: Uuid,
+    scope_id: Uuid,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WindowParams {
     world_id: Uuid,
     lease: LeaseKey,
@@ -657,6 +700,9 @@ impl Hub {
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))
     }
     pub fn capabilities(&self) -> Value {
+        self.capabilities_for(ProtocolVersion::Stable03)
+    }
+    pub fn capabilities_for(&self, protocol: ProtocolVersion) -> Value {
         let mut button_features = vec![
             "selection_groups",
             "appearance_variants",
@@ -665,8 +711,38 @@ impl Hub {
         if self.native_windows {
             button_features.push("external_window_actions");
         }
-        json!({"protocol":PROTOCOL,"transport":["websocket"],"window_scope":"exclusive_writer",
-            "read_model":"immutable_snapshots","dynamic_scene":true,"component_leases":false,
+        let component_leases = if protocol.supports_component_leases() {
+            json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true})
+        } else {
+            json!(false)
+        };
+        let not_implemented = if protocol.supports_component_leases() {
+            json!([
+                "cross_scope_structure",
+                "state_slots",
+                "follow_cursor",
+                "attach_to_foreign_window",
+                "native_opacity",
+                "arbitrary_code",
+                "builtin_tls"
+            ])
+        } else {
+            json!([
+                "component_leases",
+                "follow_cursor",
+                "attach_to_foreign_window",
+                "native_opacity",
+                "arbitrary_code",
+                "builtin_tls"
+            ])
+        };
+        let window_scope = if protocol.supports_component_leases() {
+            "world_authority_and_component_scopes"
+        } else {
+            "exclusive_writer"
+        };
+        json!({"protocol":protocol.as_str(),"transport":["websocket"],"window_scope":window_scope,
+            "read_model":"immutable_snapshots","dynamic_scene":true,"component_leases":component_leases,
             "event_subscriptions":{"scope":"session","max_subscriptions":32,"events":[
                 {"type":"window.geometry_changed","delivery":"state"},
                 {"type":"window.visibility_changed","delivery":"state"}
@@ -678,7 +754,7 @@ impl Hub {
             "button_features":button_features,
             "scene_features":["theme_tokens","rich_key_value"],
             "window_properties":["title","width","height","position","anchor","always_on_top","visible","resizable","title_bar_visible","background_drag_enabled","text_selectable","decorations","skip_taskbar","click_through","geometry_control","position_control","surface_opacity"],
-            "not_implemented":["component_leases","follow_cursor","attach_to_foreign_window","native_opacity","arbitrary_code","builtin_tls"]})
+            "not_implemented":not_implemented})
     }
     pub fn reply(&self, sid: Uuid, req: Request) -> Value {
         if req.id.is_empty() || req.id.len() > 80 || req.method.len() > 80 {
@@ -714,6 +790,9 @@ impl Hub {
         let value = match method {
             "session.ping" => {
                 let mut renewed = vec![];
+                let mut renewed_authorities = Vec::new();
+                let mut renewed_scopes = Vec::new();
+                let preview = e.sessions[&sid].protocol.supports_component_leases();
                 for w in e.worlds.values_mut() {
                     if let Some(l) = &mut w.writer {
                         if l.session == sid && l.expires_at > now {
@@ -721,10 +800,30 @@ impl Hub {
                             renewed.push(w.id);
                         }
                     }
+                    if preview {
+                        if let Some(authority) = &mut w.authority {
+                            if authority.session == sid && authority.expires_at > now {
+                                authority.expires_at = now + LEASE_MS;
+                                renewed_authorities.push(w.id);
+                            }
+                        }
+                        for scope in w.scopes.values_mut() {
+                            if let Some(writer) = &mut scope.writer {
+                                if writer.session == sid && writer.expires_at > now {
+                                    writer.expires_at = now + LEASE_MS;
+                                    renewed_scopes.push(scope.id);
+                                }
+                            }
+                        }
+                    }
                 }
-                json!({"renewed":renewed,"lease_ms":LEASE_MS})
+                if preview {
+                    json!({"renewed":renewed,"authorities_renewed":renewed_authorities,"scopes_renewed":renewed_scopes,"lease_ms":LEASE_MS})
+                } else {
+                    json!({"renewed":renewed,"lease_ms":LEASE_MS})
+                }
             }
-            "host.capabilities" => self.capabilities(),
+            "host.capabilities" => self.capabilities_for(e.sessions[&sid].protocol),
             "world.list" => encode(e.list(sid)?)?,
             "world.create" => {
                 let p: CreateParams = decode(params)?;
@@ -824,6 +923,66 @@ impl Hub {
                 let p: LeaseParams = decode(params)?;
                 let members = e.destroy(sid, p.world_id, &p.lease, now)?;
                 deleted = Some((p.world_id, members));
+                json!({})
+            }
+            "scope.partition" => {
+                let p: ScopePartitionParams = decode(params)?;
+                let result = e.partition_scopes(
+                    sid,
+                    p.world_id,
+                    &p.lease,
+                    p.expected_revision,
+                    &p.scopes,
+                    now,
+                )?;
+                changed = Some(p.world_id);
+                encode(result)?
+            }
+            "scope.join" => {
+                let p: ScopeJoinRequest = decode(params)?;
+                let result = e.join_scope(sid, p, now)?;
+                changed = Some(result.snapshot.world_id);
+                encode(result)?
+            }
+            "scope.snapshot" => {
+                let p: ScopeReadParams = decode(params)?;
+                encode(e.read_scope(sid, p.world_id, p.scope_id, p.generation)?)?
+            }
+            "scope.patch" => {
+                let p: ScopePatchParams = decode(params)?;
+                let result = e.patch_scope(
+                    sid,
+                    p.world_id,
+                    &p.lease,
+                    p.expected_scope_revision,
+                    &p.ops,
+                    now,
+                )?;
+                changed = Some(p.world_id);
+                encode(result)?
+            }
+            "scope.data.replace" => {
+                let p: ScopeDataParams = decode(params)?;
+                let result = e.replace_scope_data(
+                    sid,
+                    p.world_id,
+                    &p.lease,
+                    p.expected_scope_revision,
+                    p.data,
+                    now,
+                )?;
+                changed = Some(p.world_id);
+                encode(result)?
+            }
+            "scope.renew" => {
+                let p: ScopeLeaseParams = decode(params)?;
+                e.renew_scope(sid, p.world_id, &p.lease, now)?;
+                json!({"lease_ms":LEASE_MS})
+            }
+            "scope.leave" => {
+                let p: ScopeLeaveParams = decode(params)?;
+                e.leave_scope(sid, p.world_id, p.scope_id)?;
+                changed = Some(p.world_id);
                 json!({})
             }
             _ => return Err(Fault::new("METHOD_NOT_FOUND", method)),

@@ -10,8 +10,128 @@ pub struct Engine {
     pub sessions: BTreeMap<Uuid, Session>,
     pub worlds: BTreeMap<Uuid, World>,
 }
+
+fn valid_data_namespace(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || "_-".contains(character))
+}
+
+fn rewrite_scope_binding_value(
+    value: &mut Value,
+    namespace: &str,
+    to_global_path: bool,
+) -> Result<()> {
+    match value {
+        Value::Object(object) if object.contains_key("$path") => {
+            if object.len() != 1 {
+                return Err(Fault::new(
+                    "INVALID_SCENE",
+                    "a data binding must contain only $path",
+                ));
+            }
+            let path = object
+                .get("$path")
+                .and_then(Value::as_str)
+                .ok_or_else(|| Fault::new("INVALID_SCENE", "$path must be a string"))?;
+            let prefix = format!("/{namespace}");
+            let rewritten = if to_global_path {
+                if path.is_empty() {
+                    prefix
+                } else if path.starts_with('/') {
+                    format!("{prefix}{path}")
+                } else {
+                    return Err(Fault::new(
+                        "INVALID_SCENE",
+                        "scope data path must be a JSON pointer",
+                    ));
+                }
+            } else if path == prefix {
+                String::new()
+            } else if let Some(suffix) = path.strip_prefix(&format!("{prefix}/")) {
+                format!("/{suffix}")
+            } else {
+                return Err(Fault::new(
+                    "SCOPE_DATA_FORBIDDEN",
+                    "component binding is outside its data namespace",
+                ));
+            };
+            object.insert("$path".into(), Value::String(rewritten));
+            Ok(())
+        }
+        Value::Object(object) => {
+            for value in object.values_mut() {
+                rewrite_scope_binding_value(value, namespace, to_global_path)?;
+            }
+            Ok(())
+        }
+        Value::Array(values) => {
+            for value in values {
+                rewrite_scope_binding_value(value, namespace, to_global_path)?;
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
+fn rewrite_scope_node_bindings(
+    node: &mut Node,
+    namespace: &str,
+    to_global_path: bool,
+) -> Result<()> {
+    for value in node.props.values_mut() {
+        rewrite_scope_binding_value(value, namespace, to_global_path)?;
+    }
+    for child in &mut node.children {
+        rewrite_scope_node_bindings(child, namespace, to_global_path)?;
+    }
+    Ok(())
+}
+
+fn scope_join_key() -> String {
+    format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple())
+}
+
+fn scope_is_read_only(node: &Node) -> bool {
+    !(node.kind.interactive() || node.kind == Kind::KeyValue && node.props.contains_key("action"))
+        && node.children.iter().all(scope_is_read_only)
+}
+
+fn revoke_component_scope(scope: &mut ComponentScope) -> bool {
+    let Some(writer) = scope.writer.take() else {
+        return false;
+    };
+    scope.epoch += 1;
+    scope.readers.insert(writer.session, JoinMode::Read);
+    scope.revision += 1;
+    true
+}
+
+fn revoke_component_scope_if_owned(scope: &mut ComponentScope, session: Uuid) -> bool {
+    if scope
+        .writer
+        .as_ref()
+        .is_some_and(|writer| writer.session == session)
+    {
+        revoke_component_scope(scope)
+    } else {
+        false
+    }
+}
+
 impl Engine {
     pub fn register(&mut self, name: String, operator: bool) -> Result<Uuid> {
+        self.register_with_protocol(name, operator, ProtocolVersion::Stable03)
+    }
+    pub fn register_with_protocol(
+        &mut self,
+        name: String,
+        operator: bool,
+        protocol: ProtocolVersion,
+    ) -> Result<Uuid> {
         if self.sessions.len() >= 64 {
             return Err(Fault::new("LIMIT", "maximum 64 sessions"));
         }
@@ -22,7 +142,15 @@ impl Engine {
             ));
         }
         let id = Uuid::new_v4();
-        self.sessions.insert(id, Session { id, name, operator });
+        self.sessions.insert(
+            id,
+            Session {
+                id,
+                name,
+                operator,
+                protocol,
+            },
+        );
         Ok(id)
     }
     pub fn operator(&self, session: Uuid) -> bool {
@@ -34,6 +162,16 @@ impl Engine {
     fn session(&self, session: Uuid) -> Result<()> {
         if !self.sessions.contains_key(&session) {
             return Err(Fault::new("SESSION_GONE", "session ended"));
+        }
+        Ok(())
+    }
+    fn require_component_leases_protocol(&self, session: Uuid) -> Result<()> {
+        self.session(session)?;
+        if !self.sessions[&session].protocol.supports_component_leases() {
+            return Err(Fault::new(
+                "PROTOCOL_MISMATCH",
+                "component leases require the 0.4-preview.1 protocol",
+            ));
         }
         Ok(())
     }
@@ -50,13 +188,18 @@ impl Engine {
     pub fn list(&self, session: Uuid) -> Result<Vec<WorldSummary>> {
         self.session(session)?;
         let operator = self.operator(session);
+        let stable_session = self.sessions[&session].protocol == ProtocolVersion::Stable03;
         Ok(self
             .worlds
             .values()
             .filter(|world| {
-                operator
+                let visible = operator
                     || world.readers.contains_key(&session)
-                    || (!world.system && world.join_policy == JoinPolicy::OpenAuthenticated)
+                    || (!world.system && world.join_policy == JoinPolicy::OpenAuthenticated);
+                visible
+                    && !(stable_session
+                        && world.ownership_mode == OwnershipMode::ScopedSubtrees
+                        && !operator)
             })
             .map(|w| {
                 let sid = w.writer.as_ref().map(|x| x.session);
@@ -105,6 +248,9 @@ impl Engine {
             join_policy: policy,
             join_key: join_key.clone(),
             writer: None,
+            ownership_mode: OwnershipMode::ExclusiveWorld,
+            authority: None,
+            scopes: BTreeMap::new(),
             readers: BTreeMap::new(),
             ever_claimed: false,
             window,
@@ -195,6 +341,32 @@ impl Engine {
                 "join_key required; discovery does not grant membership",
             ));
         }
+        if world.ownership_mode == OwnershipMode::ScopedSubtrees {
+            if mode == JoinMode::Write {
+                return Err(Fault::new(
+                    "SCOPE_REQUIRED",
+                    "claim a component scope instead of the complete world",
+                ));
+            }
+            if !operator
+                && world.authority.as_ref().map(|authority| authority.session) != Some(session)
+            {
+                return Err(Fault::new(
+                    "SCOPE_REQUIRED",
+                    "join a component scope instead of the complete world",
+                ));
+            }
+            world.readers.entry(session).or_insert(JoinMode::Read);
+            let snapshot = if operator {
+                world.snapshot()
+            } else {
+                Self::authority_snapshot(world)
+            };
+            return Ok(JoinResult {
+                world: snapshot,
+                lease: None,
+            });
+        }
         if mode == JoinMode::Write && world.write_blocked {
             return Err(Fault::new(
                 "OPERATOR_HOLD",
@@ -212,12 +384,465 @@ impl Engine {
             lease,
         })
     }
+    pub fn partition_scopes(
+        &mut self,
+        session: Uuid,
+        id: Uuid,
+        key: &LeaseKey,
+        expected_revision: u64,
+        definitions: &[ScopeDefinition],
+        now: u64,
+    ) -> Result<ScopePartitionResult> {
+        self.require_component_leases_protocol(session)?;
+        let world = self.writable(session, id, key, now)?;
+        Self::revision(world, expected_revision)?;
+        if world.system {
+            return Err(Fault::new(
+                "FORBIDDEN",
+                "internal system worlds cannot be partitioned by a provider",
+            ));
+        }
+        if world.write_blocked {
+            return Err(Fault::new(
+                "OPERATOR_HOLD",
+                "local operator has held this world",
+            ));
+        }
+        if world.readers.len() != 1 || !world.readers.contains_key(&session) {
+            return Err(Fault::new(
+                "SCOPE_TRANSITION_CONFLICT",
+                "all other world readers must leave before ownership is partitioned",
+            ));
+        }
+        if !(2..=32).contains(&definitions.len()) {
+            return Err(Fault::new(
+                "LIMIT",
+                "scope partition requires 2..32 disjoint subtrees",
+            ));
+        }
+
+        let mut roots = Vec::with_capacity(definitions.len());
+        let mut namespaces = Vec::with_capacity(definitions.len());
+        for definition in definitions {
+            if !valid_data_namespace(&definition.data_namespace)
+                || namespaces.contains(&definition.data_namespace)
+            {
+                return Err(Fault::new(
+                    "INVALID_SCOPE",
+                    "data namespaces must be unique bounded identifiers",
+                ));
+            }
+            let root = world
+                .scene
+                .root
+                .find(&definition.root_node_id)
+                .cloned()
+                .ok_or_else(|| Fault::new("NOT_FOUND", "scope root component is missing"))?;
+            if !scope_is_read_only(&root) {
+                return Err(Fault::new(
+                    "SCOPE_INTERACTIONS_UNAVAILABLE",
+                    "B07-01 scopes are display/data-only until component action routing is implemented",
+                ));
+            }
+            let mut local_view = root.clone();
+            rewrite_scope_node_bindings(&mut local_view, &definition.data_namespace, false)?;
+            roots.push(root);
+            namespaces.push(definition.data_namespace.clone());
+        }
+        for left in 0..roots.len() {
+            for right in (left + 1)..roots.len() {
+                if roots[left].find(&roots[right].id).is_some()
+                    || roots[right].find(&roots[left].id).is_some()
+                {
+                    return Err(Fault::new(
+                        "SCOPE_OVERLAP",
+                        "scope roots must identify disjoint subtrees",
+                    ));
+                }
+            }
+        }
+
+        let mut next_scene = world.scene.clone();
+        if next_scene.data.is_null() {
+            next_scene.data = Value::Object(serde_json::Map::new());
+        }
+        let data = next_scene.data.as_object_mut().ok_or_else(|| {
+            Fault::new(
+                "INVALID_SCOPE",
+                "scope data namespaces require an object-valued scene.data root",
+            )
+        })?;
+        for namespace in &namespaces {
+            data.entry(namespace.clone()).or_insert(Value::Null);
+        }
+        next_scene.validate()?;
+
+        let mut scopes = BTreeMap::new();
+        let mut grants = Vec::with_capacity(definitions.len());
+        for definition in definitions {
+            let scope_id = Uuid::new_v4();
+            let join_key = scope_join_key();
+            let scope = ComponentScope {
+                id: scope_id,
+                root_node_id: definition.root_node_id.clone(),
+                data_namespace: definition.data_namespace.clone(),
+                generation: 1,
+                epoch: 0,
+                revision: 1,
+                join_key: join_key.clone(),
+                writer: None,
+                readers: BTreeMap::new(),
+                ever_claimed: false,
+            };
+            grants.push(ScopeGrant {
+                scope_id,
+                root_node_id: definition.root_node_id.clone(),
+                data_namespace: definition.data_namespace.clone(),
+                generation: scope.generation,
+                join_key,
+            });
+            scopes.insert(scope_id, scope);
+        }
+
+        world.scene = next_scene;
+        Self::revoke(world, "whole-world lease partitioned into component scopes");
+        world.ownership_mode = OwnershipMode::ScopedSubtrees;
+        world.readers.clear();
+        world.readers.insert(session, JoinMode::Read);
+        world.epoch += 1;
+        let authority_lease = LeaseKey {
+            id: Uuid::new_v4(),
+            epoch: world.epoch,
+        };
+        world.authority = Some(WorldAuthorityLease {
+            key: authority_lease.clone(),
+            session,
+            expires_at: now + LEASE_MS,
+        });
+        world.scopes = scopes;
+        world.touch();
+        Ok(ScopePartitionResult {
+            world_id: world.id,
+            world_epoch: world.epoch,
+            world_revision: world.revision,
+            authority_lease,
+            scopes: grants,
+        })
+    }
+    pub fn join_scope(
+        &mut self,
+        session: Uuid,
+        request: ScopeJoinRequest,
+        now: u64,
+    ) -> Result<ScopeJoinResult> {
+        let ScopeJoinRequest {
+            world_id,
+            scope_id,
+            generation,
+            join_key,
+            mode,
+        } = request;
+        self.require_component_leases_protocol(session)?;
+        let operator = self.operator(session);
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        if world.system && !operator {
+            return Err(Fault::new("FORBIDDEN", "system world is private"));
+        }
+        let scope = world
+            .scopes
+            .get_mut(&scope_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope missing"))?;
+        if scope.generation != generation {
+            return Err(Fault::new(
+                "STALE_SCOPE",
+                "scope generation no longer matches",
+            ));
+        }
+        if scope.join_key != join_key {
+            return Err(Fault::new("FORBIDDEN", "scope grant key required"));
+        }
+        let lease = if mode == JoinMode::Write {
+            if world.write_blocked {
+                return Err(Fault::new(
+                    "OPERATOR_HOLD",
+                    "local operator has held this world; release it in the manager",
+                ));
+            }
+            if scope
+                .writer
+                .as_ref()
+                .is_some_and(|writer| writer.expires_at <= now)
+            {
+                revoke_component_scope(scope);
+            }
+            if let Some(writer) = scope.writer.as_mut() {
+                if writer.session != session {
+                    return Err(Fault::new(
+                        "WRITE_CONFLICT",
+                        "component scope already has an exclusive writer",
+                    ));
+                }
+                writer.expires_at = now + LEASE_MS;
+                scope.readers.insert(session, JoinMode::Write);
+                Some(writer.key.clone())
+            } else {
+                scope.epoch += 1;
+                let key = ScopedLeaseKey {
+                    scope_id,
+                    lease_id: Uuid::new_v4(),
+                    epoch: scope.epoch,
+                    generation: scope.generation,
+                };
+                scope.writer = Some(ScopedWriteLease {
+                    key: key.clone(),
+                    session,
+                    expires_at: now + LEASE_MS,
+                });
+                scope.readers.insert(session, JoinMode::Write);
+                scope.ever_claimed = true;
+                scope.revision += 1;
+                Some(key)
+            }
+        } else {
+            if scope.readers.get(&session) != Some(&JoinMode::Write) {
+                scope.readers.insert(session, JoinMode::Read);
+            }
+            scope
+                .writer
+                .as_ref()
+                .and_then(|writer| (writer.session == session).then(|| writer.key.clone()))
+        };
+        world.readers.insert(session, JoinMode::Read);
+        world.touch();
+        let snapshot = Self::build_scope_snapshot(world, world.scopes.get(&scope_id).unwrap())?;
+        Ok(ScopeJoinResult { snapshot, lease })
+    }
+    pub fn read_scope(
+        &self,
+        session: Uuid,
+        world_id: Uuid,
+        scope_id: Uuid,
+        generation: u64,
+    ) -> Result<ScopeSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        if world.system && !self.operator(session) {
+            return Err(Fault::new("FORBIDDEN", "system world is private"));
+        }
+        let scope = world
+            .scopes
+            .get(&scope_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope missing"))?;
+        if scope.generation != generation {
+            return Err(Fault::new(
+                "STALE_SCOPE",
+                "scope generation no longer matches",
+            ));
+        }
+        if !self.operator(session) && !scope.readers.contains_key(&session) {
+            return Err(Fault::new("FORBIDDEN", "join the scope before reading"));
+        }
+        Self::build_scope_snapshot(world, scope)
+    }
+    pub fn patch_scope(
+        &mut self,
+        session: Uuid,
+        world_id: Uuid,
+        key: &ScopedLeaseKey,
+        expected_scope_revision: u64,
+        ops: &[SceneOp],
+        now: u64,
+    ) -> Result<ScopeSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, key, now)?;
+        let (root_node_id, namespace, current_revision) = {
+            let scope = world.scopes.get(&key.scope_id).unwrap();
+            (
+                scope.root_node_id.clone(),
+                scope.data_namespace.clone(),
+                scope.revision,
+            )
+        };
+        if current_revision != expected_scope_revision {
+            return Err(Fault::new(
+                "SCOPE_REVISION_CONFLICT",
+                format!("expected {expected_scope_revision}, actual {current_revision}"),
+            ));
+        }
+        let scope_root = world.scene.root.find(&root_node_id).ok_or_else(|| {
+            Fault::new(
+                "STALE_SCOPE",
+                "scope root component is no longer in the scene",
+            )
+        })?;
+        let mut scoped_ops = Vec::with_capacity(ops.len());
+        for operation in ops {
+            match operation {
+                SceneOp::Props { node_id, props } => {
+                    if scope_root.find(node_id).is_none() {
+                        return Err(Fault::new(
+                            "SCOPE_FORBIDDEN",
+                            "property update targets a component outside this scope",
+                        ));
+                    }
+                    let mut props = props.clone();
+                    for value in props.values_mut() {
+                        rewrite_scope_binding_value(value, &namespace, true)?;
+                    }
+                    scoped_ops.push(SceneOp::Props {
+                        node_id: node_id.clone(),
+                        props,
+                    });
+                }
+                _ => {
+                    return Err(Fault::new(
+                        "SCOPE_STRUCTURE_LOCKED",
+                        "scope structure edits are not available in B07-01",
+                    ));
+                }
+            }
+        }
+        let next_scene = world.scene.patch(&scoped_ops)?;
+        world.scene = next_scene;
+        let scope = world.scopes.get_mut(&key.scope_id).unwrap();
+        scope.revision += 1;
+        world.touch();
+        Self::build_scope_snapshot(world, world.scopes.get(&key.scope_id).unwrap())
+    }
+    pub fn replace_scope_data(
+        &mut self,
+        session: Uuid,
+        world_id: Uuid,
+        key: &ScopedLeaseKey,
+        expected_scope_revision: u64,
+        data: Value,
+        now: u64,
+    ) -> Result<ScopeSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, key, now)?;
+        let (namespace, current_revision) = {
+            let scope = world.scopes.get(&key.scope_id).unwrap();
+            (scope.data_namespace.clone(), scope.revision)
+        };
+        if current_revision != expected_scope_revision {
+            return Err(Fault::new(
+                "SCOPE_REVISION_CONFLICT",
+                format!("expected {expected_scope_revision}, actual {current_revision}"),
+            ));
+        }
+        let mut next_scene = world.scene.clone();
+        let namespaces = next_scene
+            .data
+            .as_object_mut()
+            .ok_or_else(|| Fault::new("INVALID_SCOPE", "composed scene data must be an object"))?;
+        namespaces.insert(namespace, data);
+        next_scene.validate()?;
+        world.scene = next_scene;
+        let scope = world.scopes.get_mut(&key.scope_id).unwrap();
+        scope.revision += 1;
+        world.touch();
+        Self::build_scope_snapshot(world, world.scopes.get(&key.scope_id).unwrap())
+    }
+    pub fn renew_scope(
+        &mut self,
+        session: Uuid,
+        world_id: Uuid,
+        key: &ScopedLeaseKey,
+        now: u64,
+    ) -> Result<()> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, key, now)?;
+        let scope = world.scopes.get_mut(&key.scope_id).unwrap();
+        scope.writer.as_mut().unwrap().expires_at = now + LEASE_MS;
+        Ok(())
+    }
+    pub fn leave_scope(&mut self, session: Uuid, world_id: Uuid, scope_id: Uuid) -> Result<()> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        let scope = world
+            .scopes
+            .get_mut(&scope_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope missing"))?;
+        let mut changed = false;
+        if scope
+            .writer
+            .as_ref()
+            .is_some_and(|writer| writer.session == session)
+        {
+            revoke_component_scope(scope);
+            changed = true;
+        }
+        changed |= scope.readers.remove(&session).is_some();
+        if world
+            .authority
+            .as_ref()
+            .is_none_or(|authority| authority.session != session)
+            && !world
+                .scopes
+                .values()
+                .any(|other| other.readers.contains_key(&session))
+        {
+            world.readers.remove(&session);
+        }
+        if changed {
+            world.touch();
+        }
+        Ok(())
+    }
     pub fn read(&self, session: Uuid, id: Uuid) -> Result<Snapshot> {
         self.session(session)?;
         let world = self
             .worlds
             .get(&id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode == OwnershipMode::ScopedSubtrees {
+            if self.operator(session) {
+                return Ok(world.snapshot());
+            }
+            if !world.readers.contains_key(&session) {
+                return Err(Fault::new(
+                    "FORBIDDEN",
+                    "join the world or a component scope before reading",
+                ));
+            }
+            if world.authority.as_ref().map(|authority| authority.session) == Some(session) {
+                return Ok(Self::authority_snapshot(world));
+            }
+            return Err(Fault::new(
+                "SCOPE_REQUIRED",
+                "read a granted component scope instead of the complete world",
+            ));
+        }
         if !self.operator(session) && !world.readers.contains_key(&session) {
             return Err(Fault::new(
                 "FORBIDDEN",
@@ -238,6 +863,12 @@ impl Engine {
             .worlds
             .get_mut(&id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ExclusiveWorld {
+            return Err(Fault::new(
+                "SCOPE_MODE",
+                "whole-world writes are disabled after scope partitioning",
+            ));
+        }
         let lease = world
             .writer
             .as_ref()
@@ -253,6 +884,153 @@ impl Engine {
         }
         Ok(world)
     }
+    fn authority_writable(
+        &mut self,
+        session: Uuid,
+        id: Uuid,
+        key: &LeaseKey,
+        now: u64,
+    ) -> Result<&mut World> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("LEASE_MODE", "world has no scoped authority"));
+        }
+        if world.write_blocked {
+            return Err(Fault::new(
+                "OPERATOR_HOLD",
+                "local operator has held this world",
+            ));
+        }
+        let authority = world
+            .authority
+            .as_ref()
+            .ok_or_else(|| Fault::new("STALE_AUTHORITY", "world authority has been revoked"))?;
+        if authority.session != session || authority.key != *key {
+            return Err(Fault::new(
+                "STALE_AUTHORITY",
+                "world authority does not match",
+            ));
+        }
+        if authority.expires_at <= now {
+            return Err(Fault::new("LEASE_EXPIRED", "world authority has expired"));
+        }
+        Ok(world)
+    }
+    fn window_writable(
+        &mut self,
+        session: Uuid,
+        id: Uuid,
+        key: &LeaseKey,
+        now: u64,
+    ) -> Result<&mut World> {
+        let mode = self
+            .worlds
+            .get(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?
+            .ownership_mode;
+        match mode {
+            OwnershipMode::ExclusiveWorld => self.writable(session, id, key, now),
+            OwnershipMode::ScopedSubtrees => self.authority_writable(session, id, key, now),
+        }
+    }
+    fn require_scope_writer(
+        world: &World,
+        session: Uuid,
+        key: &ScopedLeaseKey,
+        now: u64,
+    ) -> Result<()> {
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new(
+                "SCOPE_MODE",
+                "world is not partitioned into scopes",
+            ));
+        }
+        if world.write_blocked {
+            return Err(Fault::new(
+                "OPERATOR_HOLD",
+                "local operator has held this world",
+            ));
+        }
+        let scope = world
+            .scopes
+            .get(&key.scope_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope missing"))?;
+        if scope.generation != key.generation {
+            return Err(Fault::new(
+                "STALE_SCOPE",
+                "scope generation no longer matches",
+            ));
+        }
+        let lease = scope
+            .writer
+            .as_ref()
+            .ok_or_else(|| Fault::new("STALE_SCOPE_LEASE", "scope has no writer"))?;
+        if lease.session != session || lease.key != *key {
+            return Err(Fault::new(
+                "STALE_SCOPE_LEASE",
+                "writer, scope, lease or generation no longer matches",
+            ));
+        }
+        if lease.expires_at <= now {
+            return Err(Fault::new("LEASE_EXPIRED", "scope lease has expired"));
+        }
+        Ok(())
+    }
+    fn build_scope_snapshot(world: &World, scope: &ComponentScope) -> Result<ScopeSnapshot> {
+        let mut root = world
+            .scene
+            .root
+            .find(&scope.root_node_id)
+            .cloned()
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope root is no longer in the scene"))?;
+        rewrite_scope_node_bindings(&mut root, &scope.data_namespace, false)?;
+        let data = world
+            .scene
+            .data
+            .as_object()
+            .and_then(|namespaces| namespaces.get(&scope.data_namespace))
+            .cloned()
+            .unwrap_or(Value::Null);
+        let status = if scope.writer.is_some() {
+            "online"
+        } else if scope.ever_claimed {
+            "stale"
+        } else {
+            "vacant"
+        };
+        Ok(ScopeSnapshot {
+            world_id: world.id,
+            scope_id: scope.id,
+            root_node_id: scope.root_node_id.clone(),
+            generation: scope.generation,
+            revision: scope.revision,
+            sequence: world.sequence,
+            writer: scope.writer.as_ref().map(|lease| lease.session),
+            status: status.into(),
+            root,
+            data,
+        })
+    }
+    fn authority_snapshot(world: &World) -> Snapshot {
+        let mut snapshot = world.snapshot();
+        if let Some(data) = snapshot.scene.data.as_object_mut() {
+            for scope in world.scopes.values() {
+                data.remove(&scope.data_namespace);
+            }
+        }
+        for scope in world.scopes.values() {
+            if let Some(node) = snapshot.scene.root.find_mut(&scope.root_node_id) {
+                node.kind = crate::scene::Kind::Stack;
+                node.props.clear();
+                node.children.clear();
+            }
+        }
+        snapshot
+    }
     fn revision(world: &World, expected: u64) -> Result<()> {
         if world.revision != expected {
             return Err(Fault::new(
@@ -263,8 +1041,20 @@ impl Engine {
         Ok(())
     }
     pub fn renew(&mut self, session: Uuid, id: Uuid, key: &LeaseKey, now: u64) -> Result<()> {
-        let world = self.writable(session, id, key, now)?;
-        world.writer.as_mut().unwrap().expires_at = now + LEASE_MS;
+        let mode = self
+            .worlds
+            .get(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?
+            .ownership_mode;
+        let world = match mode {
+            OwnershipMode::ExclusiveWorld => self.writable(session, id, key, now)?,
+            OwnershipMode::ScopedSubtrees => self.authority_writable(session, id, key, now)?,
+        };
+        if mode == OwnershipMode::ScopedSubtrees {
+            world.authority.as_mut().unwrap().expires_at = now + LEASE_MS;
+        } else {
+            world.writer.as_mut().unwrap().expires_at = now + LEASE_MS;
+        }
         Ok(())
     }
     pub fn release(
@@ -274,6 +1064,18 @@ impl Engine {
         key: &LeaseKey,
         now: u64,
     ) -> Result<Snapshot> {
+        let mode = self
+            .worlds
+            .get(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?
+            .ownership_mode;
+        if mode == OwnershipMode::ScopedSubtrees {
+            let world = self.authority_writable(session, id, key, now)?;
+            world.authority = None;
+            world.epoch += 1;
+            world.touch();
+            return Ok(Self::authority_snapshot(world));
+        }
         let world = self.writable(session, id, key, now)?;
         Self::revoke(world, "write lease released");
         Ok(world.snapshot())
@@ -284,6 +1086,24 @@ impl Engine {
             .worlds
             .get_mut(&id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode == OwnershipMode::ScopedSubtrees {
+            let before = world.sequence;
+            if world.authority.as_ref().map(|authority| authority.session) == Some(session) {
+                world.authority = None;
+                world.epoch += 1;
+                world.touch();
+            }
+            let mut scope_changed = false;
+            for scope in world.scopes.values_mut() {
+                scope_changed |= revoke_component_scope_if_owned(scope, session);
+                scope.readers.remove(&session);
+            }
+            world.readers.remove(&session);
+            if scope_changed && world.sequence == before {
+                world.touch();
+            }
+            return Ok(());
+        }
         if world.writer.as_ref().map(|w| w.session) == Some(session) {
             Self::revoke(world, "provider left");
         }
@@ -349,7 +1169,7 @@ impl Engine {
         patch: &WindowPatch,
         now: u64,
     ) -> Result<Snapshot> {
-        let world = self.writable(session, id, key, now)?;
+        let world = self.window_writable(session, id, key, now)?;
         Self::revision(world, expected)?;
         let next = patch.apply(&world.window)?;
         if next != world.window {
@@ -367,7 +1187,7 @@ impl Engine {
         key: &LeaseKey,
         now: u64,
     ) -> Result<Vec<Uuid>> {
-        self.writable(session, id, key, now)?;
+        self.window_writable(session, id, key, now)?;
         let world = self.worlds.remove(&id).unwrap();
         Ok(world.readers.keys().copied().collect())
     }
@@ -380,6 +1200,10 @@ impl Engine {
             .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
         if !w.system {
             Self::revoke(w, "local operator revoked write lease");
+            w.authority = None;
+            for scope in w.scopes.values_mut() {
+                revoke_component_scope(scope);
+            }
             w.write_blocked = true;
         }
         w.window.visible = true;
@@ -432,11 +1256,27 @@ impl Engine {
     pub fn disconnect(&mut self, session: Uuid) -> Vec<Uuid> {
         let mut changed = vec![];
         for w in self.worlds.values_mut() {
+            let before = w.sequence;
             if w.writer.as_ref().map(|x| x.session) == Some(session) {
                 Self::revoke(w, "provider disconnected");
-                changed.push(w.id);
+            }
+            if w.authority.as_ref().map(|x| x.session) == Some(session) {
+                w.authority = None;
+                w.epoch += 1;
+                w.touch();
+            }
+            let mut scope_changed = false;
+            for scope in w.scopes.values_mut() {
+                scope_changed |= revoke_component_scope_if_owned(scope, session);
+                scope.readers.remove(&session);
+            }
+            if scope_changed && w.sequence == before {
+                w.touch();
             }
             w.readers.remove(&session);
+            if w.sequence != before {
+                changed.push(w.id);
+            }
         }
         self.sessions.remove(&session);
         changed
@@ -452,6 +1292,24 @@ impl Engine {
             {
                 Self::revoke(w, "write lease expired");
             }
+            if w.authority
+                .as_ref()
+                .is_some_and(|authority| authority.expires_at <= now)
+            {
+                w.authority = None;
+                w.epoch += 1;
+                w.touch();
+            }
+            let mut scope_changed = false;
+            for scope in w.scopes.values_mut() {
+                if scope
+                    .writer
+                    .as_ref()
+                    .is_some_and(|writer| writer.expires_at <= now)
+                {
+                    scope_changed |= revoke_component_scope(scope);
+                }
+            }
             let mut expired = false;
             for a in &mut w.actions {
                 if a.status == "pending" && a.deadline <= now {
@@ -462,6 +1320,9 @@ impl Engine {
             }
             if expired {
                 w.sequence += 1;
+            }
+            if scope_changed && w.sequence == before {
+                w.touch();
             }
             if w.sequence != before {
                 changed.push(w.id);

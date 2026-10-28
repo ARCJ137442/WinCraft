@@ -34,7 +34,7 @@
     "B06-02": "IMPLEMENTED_UNVERIFIED",
     "B06-03": "IMPLEMENTED_UNVERIFIED",
     "B06-04": "IMPLEMENTED_UNVERIFIED",
-    "B07-01": "NOT_STARTED",
+    "B07-01": "VERIFIED",
     "B07-02": "NOT_STARTED",
     "B07-03": "NOT_STARTED",
     "B07-04": "NOT_STARTED",
@@ -61,8 +61,7 @@
     "Windows UIA/IME/screen-reader, title-collapse sizing, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
-    "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
-    "Cleanup of a local ephemeral runtime descriptor after an earlier probe remains unverified; its contents were not read or copied into public evidence."
+    "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed."
   ],
   "completed_this_delivery": [
     "本机基线与锁文件/环境核对，UI/Rust/Python/交接包检查",
@@ -110,7 +109,8 @@
     "Latest release defaults both provider worlds and the internal manager to always_on_top=true; a 40-check Tauri-hosted probe observed native application for false/true. Actual z-order against normal and topmost windows remains NOT_RUN.",
     "ExoMind workbench provider models full/compact/mini plus idle using read-only projection; 13 fixture tests and one user-authorized GET/projection smoke passed. Native mode UI, steady-state dimensions and local world cleanup remain NOT_RUN.",
     "Current-release Computer Use retry found the manager window and accessibility text, but activation failed after a fresh selection; the screenshot was not trusted and no UI input was sent. Tray, global visibility, z-order, drag and current-build fold remain NOT_RUN.",
-    "Fixed nine consecutive Windows GitHub Actions failures by making handoff translation hashes newline-independent and test JSON encoding explicit. Updated official actions to Node 24 releases; latest Windows hosted run passed npm run check:local."
+    "Fixed nine consecutive Windows GitHub Actions failures by making handoff translation hashes newline-independent and test JSON encoding explicit. Updated official actions to Node 24 releases; latest Windows hosted run passed npm run check:local.",
+    "2026-10-28: B07-01 component-lease preview is verified for its L1-L2 acceptance in opt-in protocol 0.4-preview.1: disjoint subtree writers advance independent revisions, stable 0.3 whole-world writers cannot mix into scoped mode, and readers receive only their subtree/data namespace. Core tests and a real Rust WebSocket headless provider probe pass; native UI is outside this task and remains subject to its own gates."
   ],
   "history": [
     null,

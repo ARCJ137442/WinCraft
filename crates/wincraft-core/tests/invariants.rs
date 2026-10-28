@@ -1564,3 +1564,573 @@ fn escape_shortcut_is_unique_and_whitelisted() {
         "INVALID_SCENE"
     );
 }
+
+struct ScopedWorldSetup {
+    engine: Engine,
+    world_id: uuid::Uuid,
+    owner: uuid::Uuid,
+    writer_a: uuid::Uuid,
+    writer_b: uuid::Uuid,
+    observer: uuid::Uuid,
+    operator: uuid::Uuid,
+    world_join_key: String,
+    legacy_lease: LeaseKey,
+    authority_lease: LeaseKey,
+    scope_a: ScopeGrant,
+    scope_b: ScopeGrant,
+}
+
+fn setup_scoped_world() -> ScopedWorldSetup {
+    let mut engine = Engine::default();
+    let owner = engine
+        .register_with_protocol(
+            "scope.owner".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let writer_a = engine
+        .register_with_protocol(
+            "scope.focus".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let writer_b = engine
+        .register_with_protocol(
+            "scope.tasks".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let observer = engine
+        .register_with_protocol(
+            "scope.reader".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let operator = engine.register("scope.operator".into(), true).unwrap();
+    let created = engine
+        .create(
+            owner,
+            WindowSpec::default(),
+            JoinPolicy::Invite,
+            true,
+            false,
+            0,
+        )
+        .unwrap();
+    let world_id = created.world.id;
+    let world_join_key = created.join_key;
+    let legacy_lease = created.lease.unwrap();
+    let scene = Scene {
+        root: Node::new(
+            "root",
+            Kind::Stack,
+            json!({}),
+            vec![
+                Node::new(
+                    "focus-panel",
+                    Kind::Stack,
+                    json!({}),
+                    vec![Node::new(
+                        "focus-value",
+                        Kind::Text,
+                        json!({"text":{"$path":"/focus/value"}}),
+                        vec![],
+                    )],
+                ),
+                Node::new(
+                    "tasks-panel",
+                    Kind::Stack,
+                    json!({}),
+                    vec![Node::new(
+                        "tasks-value",
+                        Kind::Text,
+                        json!({"text":{"$path":"/tasks/value"}}),
+                        vec![],
+                    )],
+                ),
+            ],
+        ),
+        data: json!({
+            "focus":{"value":"focus-private"},
+            "tasks":{"value":"tasks-private"},
+            "public":"layout-metadata"
+        }),
+        theme: None,
+    };
+    let updated = engine
+        .replace_scene(
+            owner,
+            world_id,
+            &legacy_lease,
+            created.world.revision,
+            scene,
+            1,
+        )
+        .unwrap();
+    let partition = engine
+        .partition_scopes(
+            owner,
+            world_id,
+            &legacy_lease,
+            updated.revision,
+            &[
+                ScopeDefinition {
+                    root_node_id: "focus-panel".into(),
+                    data_namespace: "focus".into(),
+                },
+                ScopeDefinition {
+                    root_node_id: "tasks-panel".into(),
+                    data_namespace: "tasks".into(),
+                },
+            ],
+            2,
+        )
+        .unwrap();
+    let scope_a = partition
+        .scopes
+        .iter()
+        .find(|scope| scope.root_node_id == "focus-panel")
+        .unwrap()
+        .clone();
+    let scope_b = partition
+        .scopes
+        .iter()
+        .find(|scope| scope.root_node_id == "tasks-panel")
+        .unwrap()
+        .clone();
+    ScopedWorldSetup {
+        engine,
+        world_id,
+        owner,
+        writer_a,
+        writer_b,
+        observer,
+        operator,
+        world_join_key,
+        legacy_lease,
+        authority_lease: partition.authority_lease,
+        scope_a,
+        scope_b,
+    }
+}
+
+#[test]
+fn disjoint_component_scopes_use_independent_revisions_and_data_namespaces() {
+    let mut state = setup_scoped_world();
+    let joined_a = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let joined_b = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let lease_a = joined_a.lease.unwrap();
+    let lease_b = joined_b.lease.unwrap();
+    let props = |text: &str| json!({"text":text}).as_object().unwrap().clone();
+
+    let updated_a = state
+        .engine
+        .patch_scope(
+            state.writer_a,
+            state.world_id,
+            &lease_a,
+            joined_a.snapshot.revision,
+            &[SceneOp::Props {
+                node_id: "focus-value".into(),
+                props: props("focus updated"),
+            }],
+            4,
+        )
+        .unwrap();
+    let updated_b = state
+        .engine
+        .patch_scope(
+            state.writer_b,
+            state.world_id,
+            &lease_b,
+            joined_b.snapshot.revision,
+            &[SceneOp::Props {
+                node_id: "tasks-value".into(),
+                props: props("tasks updated"),
+            }],
+            4,
+        )
+        .unwrap();
+    assert_eq!(updated_a.revision, joined_a.snapshot.revision + 1);
+    assert_eq!(updated_b.revision, joined_b.snapshot.revision + 1);
+
+    let data_a = state
+        .engine
+        .replace_scope_data(
+            state.writer_a,
+            state.world_id,
+            &lease_a,
+            updated_a.revision,
+            json!({"value":"focus-updated"}),
+            5,
+        )
+        .unwrap();
+    let data_b = state
+        .engine
+        .replace_scope_data(
+            state.writer_b,
+            state.world_id,
+            &lease_b,
+            updated_b.revision,
+            json!({"value":"tasks-updated"}),
+            5,
+        )
+        .unwrap();
+    assert_eq!(data_a.data, json!({"value":"focus-updated"}));
+    assert_eq!(data_b.data, json!({"value":"tasks-updated"}));
+
+    let full = state.engine.read(state.operator, state.world_id).unwrap();
+    assert_eq!(full.scene.data["focus"]["value"], "focus-updated");
+    assert_eq!(full.scene.data["tasks"]["value"], "tasks-updated");
+    assert_eq!(
+        full.scene.root.find("focus-value").unwrap().props["text"],
+        "focus updated"
+    );
+    assert_eq!(
+        full.scene.root.find("tasks-value").unwrap().props["text"],
+        "tasks updated"
+    );
+}
+
+#[test]
+fn component_scope_reads_are_filtered_and_readers_get_no_write_alias() {
+    let mut state = setup_scoped_world();
+    let joined = state
+        .engine
+        .join_scope(
+            state.observer,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Read),
+            3,
+        )
+        .unwrap();
+    assert!(joined.lease.is_none());
+    assert_eq!(joined.snapshot.root.id, "focus-panel");
+    assert_eq!(joined.snapshot.data, json!({"value":"focus-private"}));
+    let projection = serde_json::to_string(&joined.snapshot).unwrap();
+    assert!(!projection.contains("tasks-panel"));
+    assert!(!projection.contains("tasks-private"));
+    assert_eq!(
+        state
+            .engine
+            .read(state.observer, state.world_id)
+            .unwrap_err()
+            .code,
+        "SCOPE_REQUIRED"
+    );
+    assert_eq!(
+        state
+            .engine
+            .read_scope(
+                state.observer,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+            )
+            .unwrap_err()
+            .code,
+        "FORBIDDEN"
+    );
+    let fake_lease = ScopedLeaseKey {
+        scope_id: state.scope_a.scope_id,
+        lease_id: uuid::Uuid::new_v4(),
+        epoch: 1,
+        generation: state.scope_a.generation,
+    };
+    assert_eq!(
+        state
+            .engine
+            .patch_scope(
+                state.observer,
+                state.world_id,
+                &fake_lease,
+                joined.snapshot.revision,
+                &[SceneOp::Props {
+                    node_id: "focus-value".into(),
+                    props: json!({"text":"unauthorized"}).as_object().unwrap().clone(),
+                }],
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE_LEASE"
+    );
+
+    let authority_view = state.engine.read(state.owner, state.world_id).unwrap();
+    assert!(authority_view.scene.data.get("focus").is_none());
+    assert!(authority_view.scene.data.get("tasks").is_none());
+    assert!(authority_view
+        .scene
+        .root
+        .find("focus-panel")
+        .unwrap()
+        .children
+        .is_empty());
+}
+
+#[test]
+fn scoped_world_rejects_legacy_writers_and_fences_scope_disconnect() {
+    let mut state = setup_scoped_world();
+    assert_eq!(
+        state
+            .engine
+            .patch_scene(state.owner, state.world_id, &state.legacy_lease, 1, &[], 3,)
+            .unwrap_err()
+            .code,
+        "SCOPE_MODE"
+    );
+    let stable = state
+        .engine
+        .register("legacy.client".into(), false)
+        .unwrap();
+    assert_eq!(
+        state
+            .engine
+            .join(
+                stable,
+                state.world_id,
+                Some(&state.world_join_key),
+                JoinMode::Write,
+                3,
+            )
+            .unwrap_err()
+            .code,
+        "SCOPE_REQUIRED"
+    );
+    let authority_view = state
+        .engine
+        .release(state.owner, state.world_id, &state.authority_lease, 3)
+        .unwrap();
+    assert!(authority_view.scene.data.get("focus").is_none());
+    assert!(authority_view.scene.data.get("tasks").is_none());
+    let unsupported = state
+        .engine
+        .register("legacy.partition".into(), false)
+        .unwrap();
+    assert_eq!(
+        state
+            .engine
+            .partition_scopes(unsupported, state.world_id, &state.legacy_lease, 1, &[], 3,)
+            .unwrap_err()
+            .code,
+        "PROTOCOL_MISMATCH"
+    );
+
+    let joined = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            4,
+        )
+        .unwrap();
+    let old_key = joined.lease.unwrap();
+    state.engine.disconnect(state.writer_a);
+    assert_eq!(
+        state
+            .engine
+            .patch_scope(
+                state.writer_a,
+                state.world_id,
+                &old_key,
+                joined.snapshot.revision,
+                &[],
+                5,
+            )
+            .unwrap_err()
+            .code,
+        "SESSION_GONE"
+    );
+    let replacement = state
+        .engine
+        .register_with_protocol(
+            "scope.focus.reconnected".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let new_join = state
+        .engine
+        .join_scope(
+            replacement,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            6,
+        )
+        .unwrap();
+    assert_ne!(old_key, new_join.lease.unwrap());
+}
+
+#[test]
+fn scoped_writer_cannot_target_a_sibling_or_change_scope_structure() {
+    let mut state = setup_scoped_world();
+    let joined = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let lease = joined.lease.unwrap();
+    let expected = joined.snapshot.revision;
+    let props = json!({"text":"unauthorized"}).as_object().unwrap().clone();
+    assert_eq!(
+        state
+            .engine
+            .patch_scope(
+                state.writer_a,
+                state.world_id,
+                &lease,
+                expected,
+                &[SceneOp::Props {
+                    node_id: "tasks-value".into(),
+                    props: props.clone(),
+                }],
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "SCOPE_FORBIDDEN"
+    );
+    assert_eq!(
+        state
+            .engine
+            .patch_scope(
+                state.writer_a,
+                state.world_id,
+                &lease,
+                expected,
+                &[SceneOp::Move {
+                    node_id: "focus-value".into(),
+                    parent: "tasks-panel".into(),
+                    index: 0,
+                }],
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "SCOPE_STRUCTURE_LOCKED"
+    );
+    assert_eq!(
+        state
+            .engine
+            .read_scope(
+                state.writer_a,
+                state.world_id,
+                state.scope_a.scope_id,
+                state.scope_a.generation,
+            )
+            .unwrap()
+            .revision,
+        expected,
+        "rejected scope operations must be atomic"
+    );
+}
+
+#[test]
+fn scope_partition_rejects_overlap_without_revoking_legacy_lease() {
+    let mut engine = Engine::default();
+    let owner = engine
+        .register_with_protocol(
+            "scope.partition.owner".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let created = engine
+        .create(
+            owner,
+            WindowSpec::default(),
+            JoinPolicy::Invite,
+            true,
+            false,
+            0,
+        )
+        .unwrap();
+    let lease = created.lease.unwrap();
+    let scene = Scene {
+        root: Node::new(
+            "root",
+            Kind::Stack,
+            json!({}),
+            vec![Node::new(
+                "panel",
+                Kind::Stack,
+                json!({}),
+                vec![Node::new(
+                    "header",
+                    Kind::Text,
+                    json!({"text":"Header"}),
+                    vec![],
+                )],
+            )],
+        ),
+        data: json!({"panel-data":{},"header-data":{}}),
+        theme: None,
+    };
+    let updated = engine
+        .replace_scene(
+            owner,
+            created.world.id,
+            &lease,
+            created.world.revision,
+            scene,
+            1,
+        )
+        .unwrap();
+    assert_eq!(
+        engine
+            .partition_scopes(
+                owner,
+                created.world.id,
+                &lease,
+                updated.revision,
+                &[
+                    ScopeDefinition {
+                        root_node_id: "panel".into(),
+                        data_namespace: "panel-data".into(),
+                    },
+                    ScopeDefinition {
+                        root_node_id: "header".into(),
+                        data_namespace: "header-data".into(),
+                    },
+                ],
+                2,
+            )
+            .unwrap_err()
+            .code,
+        "SCOPE_OVERLAP"
+    );
+    assert_eq!(
+        engine.worlds[&created.world.id].ownership_mode,
+        OwnershipMode::ExclusiveWorld
+    );
+    assert!(engine.worlds[&created.world.id].writer.is_some());
+    assert!(engine
+        .set_data(
+            owner,
+            created.world.id,
+            &lease,
+            updated.revision,
+            json!({"still":"exclusive"}),
+            3,
+        )
+        .is_ok());
+}

@@ -1,0 +1,27 @@
+{
+  "protocol": "0.4-preview.1",
+  "base_protocol": "0.3",
+  "status": "preview",
+  "capability": {
+    "name": "component_leases",
+    "version": 1
+  },
+  "handshake_schema": "hello.schema.json",
+  "request_schema": "scope-request.schema.json",
+  "methods": [
+    "scope.partition",
+    "scope.join",
+    "scope.snapshot",
+    "scope.patch",
+    "scope.data.replace",
+    "scope.renew",
+    "scope.leave"
+  ],
+  "constraints": {
+    "max_scopes_per_world": 32,
+    "scope_roots_must_be_disjoint": true,
+    "scope_data_namespace": "unique top-level scene.data key",
+    "scope_patch_operations": ["props"],
+    "stable_0_3_world_writer_and_scope_writers_may_not_coexist": true
+  }
+}

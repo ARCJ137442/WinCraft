@@ -2,7 +2,7 @@
 {
   "doc_id": "plan__TASKS",
   "title": "实施任务与可验收交付（生成视图）",
-  "updated_at": "2026-10-27",
+  "updated_at": "2026-10-28",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",

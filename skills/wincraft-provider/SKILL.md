@@ -65,9 +65,11 @@ advertise `theme_tokens`, the provider must fail before creating a world.
 ### 1. Join the host
 
 Start from `examples/python/client.py`. The client reads the descriptor, checks the
-protocol (`0.3` in this prototype) and `host_id`, opens an authenticated WebSocket, sends `hello`
-with the exact protocol version, and maintains its session heartbeat. Keep that order and those checks. A stale
-descriptor or mismatched host is a hard error.
+protocol (stable `0.3` by default) and `host_id`, opens an authenticated WebSocket, sends
+`hello` with the exact protocol version, and maintains its session heartbeat. Keep that
+order and those checks. A stale descriptor or mismatched host is a hard error. The
+separate `0.4-preview.1` component-scope path requires an explicit `protocol_version`
+selection and a matching host capability; see [component scope preview](references/component-scopes-preview.md).
 
 Create a world with `world.create`, or join a known world with `world.join`. A write
 join returns the one active window-level lease; a read join receives snapshots and
@@ -205,11 +207,21 @@ explicitly in provider geometry mode. Human movement, click-through rescue, hidi
 recovery, and operator takeover belong to the local user. Accepted window intent is
 not proof that Windows applied it; inspect the native report separately.
 
+## Experimental component-scope preview
+
+Stable protocol 0.3 still has one writer for the whole world. The opt-in
+`0.4-preview.1` scope path adds filtered subtree snapshots and one writer per disjoint
+scope while retaining a separate world/window authority. It does not yet support
+cross-scope structure changes or action routing. Follow the [scope preview guide](references/component-scopes-preview.md)
+exactly; never bypass the capability gate or treat the preview wire methods as 0.3.
+
 ## Provider invariants
 
 - Business records remain in their authoritative provider. WinCraft stores only
   rebuildable scene, input, session, and rendering state.
-- One active writer owns the whole world lease. Readers get immutable snapshots.
+- Stable protocol 0.3 has one active writer for the whole world lease; readers get
+  immutable snapshots. The experimental 0.4 preview has one writer per disjoint scope,
+  filters each scope snapshot, and keeps window authority separate.
 - Validate protocol version, `host_id`, membership, lease ID/epoch, expected revision,
   and action result. Do not bypass checks to make a demo appear green.
 - Keep source freshness visible. Missing, stale, rejected, or disconnected data is not
@@ -249,6 +261,8 @@ not proof that Windows applied it; inspect the native report separately.
   it requires an explicitly named open Obsidian vault and never edits notes; its title
   activates an existing Obsidian window through the native host action.
 - `examples/python/lease_probe.py` — protocol acceptance against the actual Rust host.
+- `examples/python/scope_probe.py` — opt-in 0.4 preview probe against the actual Rust host;
+  uses synthetic scopes and cleans up only its temporary world.
 - `examples/python/theme_demo.py` — synthetic theme preview, host-chrome boundary, and an explicit invalid-token rejection probe.
 - `examples/python/popup_ask_provider.py` — optional WinCraft transport for an installed
   Popup-Ask skill; it reuses that skill's validate-only parser and result serializer.

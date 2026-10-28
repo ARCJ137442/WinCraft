@@ -21,8 +21,8 @@ use std::{
 use tokio::{sync::watch, task::JoinHandle, time::timeout};
 use uuid::Uuid;
 use wincraft_core::{
-    EventDeliveryClass, EventSource, Fault, Snapshot, TypedWindowEvent, WindowEventType,
-    MAX_PAYLOAD, PROTOCOL,
+    EventDeliveryClass, EventSource, Fault, ProtocolVersion, Snapshot, TypedWindowEvent,
+    WindowEventType, COMPONENT_LEASES_PREVIEW_PROTOCOL, MAX_PAYLOAD, PROTOCOL,
 };
 
 const MAX_EVENT_SUBSCRIPTIONS_PER_SESSION: usize = 32;
@@ -208,6 +208,7 @@ struct Transport {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Descriptor {
     pub protocol: String,
+    pub supported_protocols: Vec<String>,
     pub host_id: Uuid,
     pub http_url: String,
     pub ws_url: String,
@@ -282,6 +283,7 @@ pub async fn start(
     let token = format!("{}{}", Uuid::new_v4().simple(), Uuid::new_v4().simple());
     let descriptor = Descriptor {
         protocol: PROTOCOL.into(),
+        supported_protocols: vec![PROTOCOL.into(), COMPONENT_LEASES_PREVIEW_PROTOCOL.into()],
         host_id: hub.host_id,
         http_url: format!("http://{addr}"),
         ws_url: format!("ws://{addr}/v1/ws"),
@@ -420,15 +422,17 @@ async fn serve_socket(mut socket: WebSocket, hub: Hub, mut shutdown: watch::Rece
         Ok(v) => v,
         Err(_) => return,
     };
-    if hello.protocol != PROTOCOL {
+    let Some(protocol) = ProtocolVersion::parse(&hello.protocol) else {
         let _ = send(
             &mut socket,
-            json!({"id":req.id,"ok":false,"error":Fault::new("PROTOCOL_MISMATCH",PROTOCOL)}),
+            json!({"id":req.id,"ok":false,"error":Fault::new("PROTOCOL_MISMATCH",format!("supported protocols: {PROTOCOL}, {COMPONENT_LEASES_PREVIEW_PROTOCOL}"))}),
         )
         .await;
         return;
-    }
-    let sid_result = hub.lock().register(hello.provider_name, false);
+    };
+    let sid_result = hub
+        .lock()
+        .register_with_protocol(hello.provider_name, false, protocol);
     let sid = match sid_result {
         Ok(id) => id,
         Err(e) => {
@@ -438,7 +442,7 @@ async fn serve_socket(mut socket: WebSocket, hub: Hub, mut shutdown: watch::Rece
     };
     let mut events = hub.subscribe();
     let mut state_updates = hub.subscribe_state();
-    if !send(&mut socket,json!({"id":req.id,"ok":true,"result":{"session_id":sid,"host_id":hub.host_id,"capabilities":hub.capabilities()}})).await{
+    if !send(&mut socket,json!({"id":req.id,"ok":true,"result":{"session_id":sid,"host_id":hub.host_id,"protocol":protocol.as_str(),"capabilities":hub.capabilities_for(protocol)}})).await{
         hub.disconnect(sid);return;
     }
     let mut idle = tokio::time::interval(Duration::from_secs(2));
@@ -542,6 +546,14 @@ mod tests {
     }
 
     async fn connect_test_provider(descriptor: &Descriptor, name: &str) -> (TestSocket, Uuid) {
+        connect_test_provider_with_protocol(descriptor, name, PROTOCOL).await
+    }
+
+    async fn connect_test_provider_with_protocol(
+        descriptor: &Descriptor,
+        name: &str,
+        protocol: &str,
+    ) -> (TestSocket, Uuid) {
         let mut request = descriptor
             .ws_url
             .clone()
@@ -558,7 +570,7 @@ mod tests {
             &mut socket,
             "hello",
             "hello",
-            json!({"protocol":PROTOCOL,"provider_name":name}),
+            json!({"protocol":protocol,"provider_name":name}),
         )
         .await;
         assert_eq!(response["ok"], true);
@@ -978,6 +990,223 @@ mod tests {
             socket_result.is_ok(),
             "provider socket is closed by shutdown"
         );
+    }
+
+    #[tokio::test]
+    async fn preview_websocket_scopes_allow_disjoint_writers_and_filter_readers() {
+        let runtime_dir =
+            std::env::temp_dir().join(format!("wincraft-scope-preview-{}", Uuid::new_v4()));
+        let _cleanup = TestRuntimeDirectory(runtime_dir.clone());
+        let hub = Hub::new(false);
+        let server = start(hub.clone(), "127.0.0.1:0".parse().unwrap(), &runtime_dir)
+            .await
+            .expect("loopback server starts");
+        assert!(server
+            .descriptor
+            .supported_protocols
+            .contains(&COMPONENT_LEASES_PREVIEW_PROTOCOL.to_owned()));
+
+        let (mut owner, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope.owner",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let capabilities = rpc(&mut owner, "capabilities", "host.capabilities", json!({})).await;
+        assert_eq!(capabilities["ok"], true);
+        assert_eq!(
+            capabilities["result"]["component_leases"]["status"],
+            "preview"
+        );
+        assert_eq!(capabilities["result"]["component_leases"]["version"], 1);
+
+        let created = rpc(
+            &mut owner,
+            "create",
+            "world.create",
+            json!({"window":{"title":"scope preview"},"join_policy":"invite","claim":true}),
+        )
+        .await;
+        assert_eq!(created["ok"], true);
+        let world_id = created["result"]["world"]["id"].as_str().unwrap();
+        let world_join_key = created["result"]["join_key"].as_str().unwrap();
+        let lease = created["result"]["lease"].clone();
+        let initial_revision = created["result"]["world"]["revision"].as_u64().unwrap();
+        let scene = json!({
+            "root":{"id":"root","kind":"stack","props":{},"children":[
+                {"id":"focus-panel","kind":"stack","props":{},"children":[
+                    {"id":"focus-value","kind":"text","props":{"text":{"$path":"/focus/value"}}}
+                ]},
+                {"id":"tasks-panel","kind":"stack","props":{},"children":[
+                    {"id":"tasks-value","kind":"text","props":{"text":{"$path":"/tasks/value"}}}
+                ]}
+            ]},
+            "data":{"focus":{"value":"focus-secret"},"tasks":{"value":"tasks-secret"}}
+        });
+        let replaced = rpc(
+            &mut owner,
+            "replace",
+            "scene.replace",
+            json!({"world_id":world_id,"lease":lease,"expected_revision":initial_revision,"scene":scene}),
+        )
+        .await;
+        assert_eq!(replaced["ok"], true);
+
+        let partitioned = rpc(
+            &mut owner,
+            "partition",
+            "scope.partition",
+            json!({
+                "world_id":world_id,
+                "lease":lease,
+                "expected_revision":replaced["result"]["revision"],
+                "scopes":[
+                    {"root_node_id":"focus-panel","data_namespace":"focus"},
+                    {"root_node_id":"tasks-panel","data_namespace":"tasks"}
+                ]
+            }),
+        )
+        .await;
+        assert_eq!(partitioned["ok"], true);
+        let grants = partitioned["result"]["scopes"].as_array().unwrap();
+        let focus = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "focus-panel")
+            .unwrap();
+        let tasks = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "tasks-panel")
+            .unwrap();
+
+        let focus_join = rpc(
+            &mut owner,
+            "focus-join",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus["scope_id"],
+                "generation":focus["generation"],
+                "join_key":focus["join_key"],
+                "mode":"write"
+            }),
+        )
+        .await;
+        assert_eq!(focus_join["ok"], true);
+        let focus_lease = focus_join["result"]["lease"].clone();
+
+        let (mut tasks_provider, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope.tasks",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let tasks_join = rpc(
+            &mut tasks_provider,
+            "tasks-join",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"],
+                "join_key":tasks["join_key"],
+                "mode":"write"
+            }),
+        )
+        .await;
+        assert_eq!(tasks_join["ok"], true);
+        let tasks_lease = tasks_join["result"]["lease"].clone();
+
+        let focus_update = rpc(
+            &mut owner,
+            "focus-update",
+            "scope.patch",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "expected_scope_revision":focus_join["result"]["snapshot"]["revision"],
+                "ops":[{"op":"props","node_id":"focus-value","props":{"text":"Focus updated"}}]
+            }),
+        )
+        .await;
+        assert_eq!(focus_update["ok"], true);
+        let tasks_update = rpc(
+            &mut tasks_provider,
+            "tasks-update",
+            "scope.patch",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_lease,
+                "expected_scope_revision":tasks_join["result"]["snapshot"]["revision"],
+                "ops":[{"op":"props","node_id":"tasks-value","props":{"text":"Tasks updated"}}]
+            }),
+        )
+        .await;
+        assert_eq!(tasks_update["ok"], true);
+
+        let (mut legacy, _) =
+            connect_test_provider(&server.descriptor, "legacy.scope-client").await;
+        let legacy_capabilities = rpc(
+            &mut legacy,
+            "legacy-capabilities",
+            "host.capabilities",
+            json!({}),
+        )
+        .await;
+        assert_eq!(legacy_capabilities["result"]["component_leases"], false);
+        let legacy_join = rpc(
+            &mut legacy,
+            "legacy-join",
+            "world.join",
+            json!({"world_id":world_id,"join_key":world_join_key,"mode":"write"}),
+        )
+        .await;
+        assert_eq!(legacy_join["ok"], false);
+        assert_eq!(legacy_join["error"]["code"], "SCOPE_REQUIRED");
+
+        let (mut observer, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope.observer",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let observer_join = rpc(
+            &mut observer,
+            "observer-join",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus["scope_id"],
+                "generation":focus["generation"],
+                "join_key":focus["join_key"],
+                "mode":"read"
+            }),
+        )
+        .await;
+        assert_eq!(observer_join["ok"], true);
+        let scope_projection = serde_json::to_string(&observer_join["result"]["snapshot"]).unwrap();
+        assert!(scope_projection.contains("focus-secret"));
+        assert!(!scope_projection.contains("tasks-secret"));
+        assert!(!scope_projection.contains("tasks-panel"));
+        let full_snapshot = rpc(
+            &mut observer,
+            "observer-world-read",
+            "world.snapshot",
+            json!({"world_id":world_id}),
+        )
+        .await;
+        assert_eq!(full_snapshot["ok"], false);
+        assert_eq!(full_snapshot["error"]["code"], "SCOPE_REQUIRED");
+
+        let composed = hub.renderer_snapshot(world_id.parse().unwrap()).unwrap();
+        assert_eq!(
+            composed.scene.root.find("focus-value").unwrap().props["text"],
+            "Focus updated"
+        );
+        assert_eq!(
+            composed.scene.root.find("tasks-value").unwrap().props["text"],
+            "Tasks updated"
+        );
+        server.shutdown().await;
     }
 
     #[tokio::test]

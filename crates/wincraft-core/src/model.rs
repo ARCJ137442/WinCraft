@@ -5,7 +5,9 @@ use std::collections::BTreeMap;
 use uuid::Uuid;
 
 pub const PROTOCOL: &str = "0.3";
+pub const COMPONENT_LEASES_PREVIEW_PROTOCOL: &str = "0.4-preview.1";
 pub const MAX_WORLDS: usize = 16;
+pub const MAX_SCOPES_PER_WORLD: usize = 32;
 pub const LEASE_MS: u64 = 15_000;
 pub const ACTION_TIMEOUT_MS: u64 = 10_000;
 pub const MAX_PAYLOAD: usize = 262_144;
@@ -30,6 +32,33 @@ impl std::fmt::Display for Fault {
 }
 impl std::error::Error for Fault {}
 pub type Result<T> = std::result::Result<T, Fault>;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ProtocolVersion {
+    #[default]
+    Stable03,
+    ComponentLeasesPreview01,
+}
+impl ProtocolVersion {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            PROTOCOL => Some(Self::Stable03),
+            COMPONENT_LEASES_PREVIEW_PROTOCOL => Some(Self::ComponentLeasesPreview01),
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Stable03 => PROTOCOL,
+            Self::ComponentLeasesPreview01 => COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        }
+    }
+
+    pub fn supports_component_leases(self) -> bool {
+        matches!(self, Self::ComponentLeasesPreview01)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -299,6 +328,74 @@ pub struct LeaseKey {
     pub id: Uuid,
     pub epoch: u64,
 }
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ScopedLeaseKey {
+    pub scope_id: Uuid,
+    pub lease_id: Uuid,
+    pub epoch: u64,
+    pub generation: u64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeDefinition {
+    pub root_node_id: String,
+    pub data_namespace: String,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ScopeGrant {
+    pub scope_id: Uuid,
+    pub root_node_id: String,
+    pub data_namespace: String,
+    pub generation: u64,
+    pub join_key: String,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScopeJoinRequest {
+    pub world_id: Uuid,
+    pub scope_id: Uuid,
+    pub generation: u64,
+    pub join_key: String,
+    pub mode: JoinMode,
+}
+impl ScopeJoinRequest {
+    pub fn from_grant(world_id: Uuid, grant: &ScopeGrant, mode: JoinMode) -> Self {
+        Self {
+            world_id,
+            scope_id: grant.scope_id,
+            generation: grant.generation,
+            join_key: grant.join_key.clone(),
+            mode,
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ScopePartitionResult {
+    pub world_id: Uuid,
+    pub world_epoch: u64,
+    pub world_revision: u64,
+    pub authority_lease: LeaseKey,
+    pub scopes: Vec<ScopeGrant>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ScopeSnapshot {
+    pub world_id: Uuid,
+    pub scope_id: Uuid,
+    pub root_node_id: String,
+    pub generation: u64,
+    pub revision: u64,
+    pub sequence: u64,
+    pub writer: Option<Uuid>,
+    pub status: String,
+    pub root: crate::scene::Node,
+    pub data: Value,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct ScopeJoinResult {
+    pub snapshot: ScopeSnapshot,
+    pub lease: Option<ScopedLeaseKey>,
+}
 #[derive(Clone, Debug)]
 pub struct WriteLease {
     pub key: LeaseKey,
@@ -310,6 +407,7 @@ pub struct Session {
     pub id: Uuid,
     pub name: String,
     pub operator: bool,
+    pub protocol: ProtocolVersion,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NativeReport {
@@ -397,6 +495,9 @@ pub struct World {
     pub join_policy: JoinPolicy,
     pub join_key: String,
     pub writer: Option<WriteLease>,
+    pub ownership_mode: OwnershipMode,
+    pub authority: Option<WorldAuthorityLease>,
+    pub scopes: BTreeMap<Uuid, ComponentScope>,
     pub readers: BTreeMap<Uuid, JoinMode>,
     pub ever_claimed: bool,
     pub window: WindowSpec,
@@ -404,9 +505,43 @@ pub struct World {
     pub native: NativeReport,
     pub actions: Vec<ActionState>,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OwnershipMode {
+    #[default]
+    ExclusiveWorld,
+    ScopedSubtrees,
+}
+#[derive(Clone, Debug)]
+pub struct WorldAuthorityLease {
+    pub key: LeaseKey,
+    pub session: Uuid,
+    pub expires_at: u64,
+}
+#[derive(Clone, Debug)]
+pub struct ScopedWriteLease {
+    pub key: ScopedLeaseKey,
+    pub session: Uuid,
+    pub expires_at: u64,
+}
+#[derive(Clone, Debug)]
+pub struct ComponentScope {
+    pub id: Uuid,
+    pub root_node_id: String,
+    pub data_namespace: String,
+    pub generation: u64,
+    pub epoch: u64,
+    pub revision: u64,
+    pub join_key: String,
+    pub writer: Option<ScopedWriteLease>,
+    pub readers: BTreeMap<Uuid, JoinMode>,
+    pub ever_claimed: bool,
+}
 impl World {
     pub fn status(&self) -> &str {
-        if self.writer.is_some() {
+        if self.writer.is_some()
+            || self.authority.is_some()
+            || self.scopes.values().any(|scope| scope.writer.is_some())
+        {
             "online"
         } else if self.ever_claimed {
             "stale"

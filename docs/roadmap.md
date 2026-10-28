@@ -14,7 +14,7 @@ Rust core/server 与 Tauri release 已构建并通过对应测试；最新真实
 
 ## 阶段 2：从一世界单写到多提供者组合
 
-设计窗口 authority 与组件子树租约分离；父子撤销；共享布局边界；跨子树操作禁止/协商；动作路由跟随组件 owner；不可变快照读者继续独立。首个 host-owned `native_window_action` 已限制在 Obsidian/TrafficMonitor 与激活/恢复/最小化，且只在用户点击后执行；更广的应用注册、工作区锚定和窗口组合仍需逐项评审。
+B07-01 的 `0.4-preview.1` 已实现窗口 authority 与不相交子树租约、scope generation/local revision 及过滤快照；稳定 0.3 仍保持整窗独占。后续 B07-02/B07-04 继续完成父子撤销、结构事务、跨子树操作拒绝和按组件 owner 路由动作；CAS 类型状态槽仍是后续批次。首个 host-owned `native_window_action` 已限制在 Obsidian/TrafficMonitor 与激活/恢复/最小化，且只在用户点击后执行；更广的应用注册、工作区锚定和窗口组合仍需逐项评审。
 
 ## 阶段 3：窗口行为成为可复用原语
 

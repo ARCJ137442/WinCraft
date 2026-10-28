@@ -127,3 +127,13 @@ WebView 通过 caller-bound Tauri IPC 携带 node_id、value、expected_revision
 FORBIDDEN、WRITE_CONFLICT、STALE_LEASE、LEASE_EXPIRED、OPERATOR_HOLD、REVISION_CONFLICT、HUMAN_GEOMETRY、INVALID_SCENE、INVALID_PATCH、NOT_FOUND、LIMIT、ACTION_TIMEOUT、ACTION_FINISHED、PROTOCOL_MISMATCH。
 
 协议 schema 与 Rust 类型可能存在边角约束差异，必须通过真实服务正反例验收。离线 schema 通过不是服务实现通过。
+
+## 组件子树租约预览
+
+稳定 0.3 仍严格使用一世界一个 writer。组件子树租约是独立协商的 `0.4-preview.1` 实验协议，不改变或暗扩展 0.3；运行时 descriptor 列出支持的协议，Provider 必须显式选择 preview 并检查 `component_leases` capability。
+
+预览方法、字段与正反 fixture 见 [`protocol/preview-0.4/`](../protocol/preview-0.4/methods.json)。`scope.partition` 需要当前完整 writer、expected revision，且世界只有 partitioning provider 一个读成员；Host 校验子树根和数据命名空间不相交，原 writer 随后被 fencing。它返回单独的 world authority 和每个 scope 的邀请凭证。
+
+`scope.join` 取得指定 scope 的读快照或唯一写租约。`scope.snapshot` 对读者只返回本子树和本数据 namespace；scope-only member 无法读取完整 `world.snapshot`。Scope 写入使用独立 `scope_revision`，不会因另一个 scope 更新而冲突。当前 B07-01 preview 只支持 scope 内 props 更新和本 namespace 数据替换；结构操作与交互路由暂不提供。
+
+新方法不等于稳定兼容承诺。未选择 preview 的 0.3 SDK 不应调用 `scope.*`；即使 descriptor 列出 preview，仍需在 SDK 使用前验证 capability。

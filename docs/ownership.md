@@ -4,7 +4,7 @@
 
 Host 拥有 OS 窗口资源的生命周期；提供者通过有期限的独占写租约，取得该世界的构造/数据/窗口配置权限。多个观察会话读取不可变快照；它们不是 Rust 中与 `&mut` 并存的共享内存引用。
 
-这是一种运行时能力/租约模型，不是把 Rust borrow checker 搬到网络上。组件级可写租约和所有权树尚未实现。
+这是一种运行时能力/租约模型，不是把 Rust borrow checker 搬到网络上。稳定协议 0.3 仍只有整窗独占写租约；组件子树所有权现以独立协商的 `0.4-preview.1` 预览实现，尚未成为稳定协议。
 
 ## 主要状态转移
 
@@ -42,6 +42,16 @@ human 模式允许本地拖动；提供者试图改位置/尺寸会收到 HUMAN_
 
 “接管并找回”属于用户操作员动作，不受普通租约约束；它必须显式撤销旧写权，而不是与旧写入者竞速。operator hold 只在内存中，重启不保留。
 
-## 下一阶段组件级借用
+## 组件子树借用的实施顺序
 
-先保持一个世界的原生窗口属性由单一 authority 管理，再按独立组件子树分配写租约。组件租约不能隐式授予父容器删除权或窗口移动权。父节点被移除时如何撤销子租约、如何避免跨子树搬移越权、跨组件事务归谁，是下一次设计要解决的问题；不是把锁粒度从 WorldId 改成 NodeId 就算完成。
+先保持稳定协议 0.3 的整窗独占语义；B07-01 只在显式 0.4 preview 协商后启用 root/window authority 与不相交子树写租约。组件租约不会隐式授予父容器删除权或窗口移动权。父节点移除时的子租约撤销、跨子树搬移、结构事务和按 owner 路由动作仍由 B07-02/B07-04 完成；仅把锁粒度改成 NodeId 不算完成。
+
+## `0.4-preview.1` 当前边界
+
+- Stable `0.3` 的 world lease 和既有客户端语义保持不变。Provider 必须在 `hello` 明确选择 `0.4-preview.1`，并验证 Host `component_leases` capability；无 capability 时 SDK 失败关闭。
+- 当前 preview 允许 root authority 将一个独占世界原子分区成至少两个不相交子树；旧 world lease 被 fencing，root authority 与子树租约使用不同的 key 类型。
+- 每个 scope 具有自己的 generation 和 revision，并绑定唯一顶层 `scene.data` namespace。scope snapshot 只返回本子树和本 namespace；普通读者不能通过 `world.snapshot` 取得完整组合场景。
+- B07-01 目前只接受 scope 内现有节点的 props 更新和本 namespace 的数据替换。scope 根节点必须是只读展示组件；交互动作、插入/删除/移动、父子撤销、CAS 状态槽与跨 scope 结构事务尚未实现。
+- Composition world 不会静默合回 0.3 整窗租约。当前回退方法是由本地管理器销毁该临时世界，再以新 world ID 重建 exclusive 模式。
+
+可复现的真实 Rust WebSocket 验证入口：`examples/python/scope_probe.py`。它使用 synthetic 数据，不连接外部业务来源。

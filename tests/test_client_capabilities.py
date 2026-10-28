@@ -1,15 +1,22 @@
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples" / "python"))
-from client import Client  # noqa: E402
+from client import (  # noqa: E402
+    COMPONENT_LEASES_PREVIEW_PROTOCOL,
+    PROTOCOL_VERSION,
+    Client,
+)
 
 
 class CapabilityTests(unittest.TestCase):
     def client_with(self, capabilities):
         client = Client.__new__(Client)
         client.ready = {"capabilities": capabilities}
+        client.protocol_version = PROTOCOL_VERSION
         return client
 
     def test_advertised_optional_component_and_shortcut_are_accepted(self):
@@ -68,6 +75,43 @@ class CapabilityTests(unittest.TestCase):
         client = self.client_with({"event_subscriptions": {"events": []}})
         with self.assertRaisesRegex(RuntimeError, "event:window.geometry_changed"):
             client.require_capabilities(event_types=("window.geometry_changed",))
+
+    def test_component_leases_require_explicit_preview_protocol_and_capability(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        with self.assertRaisesRegex(RuntimeError, "component_leases:preview-v1"):
+            client.require_component_leases()
+
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.ready["capabilities"]["component_leases"] = False
+        with self.assertRaisesRegex(RuntimeError, "component_leases:preview-v1"):
+            client.require_component_leases()
+
+        client.ready["capabilities"]["component_leases"] = {
+            "status": "preview",
+            "version": 1,
+        }
+        client.require_component_leases()
+
+    def test_preview_protocol_must_be_advertised_by_the_runtime_descriptor(self):
+        descriptor = {
+            "protocol": PROTOCOL_VERSION,
+            "supported_protocols": [PROTOCOL_VERSION],
+            "host_id": "host.fixture",
+            "token": "fixture-only",
+            "ws_url": "ws://127.0.0.1:12345/v1/ws",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "runtime.json"
+            path.write_text(json.dumps(descriptor), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "does not advertise requested protocol"):
+                Client(path, "fixture", protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL)
+
+            descriptor["supported_protocols"].append(COMPONENT_LEASES_PREVIEW_PROTOCOL)
+            path.write_text(json.dumps(descriptor), encoding="utf-8")
+            client = Client(path, "fixture", protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL)
+            self.assertEqual(client.protocol_version, COMPONENT_LEASES_PREVIEW_PROTOCOL)
 
 
 if __name__ == "__main__":

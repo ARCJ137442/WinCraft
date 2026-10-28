@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:protocol:0.4-preview.1:hello",
+  "title": "WinCraft component lease preview handshake",
+  "type": "object",
+  "properties": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 80},
+    "method": {"const": "hello"},
+    "params": {
+      "type": "object",
+      "properties": {
+        "protocol": {"const": "0.4-preview.1"},
+        "provider_name": {"type": "string", "minLength": 1, "maxLength": 80}
+      },
+      "required": ["protocol", "provider_name"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["id", "method", "params"],
+  "additionalProperties": false
+}

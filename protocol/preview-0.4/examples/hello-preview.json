@@ -1,0 +1,8 @@
+{
+  "id": "scope-preview-hello",
+  "method": "hello",
+  "params": {
+    "protocol": "0.4-preview.1",
+    "provider_name": "scope-probe"
+  }
+}
