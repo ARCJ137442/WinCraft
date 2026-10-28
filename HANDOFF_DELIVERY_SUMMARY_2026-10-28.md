@@ -53,8 +53,8 @@ python skills/wincraft-provider/scripts/verify.py
 
 - `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`
 - 11,793,408 bytes
-- SHA-256: `1175191A6CB51E1542E31A125BDE5F018E94F1A885BCB1387F30A9449B19A633`
-- Built from the current working tree based on `fea00bc4f9342d68ecca0d9ecda88a289491334a`; launched for the real ExoMind read-only projection. It is a local validation artifact, not a published release.
+- SHA-256: `46349C9BC403A6899A3AB1A8DFADE77441C2172ACA62E4E047CF73FC5D86E122`
+- Built from commit `e6c45fd`; this latest build has not been launched after the titlebar width bound correction. The preceding build was launched for the real ExoMind read-only projection. It is a local validation artifact, not a published release.
 - Chinese manual acceptance guide: [`验收指南-阶段性release-2026-10-28.md`](验收指南-阶段性release-2026-10-28.md)
 
 The final isolated headless Rust probe passed 38 `lease_probe.py` checks. Local evidence is under `evidence/local/nextgen-2026-10-27/` and contains no runtime token, descriptor contents, note body or telemetry.
@@ -75,4 +75,4 @@ These remain `NOT_RUN`, `BLOCKED` or `IMPLEMENTED_UNVERIFIED` in the matrix. The
 
 ## Checkpoint and rollback
 
-This implementation and documentation checkpoint was committed and pushed as `5d64341c9e6985cf16e4b58a04b4013439196b2c` to the existing public `ARCJ137442/WinCraft` `dev` branch under the user's explicit authorization. No release upload, release tag, installer publication, license change or remote permission change is included. The code changes remain reversible by reverting the checkpoint; provider business data and external installations were not modified.
+The titlebar/size implementation and follow-up width-bound correction are committed and pushed to the existing public `ARCJ137442/WinCraft` `dev` branch as `5d64341` and `e6c45fd`; the summary update was pushed as `e1ab753`. No release upload, release tag, installer publication, license change or remote permission change is included. The code changes remain reversible by reverting these checkpoints; provider business data and external installations were not modified.

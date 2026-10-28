@@ -284,7 +284,7 @@ shutdown 版使用 `CARGO_TARGET_DIR=E:/tmp/wincraft-nextgen-lifecycle-20261026`
 | `cargo fmt --all -- --check` | PASS | exit 0。|
 | `cargo test -p wincraft-desktop --no-fail-fast` | PASS | 17 tests passed；新增折叠尺寸恢复、provider 尺寸变化和工作区宽度上限测试。|
 | `cargo clippy -p wincraft-desktop --all-targets -- -D warnings` | PASS | exit 0。|
-| 独立 release 构建 | PASS（build） | `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`，11,793,408 bytes，SHA-256 `1175191A6CB51E1542E31A125BDE5F018E94F1A885BCB1387F30A9449B19A633`。|
+| 独立 release 构建 | PASS（build） | `target/codex-collapse-input-fix-20261028/release/wincraft-desktop.exe`，11,793,408 bytes，SHA-256 `46349C9BC403A6899A3AB1A8DFADE77441C2172ACA62E4E047CF73FC5D86E122`；包含 e6c45fd 紧凑宽度上限修复。最新二进制尚未启动。|
 | 折叠高度原生观察 | PASS（前一版 build） | 真实外心只读投影窗口从 480×1104 收到 480×50，标题栏高度通过；最新含宽度恢复的合并 build 尚未复测这个尺寸。|
 | 折叠宽度原生观察 | NOT_RUN | Computer Use 两次点击管理器均命中 Edge 覆盖窗（point 2199,416），激活并刷新后仍未发出目标点击；不记为通过。|
 | 展开恢复与中轴像素检查 | NOT_RUN | Rust 状态回归、静态 SVG/CSS 测试通过；最新合并 build 的原生展开恢复和像素中心线仍待 UI 自动化成功或人工检查。|
