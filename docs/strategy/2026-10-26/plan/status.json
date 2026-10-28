@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-10-27",
+  "updated_at": "2026-10-28",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
   "active_batch": "B03-02 with a user-prioritized B04-02 native-window-action slice",
-  "next_action": "B04-01 remains VERIFIED. B04-02 now includes protocol/core/Tauri work-area anchors and anchor-aware geometry events; 38 real Rust headless WebSocket checks pass. Continue human acceptance for multi-monitor/DPI, monitor detach migration and external-window UI actions; then decide whether to implement the next native behavior or complete B03-02 Popup native acceptance.",
+  "next_action": "B04-01 remains VERIFIED. B04-02 includes work-area anchors, anchor-aware geometry events, guarded native window actions and position_control; the latest Tauri release passed 40 real-WebSocket checks, including native application of always_on_top false/true. The current release's visual stacking, tray opening/global hide-show, drag and current-build fold pixels remain NOT_RUN. Computer Use enumerated the manager but could not activate its window after a fresh selection. Prioritize the remaining manual W/R gates, then complete B03-02 Popup native acceptance.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -56,13 +56,13 @@
     "B11-04": "IMPLEMENTED_UNVERIFIED"
   },
   "blockers": [
-    "Current release still needs human validation of Obsidian Workspace title activation, tray manager opening, and tray hide/show; the pending UI request is the authoritative check.",
+    "Current release still needs human validation of tray manager open/focus, global hide/show, visual topmost ordering, current-build fold/drag, and native dimensions. The latest Computer Use retry enumerated the release manager but activation failed after reselecting it; no UI input was sent.",
     "B03-02 Popup needs real release success/cancel, position reuse, keyboard/IME and concurrent-window acceptance.",
     "Windows UIA/IME/screen-reader, title-collapse sizing, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
-    "One temporary headless descriptor remains outside the workspace after the probe; its contents were not read or copied into evidence."
+    "Cleanup of a local ephemeral runtime descriptor after an earlier probe remains unverified; its contents were not read or copied into public evidence."
   ],
   "completed_this_delivery": [
     "本机基线与锁文件/环境核对，UI/Rust/Python/交接包检查",
@@ -89,14 +89,14 @@
     "B01-03 world.list 仅发现当前成员与非系统 open_authenticated worlds；invite-only metadata hidden，真实 Rust headless lease_probe 28 checks passed。",
     "B02-01 当前 Tauri manager UIA 原生中英切换已观测并恢复中文；Computer Use 未能继续教程键鼠验收。",
     "B01-04 公共 SDK/schema/真实 Rust host一致性、动态渲染身份与输入草稿保持、synthetic error body 不回显回归已通过。",
-    "最终 world.list release 已单实例启动为 PID 48464；旧 PID 21484 不在运行，UIA keyboard/IME 仍交用户人工验收。",
+    "最终 world.list release 单实例启动与 UIA/accessibility 状态已检查；进程号不写入公开状态，keyboard/IME 仍待人工验收。",
     "B01-02 transport shutdown 路径新增 explicit graceful shutdown、watch 驱动 WebSocket/housekeeping 停止、Tauri tray Exit/headless Ctrl+C 集成，loopback integration test 验证 session revoke、listener close 与 descriptor 删除。",
     "B01-02 transport server lifecycle closed gracefully: explicit shutdown disconnects provider sessions, stops Axum/housekeeping, closes the listener, and removes the owned descriptor; Tauri tray Exit and headless Ctrl+C use the shutdown path.",
-    "Lifecycle-enabled release started as the only WinCraft desktop process (PID 41616); title is 窗构 · 世界管理器.",
+    "Lifecycle-enabled release was observed as the only WinCraft desktop process; tray Exit and current-session cleanup require separate acceptance.",
     "Real lease_probe.py against the Tauri-hosted Rust server passed 28 checks, exit 0; native_windows capability was true and provider-controlled native window revisions were observed applied.",
-    "TrafficMonitor 1.8.6.0 x64 fresh temporary copy with a fresh configuration and a bridge rebuilt from the current source was launched as PID 58332; provider PID 36592 reports online, version 1.8.6.0, with generation and scene revision advancing. Telemetry values are not stored in evidence.",
-    "Obsidian Obsidian Workspace connected explicitly to vault Obsidian Workspace; Obsidian Workspace-tools 0.14.7 dashboard returned five focus rows and four reminder groups with auto-refresh active. Provider PID 15052 reported native window applied; note titles and bodies are not stored in evidence.",
-    "Synthetic focus_demo.py provider is connected to the current Tauri host as PID 21584; the scene is ready for user acceptance of dynamic component replacement and action receipts, neither was manually clicked by this agent.",
+    "TrafficMonitor x64 temporary provider smoke reported an online source and advancing scene revision; telemetry values and process identifiers are excluded from public records.",
+    "Obsidian Obsidian Workspace read-only dashboard projection updated during local smoke; vault identifiers, task/reminder counts, titles, note bodies and process identifiers are excluded from public records.",
+    "Synthetic focus_demo.py provider connected to the current Tauri host; dynamic component replacement and action receipts remain user-acceptance gates.",
     "2026-10-27: added a typed native_window_action allowlist for Obsidian and TrafficMonitor with activate/restore/minimize; core checks scene revision, active writer, disabled state and click source; headless rejects the capability. Release/native click is still pending human acceptance.",
     "2026-10-27: added the bounded maximize operation for registered external applications; 66 workspace tests, clippy, schema checks and separate release build pass. The new executable was not launched because one existing host is running; native maximize click remains NOT_RUN.",
     "B04-02-A4 PASS: native_window_action schema/core allowlist, revision/writer/disabled/context guards and headless capability refusal passed Rust tests; Tauri/headless release protocol probes confirmed capability parity.",
@@ -106,7 +106,10 @@
     "Real headless Rust + installed Popup-Ask skill (synthetic request) confirmed one temporary world can time out and be destroyed; a concurrent second provider returns busy without creating another world. No visible window or user data was used.",
     "ManagerProvider unit regression confirms an active invite Popup world appears in the manager scene without changing its writer or epoch; visible Tauri manager interaction remains NOT_RUN.",
     "Built a current-source standalone Tauri release to a separate temporary target; deliberately left it unstarted while the previous single tray host remains active for user manual acceptance.",
-    "Popup provider now has a delayed-action regression: submit delivered after 10.2 seconds succeeds before a 20-second request deadline; this separates human wait from the ordinary 10-second component ACK. Real Tauri input still NOT_RUN."
+    "Popup provider now has a delayed-action regression: submit delivered after 10.2 seconds succeeds before a 20-second request deadline; this separates human wait from the ordinary 10-second component ACK. Real Tauri input still NOT_RUN.",
+    "Latest release defaults both provider worlds and the internal manager to always_on_top=true; a 40-check Tauri-hosted probe observed native application for false/true. Actual z-order against normal and topmost windows remains NOT_RUN.",
+    "ExoMind workbench provider models full/compact/mini plus idle using read-only projection; 13 fixture tests and one user-authorized GET/projection smoke passed. Native mode UI, steady-state dimensions and local world cleanup remain NOT_RUN.",
+    "Current-release Computer Use retry found the manager window and accessibility text, but activation failed after a fresh selection; the screenshot was not trusted and no UI input was sent. Tray, global visibility, z-order, drag and current-build fold remain NOT_RUN."
   ],
   "history": [
     null,

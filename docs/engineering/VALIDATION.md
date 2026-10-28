@@ -303,13 +303,13 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | Python suite / Provider Skill verifier | PASS | `python -m unittest discover -s tests -v`：78 tests；Provider Skill verifier：19 references。|
 | 最新 Tauri release `lease_probe.py` | PASS | 对刚构建的 release 真实 Rust WebSocket host 完成 40 checks，包含 provider-size/human-position 栅栏、动态 patch、显隐、透明度、文本选择、背景拖动与 `always_on_top` 原生应用。|
 | 独立 release 构建 | PASS | `target/release/wincraft-desktop.exe`，11,806,720 bytes，SHA-256 `0465752DB32BC4AAE37D7DA7D306F899FD8586F805A914B3EA0990C6FDD6963D`；阶段性产物及下载包见中文验收指南。|
-| Release 启动 smoke | PARTIAL | 带 `--open-manager` 启动进程；Computer Use 停止在新窗口选择前，未取得最新窗口 UIA。之前构建的默认托盘启动没有可见目标窗口。托盘菜单仍待用户验收。|
+| Release 启动 smoke | PARTIAL | 当前 release 管理器出现在 Computer Use 应用枚举中，刷新窗口选择后仍以 `failed to activate captured window` 失败；accessibility 文本可读，但没有取得可信的管理器截图或执行界面输入。托盘菜单仍待验收。|
 | 默认置顶与提供者切换 | PASS（model + native report） | 普通 WindowSpec 和 manager 默认值为 true；lease probe 对真实 Tauri host 切换 false/true 并等待 native applied。普通窗口与其他 topmost 窗口的实际遮挡顺序尚未视觉核验。|
 | 背景拖动授权门 | PASS（unit） | UI policy 测试文字/交互/选中/穿透/provider 位置控制拒绝；Rust command policy 测试标题栏与 background 拖动使用独立授权。Tauri 原生拖动尚未运行。|
 | 折叠高度原生观察 | PASS（前一版 build） | 真实外心只读投影窗口从 480×1104 收到 480×50，标题栏高度通过；最新含宽度恢复的合并 build 尚未复测这个尺寸。|
 | 折叠/展开原生尺寸 | PASS（前一 build） | Computer Use 观察到 `620×765 → 212×50 → 620×765`；本次 topmost 修改未触及折叠布局，最新 manager build 未复测。|
-| 标题栏拖动与隐藏标题背景拖动 | NOT_RUN | Computer Use 多次 drag 后窗口 origin 未变化；工具未能证明连续指针移动到达 WebView，需物理鼠标或可靠的输入路径验收。|
-| 展开恢复与图标中轴像素检查 | NOT_RUN（最新 build） | 静态 SVG/CSS 测试通过；最新 topmost build 的 UIA/像素检查被 Computer Use 停止。|
+| 标题栏拖动与隐藏标题背景拖动 | NOT_RUN | 前一版 Computer Use drag 没有产生可测位置变化；本次重新授权后无法激活当前 release 管理器，没有再次拖动。需物理鼠标验收。|
+| 展开恢复与图标中轴像素检查 | NOT_RUN（最新 build） | 静态 SVG/CSS 测试通过；本次 Computer Use 无法激活管理器窗口，未复测最新 build 的折叠、展开恢复或图标像素。|
 
 ## 2026-10-28 ExoMind 真实档案只读联调
 
@@ -319,6 +319,6 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 新的 `examples/python/exomind_workbench.py` 用本地状态循环映射 full、compact、mini，idle 是独立内容状态；仅发出 WinCraft 本地显示/隐藏动作。13 项 fixture 测试通过。尺寸使用来源 fallback 或明确标出的本地估值，稳态测量与 Windows z-order 仍待实机核验。
 
-2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。随后以 Ctrl+C 停止 provider；其 `finally` 尝试销毁本地 WinCraft 世界，但 Computer Use 停止后没有复核管理器中的清理结果。本轮未通过 UI automation 操作其档位。
+2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。随后以 Ctrl+C 停止 provider；其 `finally` 尝试销毁本地 WinCraft 世界，但本次重新授权的 Computer Use 无法激活管理器窗口，因此没有复核清理结果。本轮未通过 UI automation 操作其档位。
 
-脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。
+脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。本次 Computer Use 刷新选择后仍报 `failed to activate captured window`；读取到的 accessibility 文本不等于视觉或交互验收。托盘管理器打开、全局隐藏/显示、当前 build 折叠尺寸、标题栏拖动、置顶层级和剩余 W23 原生门保持 NOT_RUN。

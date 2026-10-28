@@ -15,7 +15,8 @@ This is a pre-release audit for the current working tree. It is not a release ap
 
 - Rust core/server/Tauri code compiles on the current Windows toolchain.
 - Protocol, lease, revocation, reader/writer isolation, dynamic scene, theme, event subscription and anchor behavior have automated tests.
-- A real isolated Rust headless host passed the current 38-check `lease_probe.py` run, including anchor configuration and anchor-aware geometry events.
+- A real isolated Rust headless host passed a 38-check `lease_probe.py` run, including anchor configuration and anchor-aware geometry events; the latest Tauri release host passed 40 real-WebSocket checks.
+- The latest Tauri release host reported native application of `always_on_top=false/true`; actual z-order against ordinary and other topmost windows is still NOT_RUN.
 - TrafficMonitor and Obsidian Obsidian Workspace providers have documented read-only/source boundaries and prior current-release evidence.
 - Native external actions are allowlisted and fail closed in service tests; real Windows click success/failure remains unverified.
 
