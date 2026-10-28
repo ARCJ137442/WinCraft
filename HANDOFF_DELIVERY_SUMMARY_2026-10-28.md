@@ -75,4 +75,4 @@ These remain `NOT_RUN`, `BLOCKED` or `IMPLEMENTED_UNVERIFIED` in the matrix. The
 
 ## Checkpoint and rollback
 
-This implementation and documentation checkpoint is being committed and pushed to the existing public `ARCJ137442/WinCraft` `dev` branch under the user's explicit authorization. No release upload, release tag, installer publication, license change or remote permission change is included. The code changes remain reversible by reverting the checkpoint; provider business data and external installations were not modified.
+This implementation and documentation checkpoint was committed and pushed as `5d64341c9e6985cf16e4b58a04b4013439196b2c` to the existing public `ARCJ137442/WinCraft` `dev` branch under the user's explicit authorization. No release upload, release tag, installer publication, license change or remote permission change is included. The code changes remain reversible by reverting the checkpoint; provider business data and external installations were not modified.
