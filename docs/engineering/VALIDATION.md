@@ -319,6 +319,6 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 新的 `examples/python/exomind_workbench.py` 用本地状态循环映射 full、compact、mini，idle 是独立内容状态；仅发出 WinCraft 本地显示/隐藏动作。13 项 fixture 测试通过。尺寸使用来源 fallback 或明确标出的本地估值，稳态测量与 Windows z-order 仍待实机核验。
 
-2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。provider 进程目前仍运行，供用户检查浮窗；本轮未通过 UI automation 操作其档位。
+2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。随后以 Ctrl+C 停止 provider；其 `finally` 尝试销毁本地 WinCraft 世界，但 Computer Use 停止后没有复核管理器中的清理结果。本轮未通过 UI automation 操作其档位。
 
 脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。
