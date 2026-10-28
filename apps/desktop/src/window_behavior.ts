@@ -5,8 +5,8 @@ export const MIN_NATIVE_CONTENT_HEIGHT_PX = 50;
 export const MAX_NATIVE_CONTENT_HEIGHT_PX = 10_000;
 
 export function normalizeNativeContentWidth(width: number): number | null {
-  if (!Number.isFinite(width) || width < 0 || width > MAX_NATIVE_CONTENT_WIDTH_PX) return null;
-  return Math.max(MIN_NATIVE_CONTENT_WIDTH_PX, width);
+  if (!Number.isFinite(width) || width < 0) return null;
+  return Math.min(MAX_NATIVE_CONTENT_WIDTH_PX, Math.max(MIN_NATIVE_CONTENT_WIDTH_PX, width));
 }
 
 export function normalizeNativeContentHeight(height: number): number | null {

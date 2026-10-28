@@ -27,6 +27,6 @@ test('collapsed titlebar width respects native minimum and maximum bounds',()=>{
   assert.equal(normalizeNativeContentWidth(120),160);
   assert.equal(normalizeNativeContentWidth(240),240);
   assert.equal(normalizeNativeContentWidth(2_400),2_400);
-  assert.equal(normalizeNativeContentWidth(2_401),null);
+  assert.equal(normalizeNativeContentWidth(2_401),2_400);
   assert.equal(normalizeNativeContentWidth(Number.NaN),null);
 });
