@@ -39,7 +39,7 @@
 | GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
 | 原生人工门 | PARTIAL | UIA 树可读出管理器/教程窗口 role、名称、状态与动作；manager 中英切换已实际操作并恢复。Computer Use 对 tutorial 窗口两次恢复后仍报 `failed to activate captured window`；隐藏/找回、Popup Tab→备注→Ctrl+Enter/Escape、IME/屏幕阅读器、多 DPI、休眠恢复和穿透救援仍未完成人工验收 |
-| ExoMind | PARTIAL（只读 smoke） | 先前单字段只读桥接已做 live smoke，未调用 ExoMind 写 API。新的工作台 provider 用 13 项合成 fixture 测试覆盖 full/compact/mini、idle、404 与 stale；真实 profile、RT 响应和原生窗口模式仍 `NOT_RUN`，公开记录不含 profile 或返回内容。|
+| ExoMind | PARTIAL（只读 smoke） | 新工作台 provider 完成一次用户授权的真实 `GET /timeblocks/active` 与内存投影，未调用 ExoMind 写 API；13 项合成 fixture 覆盖 full/compact/mini、idle、404 与 stale。真实返回值不留在公开记录；原生像素、模式点击与稳态尺寸仍 `NOT_RUN`。|
 
 Lifecycle release 与临时 provider 的进程清理曾在本机完成。一个过期 runtime descriptor 的删除尝试被本机策略拒绝；该文件内容未读取。逐机进程、路径和 descriptor 清理证据仅保存在本地忽略目录。
 
@@ -318,5 +318,7 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 `examples/python/exomind_readonly.py` 曾通过 `GET /timeblocks/active` 完成单字段只读桥接 smoke；该证据不代表新的工作台 provider 已 live 验收。公开记录不含 profile ID、当前时间块内容、descriptor 或截图。
 
 新的 `examples/python/exomind_workbench.py` 用本地状态循环映射 full、compact、mini，idle 是独立内容状态；仅发出 WinCraft 本地显示/隐藏动作。13 项 fixture 测试通过。尺寸使用来源 fallback 或明确标出的本地估值，稳态测量与 Windows z-order 仍待实机核验。
+
+2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。provider 进程目前仍运行，供用户检查浮窗；本轮未通过 UI automation 操作其档位。
 
 脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。
