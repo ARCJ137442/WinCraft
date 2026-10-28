@@ -790,6 +790,43 @@ fn human_mode_requires_explicit_handback() {
 }
 
 #[test]
+fn windows_default_to_topmost_and_provider_can_configure_it() {
+    let (mut engine, provider, _, created) = setup();
+    assert!(created.world.window.always_on_top);
+    let lease = created.lease.unwrap();
+
+    let lowered = engine
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            created.world.revision,
+            &WindowPatch {
+                always_on_top: Some(false),
+                ..WindowPatch::default()
+            },
+            1,
+        )
+        .unwrap();
+    assert!(!lowered.window.always_on_top);
+
+    let raised = engine
+        .configure(
+            provider,
+            created.world.id,
+            &lease,
+            lowered.revision,
+            &WindowPatch {
+                always_on_top: Some(true),
+                ..WindowPatch::default()
+            },
+            2,
+        )
+        .unwrap();
+    assert!(raised.window.always_on_top);
+}
+
+#[test]
 fn provider_size_and_human_position_controls_are_independent() {
     let (mut engine, provider, _, created) = setup();
     let lease = created.lease.unwrap();

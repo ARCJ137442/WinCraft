@@ -78,6 +78,8 @@ move 的 index 按**移除原节点之后**的目标 children 解释。不可移
 
 width/height 为逻辑像素；position 为桌面物理像素，允许负坐标。`surface_opacity` 控制透明原生窗口内整块 renderer surface 的视觉不透明度，默认 `0.8`；快照可读，写租约持有者可用 `window.configure` 更新，取值范围 `0.15..=1.0`。它不改变 OS 原生窗口的透明/命中测试能力。
 
+`always_on_top` 默认 `true`，写租约持有者可用 `window.configure` 显式关闭或重新开启。Windows 将其放入置顶窗口 z-order 带，普通窗口不会覆盖它；另一个置顶窗口仍可按 OS z-order 位于其前。
+
 新窗口默认采用 `geometry_control=human` 且 `resizable=true`，本地用户可拖动窗口边缘调整宽度。横向调整不关闭内容高度适配；renderer 在当前原生宽度下重测高度，宿主保留用户宽度。`geometry_control` 控制尺寸所有权：`human` 时 provider 不能配置 width/height，`provider` 时 Tauri 不开放边缘 resize。
 
 位置所有权与尺寸所有权可分开。新增的可选 `position_control` 必须先确认 host capability `window_properties` 含 `position_control`；未设置时继承 `geometry_control`，保持旧 provider 行为。`geometry_control=provider, position_control=human, resizable=false` 表示 provider 可切换窗口尺寸模式，但本地用户仍可移动窗口；实际移动更新 snapshot 的 position，不改 provider 尺寸。provider 仅在 `position_control=provider` 时可以配置 position/anchor。无标题栏时，`background_drag_enabled=true` 允许普通、非文本、非交互背景作为拖动抓手；按钮、输入、链接、文本或已选中文本不触发移动。穿透或位置控制归 provider 时拖动仍失败关闭。

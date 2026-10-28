@@ -462,7 +462,12 @@ async def run(args: argparse.Namespace) -> None:
             components=('textarea',),
             keyboard_shortcuts=('escape', 'ctrl_enter'),
             button_features=('selection_groups',),
-            window_properties=('background_drag_enabled', 'anchor', 'position_control'),
+            window_properties=(
+                'background_drag_enabled',
+                'anchor',
+                'position_control',
+                'always_on_top',
+            ),
             event_types=('window.geometry_changed', 'window.visibility_changed'),
         )
         checks.append('host_advertises_textarea_escape_and_window_event_capabilities')
@@ -481,6 +486,7 @@ async def run(args: argparse.Namespace) -> None:
         original_lease = created['lease']
         default_window = created['world']['window']
         assert default_window['surface_opacity'] == 0.8
+        assert default_window['always_on_top'] is True
         assert default_window['title_bar_visible'] is True
         assert default_window['background_drag_enabled'] is True
         assert default_window['text_selectable'] is True
@@ -698,14 +704,14 @@ async def run(args: argparse.Namespace) -> None:
                 visibility = await a.call('world.snapshot', {'world_id': world_id})
                 previous_visible = visibility['window']['visible']
                 for visible in (True, False, True):
-                    await a.mutate(
+                    visibility_update = await a.mutate(
                         'window.configure',
                         world_id,
                         original_lease,
                         patch={'visible': visible},
                     )
                     visibility = await wait_for_window_visibility(
-                        a, world_id, visible, visibility['window_revision'] + 1
+                        a, world_id, visible, visibility_update['window_revision']
                     )
                     assert visibility['epoch'] == original_lease['epoch']
                     assert visibility['writer'] is not None
@@ -714,9 +720,28 @@ async def run(args: argparse.Namespace) -> None:
                             b, subscription_id, 'window.visibility_changed'
                         )
                         assert visibility_event['payload']['visible'] is visible
-                        assert visibility_event['window_revision'] == visibility['window_revision']
+                        # Native content-fit may advance geometry revisions while this event is queued.
+                        assert (
+                            visibility_event['window_revision']
+                            >= visibility_update['window_revision']
+                        ), 'visibility event revision predates the accepted change'
                     previous_visible = visible
                 checks.append('provider_can_hide_observe_and_restore_without_lease_change')
+
+                # Exercise native z-order only after the Tauri world is visible;
+                # hidden windows may defer native creation/application.
+                for always_on_top in (False, True):
+                    configured = await a.mutate(
+                        'window.configure',
+                        world_id,
+                        original_lease,
+                        patch={'always_on_top': always_on_top},
+                    )
+                    configured = await wait_for_native_window_revision(
+                        a, world_id, configured['window_revision']
+                    )
+                    assert configured['window']['always_on_top'] is always_on_top
+                checks.append('provider_can_configure_always_on_top_and_native_state_applies')
 
                 await b.unsubscribe_events(subscription_id)
                 await a.mutate(

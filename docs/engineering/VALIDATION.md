@@ -8,7 +8,7 @@
 |---|---|---|
 | `npm ci` | PASS | 用已提交的 `package-lock.json` 干净安装成功；未改动依赖清单。|
 | `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、74 项 Python 测试、19 个 Skill 引用检查通过。|
-| Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、88 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
+| Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
 | CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,489 个节点、4,334 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
 
@@ -298,16 +298,18 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 |---|---|---|
 | `npm run check` | PASS | 28 项 UI 测试、离线契约与交接包检查通过；含 SVG/中轴、折叠宽度边界与背景拖动权限 predicate 测试。|
 | `cargo fmt --all -- --check` | PASS | exit 0。|
-| `cargo test --workspace --no-fail-fast` | PASS | 88 tests passed：core 8 unit + 44 invariants、desktop 18、server 18；含 provider-size/human-position split 和 background drag 权限边界。|
+| `cargo test --workspace --no-fail-fast` | PASS | 89 tests passed：core 8 unit + 45 invariants、desktop 18、server 18；含 provider-size/human-position split、background drag 权限及置顶默认/配置边界。|
 | `cargo clippy --workspace --all-targets -- -D warnings` | PASS | exit 0。|
 | Python suite / Provider Skill verifier | PASS | `python -m unittest discover -s tests -v`：74 tests；Provider Skill verifier：19 references。|
-| 最新 Tauri release `lease_probe.py` | PASS | 对刚构建的 release 真实 Rust WebSocket host 完成 39 checks，包含 provider-size/human-position 读写栅栏、动态 patch、显隐、透明度、文本选择和背景拖动配置。|
-| 独立 release 构建 | PASS | `target/release/wincraft-desktop.exe`，11,806,720 bytes，SHA-256 `3BAA25F64D32C207CFC3C9467921F9F983ECF505A073C24D28055F64A05D41C7`；当前阶段性构建产物，链接见中文验收指南。|
-| Release 启动 smoke | PASS（进程/UIA） | 带 `--open-manager` 的真实 Tauri manager 可见；无参数启动时进程常驻且目标窗口数为 0。托盘菜单点击仍待用户验收。|
+| 最新 Tauri release `lease_probe.py` | PASS | 对刚构建的 release 真实 Rust WebSocket host 完成 40 checks，包含 provider-size/human-position 栅栏、动态 patch、显隐、透明度、文本选择、背景拖动与 `always_on_top` 原生应用。|
+| 独立 release 构建 | PASS | `target/release/wincraft-desktop.exe`，11,806,720 bytes，SHA-256 `0465752DB32BC4AAE37D7DA7D306F899FD8586F805A914B3EA0990C6FDD6963D`；阶段性产物及下载包见中文验收指南。|
+| Release 启动 smoke | PARTIAL | 带 `--open-manager` 启动进程；Computer Use 停止在新窗口选择前，未取得最新窗口 UIA。之前构建的默认托盘启动没有可见目标窗口。托盘菜单仍待用户验收。|
+| 默认置顶与提供者切换 | PASS（model + native report） | 普通 WindowSpec 和 manager 默认值为 true；lease probe 对真实 Tauri host 切换 false/true 并等待 native applied。普通窗口与其他 topmost 窗口的实际遮挡顺序尚未视觉核验。|
 | 背景拖动授权门 | PASS（unit） | UI policy 测试文字/交互/选中/穿透/provider 位置控制拒绝；Rust command policy 测试标题栏与 background 拖动使用独立授权。Tauri 原生拖动尚未运行。|
 | 折叠高度原生观察 | PASS（前一版 build） | 真实外心只读投影窗口从 480×1104 收到 480×50，标题栏高度通过；最新含宽度恢复的合并 build 尚未复测这个尺寸。|
-| 折叠宽度/隐藏标题背景拖动/位置尺寸分权原生观察 | NOT_RUN | 新 release manager 可见；Computer Use 随后被物理 Escape 停止，未发出折叠/拖动测试输入。此前目标点击误落 Edge 的结果仍不是通过证据。|
-| 展开恢复与中轴像素检查 | NOT_RUN | Rust 状态回归、静态 SVG/CSS 测试通过；最新 build 的原生展开恢复和像素中心线仍待用户本机验收。|
+| 折叠/展开原生尺寸 | PASS（前一 build） | Computer Use 观察到 `620×765 → 212×50 → 620×765`；本次 topmost 修改未触及折叠布局，最新 manager build 未复测。|
+| 标题栏拖动与隐藏标题背景拖动 | NOT_RUN | Computer Use 多次 drag 后窗口 origin 未变化；工具未能证明连续指针移动到达 WebView，需物理鼠标或可靠的输入路径验收。|
+| 展开恢复与图标中轴像素检查 | NOT_RUN（最新 build） | 静态 SVG/CSS 测试通过；最新 topmost build 的 UIA/像素检查被 Computer Use 停止。|
 
 ## 2026-10-28 ExoMind 真实档案只读联调
 

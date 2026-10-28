@@ -97,6 +97,11 @@ the native window even when the custom title bar is hidden. Buttons, links, inpu
 text, and an active text selection are excluded as drag surfaces. Do not repeatedly send
 window geometry to imitate user layout; request provider ownership only for the
 dimension the integration genuinely owns.
+Windows default to `always_on_top=true`; a provider can explicitly opt out or restore
+topmost behavior with `window.configure`. This keeps a world above ordinary windows,
+while the OS continues to order it relative to other topmost windows.
+Check `client.require_capabilities(window_properties=("always_on_top",))` before
+depending on this property from a host implementation.
 Window snapshots expose `surface_opacity`, defaulting to `0.8`. Set it with
 `window.configure` only when the provider has a clear reason to change visual opacity;
 the property affects the rendered surface while the native window remains transparent.

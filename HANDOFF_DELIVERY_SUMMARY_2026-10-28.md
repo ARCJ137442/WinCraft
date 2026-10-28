@@ -36,6 +36,8 @@ The 48 tasks are all represented in the generated acceptance matrix: 147 accepta
 - Pack, inventory, usage observation, web-chat observation and voice-session draft schemas with positive/negative fixtures.
 - Pure adaptive planner and submission eligibility guard; no Host mutation or adapter execution.
 - Corrected the ordinary-input native-action guard and folded-height measurement; added centered SVG titlebar icons, a compact-width overlay that restores expanded size, `background_drag_enabled` gating for blank non-text surfaces, and capability-gated `position_control` separate from provider size control. Automated UI/Rust/headless protocol checks pass; native collapsed-width and hidden-titlebar drag pixels remain unverified because Computer Use could not route a click to the target window.
+- Unified topmost defaults: ordinary provider worlds and the internal manager use `always_on_top=true`; providers can toggle the existing property through `window.configure`. The Tauri host applied both values in a 40-check release probe; visible stacking against ordinary and other topmost windows still needs a physical overlap check.
+- Fixed the titlebar fold/expand size contract on the prior release: observed `620×765 → 212×50 → 620×765`. The newly built topmost-default release has not had this UI path re-clicked yet.
 - Added a fixture-tested, read-only ExoMind workbench provider prototype. It projects the active timeblock through GET and changes only the local WinCraft world layout. Fixture tests pass; live behavior for this newer prototype remains NOT_RUN.
 - Added per-checkout CodeGraph commands and ignore rules, a single `npm run check:local` validation path, Windows push/PR CI, and a behavior/evidence-focused PR template. The local index is fresh; its database is intentionally untracked.
 - Distilled the supplied study material into WinCraft-specific delivery and evidence practices. Original private source material, personal paths and evaluation answer keys were not copied into this public repository.
@@ -54,16 +56,17 @@ CodeGraph: `npm run codegraph:init` once per new checkout, then `npm run codegra
 
 - `target/release/wincraft-desktop.exe`
 - 11,806,720 bytes
-- SHA-256: `3BAA25F64D32C207CFC3C9467921F9F983ECF505A073C24D28055F64A05D41C7`
-- Built from the working tree based on commit `24161e2`, including the `position_control` and background-drag changes that are part of this checkpoint. `npm run desktop:build` passed. The new executable was launched with `--open-manager` and the real Tauri manager appeared in UIA; a separate no-argument run kept the process alive with zero target windows. It is a local validation artifact, not a published release.
+- SHA-256: `0465752DB32BC4AAE37D7DA7D306F899FD8586F805A914B3EA0990C6FDD6963D`
+- Built from the working tree based on commit `596a758`, including the manager topmost default. `npm run desktop:build` passed; it was launched with `--open-manager`, but Computer Use stopped before current-window UIA inspection. This is a local validation artifact, not a published release.
 - Chinese manual acceptance guide: [`验收指南-阶段性release-2026-10-28.md`](验收指南-阶段性release-2026-10-28.md)
 
-The freshly built Tauri release host passed 39 real-WebSocket `lease_probe.py` checks. Local evidence is under `evidence/local/nextgen-2026-10-27/` and `evidence/local/nextgen-2026-10-28/`; these records exclude runtime tokens, descriptor contents, note bodies and telemetry. Tray menu activation, global hide/show, collapse width on the latest release, background dragging pixels, DPI/multi-monitor, and user-driven acceptance remain open.
+The freshly built Tauri release host passed 40 real-WebSocket `lease_probe.py` checks, including native application of `always_on_top=false/true`. A previous release's collapse test measured `620×765 → 212×50 → 620×765`; titlebar drag attempts via Computer Use produced no measurable move. The current topmost build's visual overlap and titlebar drag remain unverified. Local evidence is under `evidence/local/nextgen-2026-10-27/` and `evidence/local/nextgen-2026-10-28/`; these records exclude runtime tokens, descriptor contents, note bodies and telemetry.
 
 ## Open gates
 
 - Current release tray manager open/focus, global hide/show, graceful exit and redacted UIA/manual acceptance.
-- Latest W23 native compact-width/expanded-width restoration, pixel-level titlebar alignment, provider-size/human-position split and hidden-titlebar background drag. Height-to-titlebar was observed at 480×50 on the preceding release; latest width/drag click was blocked because Computer Use targeted the Edge overlay after one recovery retry.
+- Visual topmost ordering against ordinary and other topmost windows; only the provider/native setter round-trip is automated so far.
+- Latest W23 titlebar drag, pixel-level icon alignment, hidden-titlebar background drag and width restoration. Collapse/expand dimensions were verified on the immediately preceding build; current UI automation could not produce a measurable drag or inspect the newest manager window.
 - Popup real release success/cancel, position reuse, keyboard/IME/UIA and concurrent-window acceptance.
 - Obsidian Workspace/TrafficMonitor real external-window clicks and Windows foreground-denial path.
 - Multi-monitor/DPI pixels, monitor detach migration, click-through rescue and virtual desktop behavior.

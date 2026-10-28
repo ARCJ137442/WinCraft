@@ -59,7 +59,7 @@ impl ManagerProvider {
             title: manager_text(&locale, "manager.window_title"),
             width: 620.0,
             height: 700.0,
-            always_on_top: false,
+            always_on_top: true,
             visible: false,
             ..Default::default()
         };

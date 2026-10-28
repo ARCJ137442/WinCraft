@@ -1187,6 +1187,7 @@ mod content_fit_tests {
         assert!(snapshot.system);
         assert_eq!(snapshot.window.title, "窗构 · 世界管理器");
         assert!(!snapshot.window.visible);
+        assert!(snapshot.window.always_on_top);
         assert_eq!(snapshot.window.geometry_control, GeometryControl::Human);
         assert!(fit.enabled(snapshot.id));
     }
