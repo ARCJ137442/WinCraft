@@ -17,6 +17,12 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def text_sha256(path: Path) -> str:
+    # Text hashes must survive Windows checkout converting LF to CRLF.
+    text = path.read_text(encoding="utf-8")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def metadata(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
@@ -147,7 +153,7 @@ def check(root: Path = ROOT) -> dict[str, Any]:
         if set(re.findall(r"\{([^}]+)\}", zh[k])) != set(re.findall(r"\{([^}]+)\}", en[k])):
             errors.append("locale placeholder mismatch: " + k)
     for t in read_json(root / "locales/index.json")["translations"]:
-        source_hash = hashlib.sha256((root / t["source"]).read_bytes()).hexdigest()
+        source_hash = text_sha256(root / t["source"])
         if source_hash != t["source_sha256"] and t["status"] != "stale":
             errors.append("unmarked stale translation: " + t["document"])
     forbidden = {".runtime.json", ".env", "id_rsa", "id_ed25519"}

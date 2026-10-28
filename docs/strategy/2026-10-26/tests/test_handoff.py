@@ -140,33 +140,42 @@ class MaintenanceTests(unittest.TestCase):
         import subprocess,sys
         r=subprocess.run([sys.executable,str(target/"scripts/render_plan.py"),"--date","2026-10-26",*extra],capture_output=True,text=True,encoding="utf-8",timeout=15)
         self.assertEqual(r.returncode,0,r.stderr)
+    def test_translation_source_hash_ignores_crlf_checkout(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            text="WinCraft source heading\nA stable translated paragraph.\n"
+            lf=Path(d)/"source-lf.md"
+            crlf=Path(d)/"source-crlf.md"
+            lf.write_bytes(text.encode("utf-8"))
+            crlf.write_bytes(text.replace("\n","\r\n").encode("utf-8"))
+            self.assertEqual(V.text_sha256(lf),V.text_sha256(crlf))
     def test_renderer_preserves_unchanged_synthetic_case_result(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             target=self.temporary_package(d)
             p=target/"plan/acceptance.json"
-            a=json.loads(p.read_text());a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST"
-            p.write_text(json.dumps(a))
+            a=json.loads(p.read_text(encoding="utf-8"));a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST"
+            p.write_text(json.dumps(a),encoding="utf-8")
             self.render(target)
-            self.assertEqual(json.loads(p.read_text())["cases"][0]["status"],"PASS_SYNTHETIC_MAINTENANCE_TEST")
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["cases"][0]["status"],"PASS_SYNTHETIC_MAINTENANCE_TEST")
     def test_changed_criterion_invalidates_old_result(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             target=self.temporary_package(d)
             p=target/"plan/acceptance.json"
-            a=json.loads(p.read_text());a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST";p.write_text(json.dumps(a))
+            a=json.loads(p.read_text(encoding="utf-8"));a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST";p.write_text(json.dumps(a),encoding="utf-8")
             tp=target/"plan/tasks.json"
-            tasks=json.loads(tp.read_text());tasks["tasks"][0]["acceptance"][0]["criterion"]+=" (changed fixture)";tp.write_text(json.dumps(tasks))
+            tasks=json.loads(tp.read_text(encoding="utf-8"));tasks["tasks"][0]["acceptance"][0]["criterion"]+=" (changed fixture)";tp.write_text(json.dumps(tasks),encoding="utf-8")
             self.render(target)
-            self.assertEqual(json.loads(p.read_text())["cases"][0]["status"],"NOT_RUN")
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["cases"][0]["status"],"NOT_RUN")
     def test_explicit_reset_invalidates_results(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
             target=self.temporary_package(d)
             p=target/"plan/acceptance.json"
-            a=json.loads(p.read_text());a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST";p.write_text(json.dumps(a))
+            a=json.loads(p.read_text(encoding="utf-8"));a["cases"][0]["status"]="PASS_SYNTHETIC_MAINTENANCE_TEST";p.write_text(json.dumps(a),encoding="utf-8")
             self.render(target,"--reset-results")
-            self.assertEqual(json.loads(p.read_text())["cases"][0]["status"],"NOT_RUN")
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["cases"][0]["status"],"NOT_RUN")
     def test_nongit_baseline_check_is_readonly(self):
         import tempfile,subprocess,sys
         with tempfile.TemporaryDirectory() as d:
