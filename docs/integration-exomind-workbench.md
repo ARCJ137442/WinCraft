@@ -18,14 +18,31 @@ WinCraft 侧的计时投影只由提供者从允许读取的活动时间块响�
 
 | 项目 | ExoMind 工作台 | WinCraft 原型 |
 |---|---|---|
-| 数据源 | 当前 profile 的活动时间块、主窗口 profile 同步 | 仅显式 profile 的 active-timeblock GET |
-| running full | FocusTimerWidget 单卡，源码 fallback 390×192；ResizeObserver 后以可见卡片 rect 为准 | 状态、任务名、计时、预计结束、只读提示；初始窗口采用源码 fallback 390×192 |
-| running mini | 本地 React 状态切换 mini；源码 fallback 248×120，mini 可见卡片 CSS 宽 224 px；运行时以可见卡片 rect 为准 | provider 在本地切 scene 并 patch WinCraft size 到 248×120；展开恢复 390×192。这里有意复用 ExoMind fallback，实际 ExoMind 可能按 DOM 测量得到不同值 |
+| 状态/模式 | ExoMind 区分 running 单卡、running mini、mini-peek 及 idle bubble；mini-peek 由指针悬停展开 | WinCraft 用 full、compact、mini 三档本地展示；idle 是内容状态，可与任一展示档位组合。host 不提供 hover 事件时，用户通过本地按钮切换 |
+| full | 单卡来源回退尺寸 390×192；状态/名称在上，计时与来源操作在下；挂载后按可见卡片测量 | 请求 390×192 fallback；保留状态、时间块名称、计时及只读说明，仅有本地“收起/隐藏”操作 |
+| compact | mini-peek 来源回退尺寸 352×200；可见 pill 的 CSS 宽度类为 328 px，展开后显示暂停/结束操作 | 请求 328×160 本地尺寸估值；状态、名称和计时仍可见，以只读说明替代外心写操作 |
+| mini | 来源窗口回退尺寸 248×120；收起 pill 的 CSS 宽度类为 224 px；挂载后按可见 pill 测量 | 请求 248×120 来源 fallback；显示时钟、状态、名称、“只读”标记及本地展开/隐藏入口 |
+| idle | 无活动时间块时显示 idle bubble；该 UI 可进入外心配置/开始流程 | 只显示空闲状态和说明，不提供开始按钮，也不伪造计时。开始仍由用户在外心原程序完成 |
+| 数据源 | ExoMind RT 的活动时间块与 ExoMind 自己的 profile 选择 | 仅使用本次明确指定 profile 的 active-timeblock GET；不从 host 推断档案 |
 | 拖动 | data-tauri-drag-region 内容抓手；窗口不可手动 resize | 请求隐藏标题栏、背景可拖动、provider 尺寸、人类位置；依赖 position_control 能力 |
-| 隐藏/恢复 | sessionHidden + ExoMind 主窗口服务 | WinCraft 本地 window.configure visible=false，由 WinCraft 管理器恢复 |
-| 外心操作 | 外心 UI 暂停/继续/结束会写时间块 | 不接这些动作，提示用户回外心原程序操作 |
-| 外观 | 卡片 CSS 使用固定 RGBA；未发现 Now Workbench 专属 opacity preference | 受限 theme_tokens + WinCraft surface opacity 0.8；不传 CSS |
+| 隐藏/恢复 | ExoMind 本地状态隐藏，主程序可恢复 | WinCraft 本地 window.configure visible=false，由 WinCraft 管理器恢复 |
+| 外心操作 | 暂停/继续/结束/开始由外心 UI 处理并更新业务状态 | provider 不注册或发送这些动作；只允许 `wincraft.display.next` 与 `wincraft.display.hide` 两个 WinCraft 本地动作 |
+| 外观 | 截图与源码中的卡片视觉 | 受限 theme_tokens + WinCraft surface opacity 0.8；不传 CSS、HTML 或脚本 |
 | 虚拟桌面 | 当前 overlay source 未发现“所有桌面显示” API | 不请求跨虚拟桌面能力 |
+
+### 行为验收场景
+
+- **Given** 成功 GET 返回合成活动时间块，**When** 本地用户连续切换展示档位，**Then** WinCraft scene 依次进入 full → compact → mini → full，并请求各档位的本地 fallback 尺寸，ExoMind 仅收到后续只读 GET。
+- **Given** 成功 GET 返回空结果，**When** 渲染 full 或 mini，**Then** 显示空闲状态和回到外心开始计时的说明，不出现空白标题、假计时或开始动作。
+- **Given** GET 返回 404 或最近一次读取后连接失败，**When** 渲染任一档位，**Then** 显示“状态待核对”或陈旧/错误来源提示，不能把失败解释为空闲或实时。
+
+#### 尺寸与 scale factor 证据
+
+ExoMind Rust 创建窗口时先给 412×490 的初始尺寸。`NowWorkbenchOverlayPage` 随后按状态选 fallback：full 390×192、mini 248×120、mini-peek 352×200。可见 surface 挂载后，代码读取该元素的 `getBoundingClientRect()`，将 `Math.ceil(rect.width/height)` 作为测量值，并在可用时由 `ResizeObserver` 触发下一帧重测。只有测量键与当前状态相符时，测量结果才覆盖 fallback；随后通过 `setSize(new LogicalSize(width, height))` 调整 Tauri 窗口。这里传入的是逻辑尺寸；来源代码没有手动应用 scale factor，Tauri 原生窗口 API 根据 scale factor 处理逻辑尺寸。Rust 的 `inner_size()` 读取路径用于窗口重新定位，是物理尺寸口径，不能与页面的 CSS 逻辑尺寸混为一谈。
+
+mini 的来源 CSS 宽度类为 224 px，mini-peek 为 328 px；两者高度均由可见 pill 的实际布局决定。源码没有记录一次实际 `getBoundingClientRect()` 的稳态结果，因此只能确认运行时尺寸跟随该 pill，不能用截图反推出确切 CSS 高度。248×120 与 352×200 是来源 fallback，并非稳定测量结果。WinCraft provider 当前只发送静态 `window.configure` 尺寸，没有复刻这条 DOM/ResizeObserver 测量链：mini 的 248×120 仍是未验证 fallback，compact 的 328×160 是本地估值。真实 Windows host 的稳态高度、scale factor 后的物理尺寸及窗口边框尚未测量。截图中的像素大小不作为 CSS 或原生尺寸证据。
+
+WinCraft 组件协议没有 hover 事件，因此不声称复刻了 ExoMind 的自动 mini-peek 展开。真实像素、内容换行、原生尺寸与拖动仍须在 Windows host 核对。
 
 **宿主能力前置条件：**该原型请求 geometry_control=provider + position_control=human，以锁定尺寸同时允许人类移动；这与只有单一 geometry_control 的旧宿主不兼容。provider 在创建世界前检查 window_property:position_control，旧 host 缺少此能力时会失败关闭，不降级成固定位置或可手动 resize 的错误体验。
 
@@ -33,12 +50,12 @@ WinCraft 侧的计时投影只由提供者从允许读取的活动时间块响�
 
 ## 配置与运行
 
-先从 exomind-monitor 的 get-config.js 取得当前 RT base 和 profile；不要猜端口、profile 或认证头。WinCraft runtime 必须来自本次 host manager/启动输出中的实际路径，不读取或打印 descriptor 内容。
+由用户明确提供当前 RT base、profile 和必要认证头；不要猜端口、profile 或认证方式，也不要从聊天应用凭据或其他应用配置推导它们。WinCraft runtime 必须来自本次 host manager/启动输出中的实际路径，不读取或打印 descriptor 内容。
 
 示例（PowerShell）：
 
-    $env:EXOMIND_RT_BASE = (& node 'C:\Users\<user>\.claude\skills\exomind-monitor\scripts\get-config.js' --rt-base 2>$null).Trim()
-    $env:EXOMIND_PROFILE_ID = (& node 'C:\Users\<user>\.claude\skills\exomind-monitor\scripts\get-config.js' --profile 2>$null).Trim()
+    $env:EXOMIND_RT_BASE = '<用户明确选择的 RT base URL>'
+    $env:EXOMIND_PROFILE_ID = '<用户明确选择的 profile ID>'
     $env:WINCRAFT_RUNTIME = '<本次 WinCraft manager 显示的实际 runtime descriptor 路径>'
     python examples/python/exomind_workbench.py
 
@@ -46,13 +63,13 @@ WinCraft 侧的计时投影只由提供者从允许读取的活动时间块响�
 
 provider 轮询 GET 的默认间隔为 1 秒，响应上限 128 KiB。HTTP 404 显示为“无活动时间块或端点需要核对”，不据此声称 RT 健康或档案为空。读取失败时，保留最后一次成功显示并标记来源读取失败；首读失败则显示无数据状态，不造出活动块。
 
-按 Ctrl+C 停止 provider 时，它只尝试销毁自己创建的 WinCraft 投影世界；不会向 ExoMind 发送任何写请求。若 world.destroy 结果不确定，应在 WinCraft 管理器中核对这个原型世界，不要盲目重试。
+按 Ctrl+C 停止 provider 时，它只尝试销毁自己创建的 WinCraft 投影世界；不会向 ExoMind 发送任何写请求。显示档位切换只变更本地 scene 和窗口尺寸，隐藏只变更本地显隐；若 `world.destroy` 结果不确定，应在 WinCraft 管理器中核对这个原型世界，不要盲目重试。
 
 ## 本地测试
 
     python -m unittest discover -s tests -p 'test_exomind_workbench.py' -v
 
-这些用例只使用 fixture，覆盖 running/paused 倒计时投影、空/404 歧义、active 路由 GET 方法、profile 显式绑定、远程明文 HTTP 拒绝、scene 字段边界与本地动作 allowlist。它们不证明真实 RT、真实 WinCraft WebSocket 或原生窗口行为。
+这些用例只使用合成 fixture，覆盖 running/paused 倒计时投影、full/compact/mini 的本地模式循环、idle 与 404/错误区分、active 路由 GET 方法、profile 显式绑定、远程明文 HTTP 拒绝、scene 字段边界与本地动作 allowlist。它们不证明真实 RT、真实 WinCraft WebSocket 或原生窗口行为。
 
 ## 待真实 host 验收
 

@@ -7,7 +7,7 @@
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `npm ci` | PASS | 用已提交的 `package-lock.json` 干净安装成功；未改动依赖清单。|
-| `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、74 项 Python 测试、19 个 Skill 引用检查通过。|
+| `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、78 项 Python 测试、19 个 Skill 引用检查通过。|
 | Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
 | CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,489 个节点、4,334 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
@@ -39,7 +39,7 @@
 | GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
 | 原生人工门 | PARTIAL | UIA 树可读出管理器/教程窗口 role、名称、状态与动作；manager 中英切换已实际操作并恢复。Computer Use 对 tutorial 窗口两次恢复后仍报 `failed to activate captured window`；隐藏/找回、Popup Tab→备注→Ctrl+Enter/Escape、IME/屏幕阅读器、多 DPI、休眠恢复和穿透救援仍未完成人工验收 |
-| ExoMind | PARTIAL（只读 smoke） | 用户授权的只读读取曾成功投影到 WinCraft，未调用 ExoMind 写 API。公开记录不保留 profile、当前状态、返回内容、连接参数或 runtime build 标识；较新的工作台 provider 尚未进行 live 验收 |
+| ExoMind | PARTIAL（只读 smoke） | 先前单字段只读桥接已做 live smoke，未调用 ExoMind 写 API。新的工作台 provider 用 13 项合成 fixture 测试覆盖 full/compact/mini、idle、404 与 stale；真实 profile、RT 响应和原生窗口模式仍 `NOT_RUN`，公开记录不含 profile 或返回内容。|
 
 Lifecycle release 与临时 provider 的进程清理曾在本机完成。一个过期 runtime descriptor 的删除尝试被本机策略拒绝；该文件内容未读取。逐机进程、路径和 descriptor 清理证据仅保存在本地忽略目录。
 
@@ -300,7 +300,7 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | `cargo fmt --all -- --check` | PASS | exit 0。|
 | `cargo test --workspace --no-fail-fast` | PASS | 89 tests passed：core 8 unit + 45 invariants、desktop 18、server 18；含 provider-size/human-position split、background drag 权限及置顶默认/配置边界。|
 | `cargo clippy --workspace --all-targets -- -D warnings` | PASS | exit 0。|
-| Python suite / Provider Skill verifier | PASS | `python -m unittest discover -s tests -v`：74 tests；Provider Skill verifier：19 references。|
+| Python suite / Provider Skill verifier | PASS | `python -m unittest discover -s tests -v`：78 tests；Provider Skill verifier：19 references。|
 | 最新 Tauri release `lease_probe.py` | PASS | 对刚构建的 release 真实 Rust WebSocket host 完成 40 checks，包含 provider-size/human-position 栅栏、动态 patch、显隐、透明度、文本选择、背景拖动与 `always_on_top` 原生应用。|
 | 独立 release 构建 | PASS | `target/release/wincraft-desktop.exe`，11,806,720 bytes，SHA-256 `0465752DB32BC4AAE37D7DA7D306F899FD8586F805A914B3EA0990C6FDD6963D`；阶段性产物及下载包见中文验收指南。|
 | Release 启动 smoke | PARTIAL | 带 `--open-manager` 启动进程；Computer Use 停止在新窗口选择前，未取得最新窗口 UIA。之前构建的默认托盘启动没有可见目标窗口。托盘菜单仍待用户验收。|
@@ -316,5 +316,7 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 用户曾明确授权一次本机只读 ExoMind 调研。该次只读检查没有调用时间块或任务写接口；profile、当前状态、返回数据和 RT build identifiers 不保留在公开记录中。
 
 `examples/python/exomind_readonly.py` 曾通过 `GET /timeblocks/active` 完成单字段只读桥接 smoke；该证据不代表新的工作台 provider 已 live 验收。公开记录不含 profile ID、当前时间块内容、descriptor 或截图。
+
+新的 `examples/python/exomind_workbench.py` 用本地状态循环映射 full、compact、mini，idle 是独立内容状态；仅发出 WinCraft 本地显示/隐藏动作。13 项 fixture 测试通过。尺寸使用来源 fallback 或明确标出的本地估值，稳态测量与 Windows z-order 仍待实机核验。
 
 脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。当前 Computer Use 未能可靠把输入路由到目标 WinCraft 窗口；等待可验证的 UIA 点击或人工验收后，再关闭剩余 W23 原生门。
