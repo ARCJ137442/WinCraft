@@ -1430,8 +1430,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开",
-      "status": "PARTIAL",
-      "evidence": "Unit tests cover title/status/project/output and UUID-only action; a real authorized App snapshot reached the live Provider once. Computer Use reactivation failed before screenshot verification, and native UUID click/load remains NOT_RUN."
+      "status": "BLOCKED",
+      "evidence": "Partial implementation exists and a real authorized App snapshot reached the Provider once. After the 2026-10-29 stage checkpoint, the user requested this Codex App subgoal be marked STALLED. Persistent Agent-to-Provider relay, current release visible rendering, and native UUID click/load remain unverified; Computer Use reactivation failed. Resume only when a stable authorized relay and usable UI verification path are available."
     },
     {
       "id": "B08-02-A5",
@@ -1444,8 +1444,8 @@
       ],
       "level": "L2-L5",
       "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界",
-      "status": "PARTIAL",
-      "evidence": "Source freshness and stale TTL are covered by tests; a real captured_at MCP snapshot reached the Provider once. Screenshot verification and continuous relay freshness remain NOT_RUN."
+      "status": "BLOCKED",
+      "evidence": "Freshness and stale TTL behavior pass focused tests, and one real captured_at MCP snapshot reached the Provider. Continuous relay freshness and current release UI verification remain unverified; this Codex App subgoal is STALLED per the user's 2026-10-29 checkpoint instruction."
     },
     {
       "id": "B08-03-A1",

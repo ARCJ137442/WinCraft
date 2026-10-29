@@ -635,3 +635,18 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 | rollout 尾部 Agent 输出 | PASS（合成） / PARTIAL（本机） | 只接受 sessions/archived_sessions 中以 `rollout-*.jsonl` 命名、且头部 `session_meta.payload.id` 与线程 UUID 匹配的文件；最多读取尾部 1 MiB，仅抽取 `event_msg.agent_message` 或 `task_complete.last_agent_message`，输出裁剪/脱敏并只保存在进程内。本机最近四条有界尾部未找到可呈现 Agent 消息，故真实输出仍不可验证。 |
 | MCP bridge 与本机状态合并 | PASS（合成） | 同一 thread ID 不重复；connector 状态/项目/输出优先，本机可见但 connector 未覆盖的线程保留并使来源标为 partial。 |
 | 当前源码 release / 实时 APP 卡片 | NOT_RUN | 本地 Agent Activity 窗口的重新激活返回 `failed to activate captured window`；按 Computer Use 恢复规则停止进一步 UI 输入。Tauri Host 仍运行，临时 Provider 已到时限退出；没有截图级 PASS。 |
+
+## 2026-10-29 阶段性 release checkpoint
+
+**Given** 当前已跟踪源文件和 Agent Activity 的 Codex Desktop 本机回退，**When** 运行完整本地验证、release 构建并独立启动 Tauri host，**Then** 自动测试与真实 host 协议分开记录；用户要求的 Codex App 子目标在本次阶段提交后标记 `STALLED`，不把阻塞的 UI/持续 relay 宣称为完成。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `npm run check:local` | PASS | 退出码 0：28 项 Node UI、116 项 Rust workspace、154 项 Python tests；Rust fmt/check/Clippy、离线契约和 27 个 Provider Skill 引用通过。Node v22.23.4、npm 11.19.0、Rust 1.93.0、Python 3.11.4。|
+| `npm run desktop:build` | PASS | 退出码 0；`target/release/wincraft-desktop.exe`，12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`。源码阶段提交 `a0366e1ecc9fb7e7eaaa1c23e14c161c400e56fd` 随后推送到 `origin/dev`。|
+| 独立 release 启动与真实 Tauri host | PASS（协议） | 本次 EXE 独立启动；真实 `lease_probe.py` 经 host descriptor 连接后返回 `status=PASS`、退出码 0。descriptor 内容及路径未进入提交或证据。|
+| 当前 GitHub Actions | PASS | run `40903194743` 在 Windows 上验证提交 `a0366e1` 的 `npm run check:local`，耗时 7m02s。workflow 不启动桌面窗口。|
+| 当前 release 像素/Computer Use | NOT_RUN | 重新枚举后的管理器窗口激活失败；按 Computer Use 恢复规则不重试旧句柄或坐标。没有截图级 PASS。|
+| Codex App 持续 connector relay 与 UUID 深链接 | STALLED / NOT_RUN | 一次真实授权快照已到 Provider，但持续 relay 未打通；本机状态回退不能提供权威运行状态。release UI 呈现和 `codex://threads/<UUID>` 点击/目标加载仍待验证。用户要求该子目标本次标记停滞。|
+
+阶段提交与构建证明不替代托盘启动/退出、拖动、折叠、点击穿透救援、置顶、不同 DPI/显示器及真实 Codex App UI 验收；分项结果继续按 `PASS`/`FAIL`/`BLOCKED`/`NOT_RUN` 保留。

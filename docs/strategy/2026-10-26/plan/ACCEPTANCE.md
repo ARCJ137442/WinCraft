@@ -128,8 +128,8 @@
 | B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲 | PARTIAL |
 | B08-02-A2 | B08-02 | L2-L5 | 不把全部任意既有CLI会话假定可枚举 | PASS |
 | B08-02-A3 | B08-02 | L2-L5 | 适配失败仅对应来源stale | PASS |
-| B08-02-A4 | B08-02 | L2-L5 | Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开 | PARTIAL |
-| B08-02-A5 | B08-02 | L2-L5 | 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界 | PARTIAL |
+| B08-02-A4 | B08-02 | L2-L5 | Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开 | BLOCKED |
+| B08-02-A5 | B08-02 | L2-L5 | 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界 | BLOCKED |
 | B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | NOT_RUN |
 | B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | NOT_RUN |
 | B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | NOT_RUN |

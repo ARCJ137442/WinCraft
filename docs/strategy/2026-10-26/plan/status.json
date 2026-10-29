@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-02 BLOCKED on release UI/deep-link and sustained Codex App relay acceptance; one real Agent-fed snapshot now reached the Provider and a read-only local-state fallback supplies bounded metadata. B09-02 remains BLOCKED pending Android source selection/permission; B08-03 synthetic session-card rendering is verified, five-Harness/component-owner criteria remain open.",
-  "next_action": "Use the current running release Host to inspect the updated provider scene when Computer Use can capture the world; verify the Codex Desktop local-state cards and a real authorized MCP snapshot, then test UUID-only thread navigation. Keep status unknown when no live App status or Agent message is supplied. The current source edits are provider/schema/documentation-only, so they do not require a new Tauri binary for this protocol check. Continue independent release/manual gates and B03/B04 work. For B09-02, wait for the user-selected Android app/source and notification permission.",
+  "active_batch": "B08-02 remains BLOCKED; its Codex App subgoal is STALLED per the user's 2026-10-29 stage-checkpoint instruction. One real Agent-fed snapshot reached the Provider and the read-only local-state fallback supplies bounded metadata, but persistent relay, release UI and UUID deep-link acceptance remain open. B09-02 remains BLOCKED pending Android source selection/permission; B08-03 synthetic session-card rendering is verified, five-Harness/component-owner criteria remain open.",
+  "next_action": "Keep the Codex App subgoal STALLED; do not retry Computer Use after the repeated failed window activation. Resume that subgoal only when a verified authorized persistent Agent-to-Provider relay and a usable native UI/deep-link verification path are available. Continue independent handoff tasks and current-release manual gates. Keep local Desktop status unknown without an authoritative source and output unavailable without a UUID-matched Agent message. For B09-02, wait for the user-selected Android app/source and notification permission.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -62,7 +62,7 @@
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
-    "B08-02-A4 real Codex App relay remains BLOCKED: a synthetic PTY snapshot rendered in the release UIA, but the current thread snapshot read through the Codex App connector did not appear in the release Provider. A persistent Agent-to-Provider relay and real UUID-only click/load are still required.",
+    "Codex App subgoal STALLED per user instruction after the stage checkpoint: one real authorized snapshot reached the Provider, but no persistent relay exists; the local fallback provides bounded title/project metadata, cannot prove runtime status, and only shows UUID-matched Agent output. Current release visible UI and native UUID click/load remain unverified after Computer Use window activation failed.",
     "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization."
   ],
   "completed_this_delivery": [
@@ -163,6 +163,6 @@
     "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
     "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself.",
     "2026-10-29: Current release rebuilt and independently launched. Synthetic PTY snapshot confirmed the four-field Codex App card in the native release accessibility tree. One current Codex App connector snapshot attempt remained unavailable in the UI; B08-02 is BLOCKED pending a persistent Agent relay and UUID deep-link acceptance.",
-    "2026-10-29: Stage commit 32c8eee was pushed to exomind-team/WinCraft/dev; GitHub Actions run 40876095509 passed Windows npm run check:local in 11m42s. This confirms automated source checks only; native tray, pixel and live Codex App connector acceptance remain separate."
+    "2026-10-29: Stage commit a0366e1ecc9fb7e7eaaa1c23e14c161c400e56fd was pushed to exomind-team/WinCraft/dev. The current release EXE hash is 6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093; npm run check:local, npm run desktop:build and a real Tauri-hosted lease_probe.py passed locally. GitHub Actions run 40903194743 passed on Windows in 7m02s. The user's Codex App subgoal is STALLED; native tray, pixel and continuous relay acceptance remain separate."
   ]
 }

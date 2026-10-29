@@ -12,15 +12,15 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `32c8eee63b107f5380d22c16dd26081886790ebd` |
+| 源码提交 | `a0366e1ecc9fb7e7eaaa1c23e14c161c400e56fd` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
 | 文件大小 | 12,429,312 bytes |
-| SHA-256 | `77725D06515DAFFCBAAA7CFA928DDFF7D51B5B022DA8BA46A51D51547B68932E` |
+| SHA-256 | `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物在提交 `32c8eee` 后由 `npm run desktop:build` 构建，退出码 0；当前工作树 `npm run check:local` 也退出码 0（28 Node UI、116 Rust、145 Python tests）。GitHub Actions run `40876095509` 对提交 `32c8eee` 的 `npm run check:local` 通过，用时 11m42s。该 workflow 不启动 Tauri 窗口；托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单验收。
+这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由 `npm run desktop:build` 构建，退出码 0；本机 `npm run check:local` 退出码 0（28 Node UI、116 Rust、154 Python tests、离线契约和 27 个 Provider Skill 引用）。独立启动当前 EXE 后，真实 Tauri host 的 `lease_probe.py` 返回 `status=PASS`、退出码 0。GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对阶段提交 `a0366e1` 的 Windows `npm run check:local` 通过，耗时 7m02s；workflow 不启动 Tauri 窗口，也不替代托盘菜单、窗口像素与 Windows 原生行为验收。
 
-提交前的同一源码工作树曾用 Computer Use 启动独立 release，并以合成 Agent Activity snapshot 验证会话卡片的名称、状态、项目和输出字段；随后从已提交的 `32c8eee` 重建了本指南所列 EXE。最终这份 hash 尚未重新做像素验收，且真实 Codex App connector snapshot 尚未进入 release Provider；不要把合成字段 smoke 计作真实会话接入。
+此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仅显示有限标题/项目，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把合成字段 smoke 计作真实 UI 或持续会话接入。
 
 ## 快速启动
 
@@ -48,13 +48,13 @@ audience: maintainer, Windows tester
 | 动态组件与动作回执（W04/W05/W06） | 在 Python focus demo 中点击“替换组件区”和一个按钮；结构实时更新，动作显示当前 provider 的实际回执；provider 断线不冒充成功。 | ____ |
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；只有 Codex App `agent_message` 标为最近 Agent 输出，CLI 发言方未知的 preview 单独标识。当前真实 Codex App connector snapshot 仍 `BLOCKED`；不得用合成行替代真实会话验收。 | 合成 UIA：PASS；真实 Codex App：BLOCKED |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；只有身份匹配的 Codex App `agent_message` 标为最近 Agent 输出，CLI 发言方未知的 preview 单独标识。本机回退没有权威运行状态时显示未知。Codex App 子目标已 `STALLED`；不得用合成行替代真实会话验收。 | 定向/全量测试：PASS；真实 snapshot→Provider：曾 PASS 一次；持续 relay：BLOCKED；像素与 UUID 深链：NOT_RUN |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
 
-完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。当前源码的真实 Tauri-hosted `lease_probe.py` 共 41 项通过，B07-02 scope probe 也通过；这些探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。Codex App connector 的真实快照尚未稳定送入 live Provider；该来源在无 Agent 桥接时显示“等待 Agent 桥接”，合成桥接样例不作为真实会话验收。
+完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本次构建的真实 Tauri-hosted `lease_probe.py` 返回 `PASS`、退出码 0；B07-02 scope probe 也通过。这些协议探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。Codex App connector 在无 Agent 桥接时显示“等待 Agent 桥接”，本机回退不会伪造 live 状态。该 release 尚未取得可信像素截图或真实 Codex App 深链接加载证据。
 
 ## 记录与复现
 
