@@ -12,13 +12,13 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `27b8677d13ee0a2bb885aeda7fac3872db0c7e52` |
+| 源码提交 | `eb40996b7eade99125ad5d36ae24001b1896e49a` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 12,060,160 bytes |
-| SHA-256 | `572507C80123CB0236E4024BCA2AD51B97E7FD034C1963591287BBD2BE56DB98` |
+| 文件大小 | 12,251,648 bytes |
+| SHA-256 | `66C7F5B9E87CE469636A58746369AE49D4AFA87DF03121AD43DFBD62FAD29CBE` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。Actions 验证对应提交 `27b8677` 已通过；Tauri host 的真实协议探针也已通过。托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单人工验收。
+这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由源码提交 `eb40996` 构建；本机 `npm run check:local` 与 `npm run desktop:build` 均退出码 0。GitHub Actions 结果以该提交对应的实际 workflow run 为准；本指南不把本地通过当作托管 CI 证据。托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单人工验收。
 
 ## 快速启动
 
@@ -51,7 +51,7 @@ audience: maintainer, Windows tester
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
 
-完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本次自动化还通过稳定协议 lease probe（40 项）和 0.4-preview scope probe；这些探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。
+完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。当前源码的真实 Tauri-hosted `lease_probe.py` 共 41 项通过，B07-02 scope probe 也通过；这些探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。Codex App connector 的真实快照尚未稳定送入 live Provider；该来源在无 Agent 桥接时显示“等待 Agent 桥接”，合成桥接样例不作为真实会话验收。
 
 ## 记录与复现
 
