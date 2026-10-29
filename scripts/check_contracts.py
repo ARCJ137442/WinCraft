@@ -21,7 +21,12 @@ def main() -> None:
         if "target" not in file.parts:
             tomllib.loads(file.read_text(encoding="utf-8"))
     checks.append("toml_parse")
-    for file in list((ROOT / "examples/python").glob("*.py")) + list((ROOT / "scripts").glob("*.py")):
+    python_files = (
+        list((ROOT / "examples/python").glob("*.py"))
+        + list((ROOT / "examples/integrations").rglob("*.py"))
+        + list((ROOT / "scripts").glob("*.py"))
+    )
+    for file in python_files:
         ast.parse(file.read_text(encoding="utf-8"), filename=str(file))
     checks.append("python_syntax")
     host_locales = {
@@ -55,6 +60,7 @@ def main() -> None:
     web_chat_schema = json.loads((ROOT / "protocol/web-chat-observation.schema.json").read_text(encoding="utf-8"))
     voice_schema = json.loads((ROOT / "protocol/voice-session.schema.json").read_text(encoding="utf-8"))
     activity_schema = json.loads((ROOT / "protocol/activity.schema.json").read_text(encoding="utf-8"))
+    device_message_schema = json.loads((ROOT / "protocol/device-message.schema.json").read_text(encoding="utf-8"))
     preview_directory = ROOT / "protocol/preview-0.4"
     preview_manifest = json.loads(
         (preview_directory / "methods.json").read_text(encoding="utf-8")
@@ -72,6 +78,7 @@ def main() -> None:
     Draft202012Validator.check_schema(web_chat_schema)
     Draft202012Validator.check_schema(voice_schema)
     Draft202012Validator.check_schema(activity_schema)
+    Draft202012Validator.check_schema(device_message_schema)
     Draft202012Validator.check_schema(preview_request_schema)
     pack_schema = json.loads(pack_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(pack_schema)
@@ -91,6 +98,7 @@ def main() -> None:
     web_chat_validator = Draft202012Validator(web_chat_schema, format_checker=FormatChecker())
     voice_validator = Draft202012Validator(voice_schema, format_checker=FormatChecker())
     activity_validator = Draft202012Validator(activity_schema, format_checker=FormatChecker())
+    device_message_validator = Draft202012Validator(device_message_schema, format_checker=FormatChecker())
     preview_validator = Draft202012Validator(
         preview_request_schema, format_checker=FormatChecker()
     )
@@ -125,6 +133,14 @@ def main() -> None:
     for invalid_name in ("invalid_disconnected_idle.json", "invalid_control_capability.json"):
         invalid_record = json.loads((activity_fixtures / invalid_name).read_text(encoding="utf-8"))
         assert not activity_validator.is_valid(invalid_record), invalid_name
+    device_fixtures = ROOT / "examples/integrations/device-inbox/fixtures"
+    for message in json.loads(
+        (device_fixtures / "synthetic_messages.json").read_text(encoding="utf-8")
+    ):
+        device_message_validator.validate(message)
+    for invalid_name in ("invalid_raw_body.json", "invalid_missing_origin.json"):
+        invalid_message = json.loads((device_fixtures / invalid_name).read_text(encoding="utf-8"))
+        assert not device_message_validator.is_valid(invalid_message), invalid_name
     pack_validator.validate(json.loads((pack_examples / "packs/workday.pack.json").read_text(encoding="utf-8")))
     for invalid_name in ("pack-with-token.json", "pack-with-provider.json"):
         assert not pack_validator.is_valid(json.loads((pack_examples / "invalid" / invalid_name).read_text(encoding="utf-8")))
@@ -132,6 +148,7 @@ def main() -> None:
     theme_only.validate(theme_scene["theme"])
     checks.append("schemas_and_positive_fixtures")
     checks.append("draft_read_only_activity_schema_and_fixtures")
+    checks.append("draft_device_message_schema_and_fixtures")
     preview_examples = preview_directory / "examples"
     for request in json.loads(
         (preview_examples / "state-slot-requests.json").read_text(encoding="utf-8")

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:device-message:draft-2026-10-29",
+  "title": "External device message envelope (draft)",
+  "description": "Message claims only. Authentication is supplied out-of-band by an external transport adapter; relay_trace is never origin identity.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "wincraft.device-message.draft" },
+    "schema_version": { "const": "draft-2026-10-29" },
+    "message_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+        },
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+        },
+        "source_instance_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+        }
+      },
+      "required": ["device_id", "source_id", "source_instance_id"]
+    },
+    "source_sequence": { "type": "integer", "minimum": 0 },
+    "message_kind": { "enum": ["task", "notification", "status"] },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "ttl_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "provenance": {
+      "enum": ["synthetic", "official-api", "explicit-hook", "approved-summary"]
+    },
+    "redaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["summary_only", "redacted"] },
+        "fields_removed": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,63}$"
+          }
+        }
+      },
+      "required": ["status", "fields_removed"]
+    },
+    "relay_trace": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+      }
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "message_id",
+    "origin",
+    "source_sequence",
+    "message_kind",
+    "issued_at",
+    "ttl_seconds",
+    "summary",
+    "provenance",
+    "redaction"
+  ]
+}

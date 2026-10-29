@@ -1,0 +1,13 @@
+{
+  "kind": "wincraft.device-message.draft",
+  "schema_version": "draft-2026-10-29",
+  "message_id": "fixture-invalid-origin",
+  "source_sequence": 4,
+  "message_kind": "task",
+  "issued_at": "2026-10-29T10:00:00Z",
+  "ttl_seconds": 300,
+  "summary": "Relay cannot stand in for source identity",
+  "provenance": "synthetic",
+  "redaction": { "status": "summary_only", "fields_removed": [] },
+  "relay_trace": ["fixture-relay"]
+}

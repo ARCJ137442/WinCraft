@@ -1,0 +1,54 @@
+[
+  {
+    "kind": "wincraft.device-message.draft",
+    "schema_version": "draft-2026-10-29",
+    "message_id": "fixture-task-2",
+    "origin": {
+      "device_id": "fixture-phone",
+      "source_id": "fixture.todo",
+      "source_instance_id": "fixture-todo-instance"
+    },
+    "source_sequence": 2,
+    "message_kind": "task",
+    "issued_at": "2026-10-29T10:01:00Z",
+    "ttl_seconds": 300,
+    "summary": "Synthetic follow-up message",
+    "provenance": "synthetic",
+    "redaction": { "status": "summary_only", "fields_removed": ["raw_body", "sender_details"] },
+    "relay_trace": ["fixture-relay"]
+  },
+  {
+    "kind": "wincraft.device-message.draft",
+    "schema_version": "draft-2026-10-29",
+    "message_id": "fixture-task-1",
+    "origin": {
+      "device_id": "fixture-phone",
+      "source_id": "fixture.todo",
+      "source_instance_id": "fixture-todo-instance"
+    },
+    "source_sequence": 1,
+    "message_kind": "task",
+    "issued_at": "2026-10-29T10:00:00Z",
+    "ttl_seconds": 300,
+    "summary": "Synthetic earlier task",
+    "provenance": "synthetic",
+    "redaction": { "status": "redacted", "fields_removed": ["raw_body"] }
+  },
+  {
+    "kind": "wincraft.device-message.draft",
+    "schema_version": "draft-2026-10-29",
+    "message_id": "fixture-notice-1",
+    "origin": {
+      "device_id": "fixture-phone",
+      "source_id": "fixture.calendar",
+      "source_instance_id": "fixture-calendar-instance"
+    },
+    "source_sequence": 1,
+    "message_kind": "notification",
+    "issued_at": "2026-10-29T10:00:30Z",
+    "ttl_seconds": 300,
+    "summary": "Synthetic calendar notice",
+    "provenance": "synthetic",
+    "redaction": { "status": "summary_only", "fields_removed": ["event_notes", "attendee_details"] }
+  }
+]

@@ -1,0 +1,18 @@
+{
+  "kind": "wincraft.device-message.draft",
+  "schema_version": "draft-2026-10-29",
+  "message_id": "fixture-invalid-raw",
+  "origin": {
+    "device_id": "fixture-phone",
+    "source_id": "fixture.todo",
+    "source_instance_id": "fixture-todo-instance"
+  },
+  "source_sequence": 3,
+  "message_kind": "task",
+  "issued_at": "2026-10-29T10:00:00Z",
+  "ttl_seconds": 300,
+  "summary": "Synthetic summary",
+  "body": "Raw message body must not cross the envelope boundary",
+  "provenance": "synthetic",
+  "redaction": { "status": "summary_only", "fields_removed": [] }
+}
