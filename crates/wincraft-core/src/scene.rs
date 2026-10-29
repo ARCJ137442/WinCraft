@@ -2,6 +2,7 @@ use crate::{Fault, Result, MAX_PAYLOAD};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -91,6 +92,8 @@ pub struct ThemeTokens {
 pub enum NativeWindowApplication {
     Obsidian,
     TrafficMonitor,
+    /// A registered Codex App URI handler; the host only opens thread links.
+    CodexApp,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -100,6 +103,9 @@ pub struct NativeWindowAction {
     pub operation: NativeWindowOperation,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title_contains: Option<String>,
+    /// UUID used only by CodexApp/OpenThread; the host constructs the fixed URI.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread_id: Option<Uuid>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -109,6 +115,30 @@ pub enum NativeWindowOperation {
     Maximize,
     Minimize,
     Restore,
+    /// Open a Codex App thread through its registered codex:// handler.
+    OpenThread,
+}
+
+impl NativeWindowAction {
+    /// Reject unsupported application, operation, and typed-parameter combinations.
+    pub fn validate(&self) -> Result<()> {
+        let valid = match (self.application, self.operation, self.thread_id) {
+            (NativeWindowApplication::CodexApp, NativeWindowOperation::OpenThread, Some(_)) => {
+                self.title_contains.is_none()
+            }
+            (NativeWindowApplication::CodexApp, _, _) => false,
+            (_, NativeWindowOperation::OpenThread, _) => false,
+            (_, _, Some(_)) => false,
+            _ => true,
+        };
+        if !valid {
+            return Err(Fault::new(
+                "INVALID_SCENE",
+                "native action application, operation, and payload do not match",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl ThemeTokens {
@@ -397,6 +427,7 @@ impl Scene {
                 if let Some(action) = n.props.get("native_window_action") {
                     let action: NativeWindowAction = serde_json::from_value(action.clone())
                         .map_err(|_| Fault::new("INVALID_SCENE", "invalid native window action"))?;
+                    action.validate()?;
                     if action
                         .title_contains
                         .as_ref()

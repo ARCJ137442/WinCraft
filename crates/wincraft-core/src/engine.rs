@@ -2222,8 +2222,9 @@ impl Engine {
         if disabled {
             return Err(Fault::new("FORBIDDEN", "component disabled"));
         }
-        let action = serde_json::from_value(action.clone())
+        let action: NativeWindowAction = serde_json::from_value(action.clone())
             .map_err(|_| Fault::new("INVALID_SCENE", "invalid native window action"))?;
+        action.validate()?;
         Ok(Some(action))
     }
     pub fn interact_with_source(

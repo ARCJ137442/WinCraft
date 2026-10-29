@@ -43,6 +43,21 @@
           }
         },
         "children": []
+      },
+      {
+        "id": "open-codex-thread",
+        "kind": "button",
+        "props": {
+          "label": "打开示例 Codex 会话",
+          "appearance": "link",
+          "action": "codex_app.open_thread",
+          "native_window_action": {
+            "application": "codex_app",
+            "operation": "open_thread",
+            "thread_id": "00000000-0000-4000-8000-000000000001"
+          }
+        },
+        "children": []
       }
     ]
   },

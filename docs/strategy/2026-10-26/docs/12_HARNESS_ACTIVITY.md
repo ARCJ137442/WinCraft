@@ -31,7 +31,9 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 ## 全局悬浮总览与渐进披露
 
-首屏使用一个全局悬浮世界呈现用户选定的 Harness 来源。默认摘要突出 Codex 并行会话数量和 Claude Code 各会话状态；用户可切换来源、实例或会话，进入选中范围后再展开任务/依据详情。切换视图不得另开每来源常驻窗口，也不得丢失来源身份、新鲜度、父子关系或撤销状态。完整提示词和会话日志不默认进入总览；观察本身不授予批准、写入或继续执行权限。长列表按需披露，窗口高度应适配当前视图而不过度撑高。
+首屏使用一个全局悬浮世界呈现用户选定的 Harness 来源。Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App connector 必须保留独立 source identity 和采集状态：Claude `agents --json` 返回后台 Agent 记录，不等于列出全部交互式会话；Codex CLI `thread/list` 固定限制为本机 state DB；Codex App 元数据由有权 Agent 通过 connector 提供快照，打开 Codex App 本身不代表快照已到达 Provider。来源“可查询”与其中会话“运行/阻塞/空闲”分开展示，并显示每个来源最近成功读取年龄。Codex App 会话行展示标题、状态、项目和最近 Agent 输出，详情逐步披露同一会话的更多信息。
+
+用户可切换来源、实例或会话，进入选中范围后再展开任务/依据详情。切换视图不得另开每来源常驻窗口，也不得丢失来源身份、新鲜度、父子关系或撤销状态。完整提示词和会话日志不默认进入总览；观察本身不授予批准、写入或继续执行权限。长列表按需披露，窗口高度应适配当前视图而不过度撑高。Codex App 的 `codex://threads/<UUID>` 导航只能经宿主声明能力和用户点击触发。
 
 ## 标准活动投影（提案）
 
@@ -43,14 +45,15 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 `protocol/activity.schema.json` (`draft-2026-10-29`) 将原始 `source_status`、映射后的 `normalized_status` 与 `freshness` 分开；它是原始 handoff `draft-2026-10-26` 的仓库实现提案，未替换已保留的 handoff schema。身份键只由 `device_id / provider_id / source_instance_id / session_id` 组成；显示名与模型名仅作标签。若 freshness 为 `stale` 或 `disconnected`，normalized status 必须为 `stale`；未知新鲜度对应 `unknown`，不能回落到 `idle`。
 
-`examples/integrations/agent-board/` 目前只使用仓库内的 synthetic fixtures。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。仓库 schema 是 `draft-2026-10-29` 提案；原始 handoff `draft-2026-10-26` 保持不变，二者都不是 protocol 0.3 接口或真实 Harness 适配。
+`activity_board.py` 的基础聚合和 B08-01 回归仍使用仓库 synthetic fixtures。`live_sources.py`、`live_provider.py` 分别实现 Claude/Codex CLI 只读适配与 Codex App connector 快照桥；这些通路不扫描完整会话日志。当前 release 对真实 Codex App snapshot 的桥接验收仍为 `BLOCKED`，不能把合成 fixture 视为真实 App 数据。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。仓库 schema 是 `draft-2026-10-29` 提案；原始 handoff `draft-2026-10-26` 保持不变，二者都不是 protocol 0.3 接口或真实 Harness 适配。
 
 ## Harness 适配证据表
 
 | 来源 | 本轮一手资料支持的入口 | 首轮只做 | 不承诺 |
 |---|---|---|---|
-| Codex | App Server 双向请求与 thread/turn/item 通知 | 指定实例的任务/等待投影 | 自动发现用户所有既有 CLI 会话或直接接管审批 |
-| Claude Code | Hooks、Notification、PermissionRequest 等扩展点 | 经用户配置的状态 hook | 一种事件在所有模式/版本行为相同 |
+| Codex CLI · 本机状态库 | Codex App Server `thread/list` | 仅 `useStateDbOnly=true` 的状态元数据 | 自动读取 rollout JSONL 或完整 turn 内容 |
+| Codex App connector | 经用户授权的 Agent 从 Codex App MCP connector 提供 `list_threads` / `list_projects`；active 项的 `read_thread` 限量取最近 Agent 消息 | 白名单快照，显示标题、状态、项目与限长输出；链接只带 UUID 并由 Host 构造 `codex://threads/<UUID>` | APP 打开即自动连入、任意 URL/命令、批准或继续执行 |
+| Claude Code | 本机 `agents --json` 后台 Agent 状态接口；Hooks/Notification 是其他适配模式 | 显示后台 Agent 状态与 CLI 可查询状态 | 把后台 Agent 记录当作全部交互会话，或用 CLI 查询成功推断 GUI 会话在线 |
 | OpenCode | 服务/事件流与插件 session/permission 事件 | 指定服务只读订阅 | 非授权服务可被自动读写 |
 | DeepSeek Harness | 插件服务、session/agent/capability 事件与可撤销注册 | 只读插件 Adapter | 预览 API 稳定或完全兼容当前所有版本 |
 | omp | 项目 README 的 SDK/RPC/ACP 入口 | 固定版本与模式的事件映射 | 所有模式都能回答同样的 UI/approval 请求 |
@@ -67,4 +70,4 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 ## 第一条真实验收
 
-选择两个已有可用 Harness：一个产生工作状态、一个产生取消或等待输入。先做各自只读；然后单独接入一个真实结构化问题。随后销毁一个 session、重启 adapter、重用相同显示名，保证旧卡片不获得新实例写权。五种 Harness 都在路线内，不要求第一批同时完成。
+分别验证 Claude Code 后台 Agent、Codex CLI 本机状态库与 Codex App connector 三种来源。先确认来源健康、session 状态与更新时间彼此独立；单源断开只影响自身投影。然后验证真实 Codex App 快照进入 Provider、四字段行与 UUID-only 深链接，再测试来源重启和同名新实例不会继承旧身份。当前真实 App 快照桥接仍受本机 stdin relay 阻塞；不得用合成 smoke 代替这一步。其他 Harness 仍在路线内，不要求第一批同时完成。

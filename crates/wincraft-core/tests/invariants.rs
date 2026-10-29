@@ -464,6 +464,7 @@ fn native_window_action_is_allowlisted_bounded_and_user_triggered() {
             application: NativeWindowApplication::Obsidian,
             operation: NativeWindowOperation::Activate,
             title_contains: Some("Obsidian Workspace".into()),
+            thread_id: None,
         })
     );
     assert_eq!(
@@ -480,6 +481,7 @@ fn native_window_action_is_allowlisted_bounded_and_user_triggered() {
             application: NativeWindowApplication::TrafficMonitor,
             operation: NativeWindowOperation::Maximize,
             title_contains: None,
+            thread_id: None,
         })
     );
     assert!(engine
@@ -598,6 +600,74 @@ fn native_window_action_rejects_unknown_apps_operations_and_unbounded_title_filt
             .validate()
             .is_ok()
     );
+}
+
+#[test]
+fn codex_app_thread_navigation_requires_a_uuid_and_fixed_operation() {
+    let thread_id = uuid::Uuid::new_v4();
+    let make_scene = |action: serde_json::Value| Scene {
+        root: Node::new(
+            "open-codex-thread",
+            Kind::Button,
+            json!({
+                "label":"Synthetic Codex App thread",
+                "appearance":"link",
+                "action":"codex_app.open_thread",
+                "native_window_action":action
+            }),
+            vec![],
+        ),
+        ..Scene::default()
+    };
+
+    let valid = make_scene(json!({
+        "application":"codex_app",
+        "operation":"open_thread",
+        "thread_id":thread_id
+    }));
+    valid.validate().unwrap();
+
+    for invalid in [
+        json!({"application":"codex_app","operation":"activate"}),
+        json!({"application":"codex_app","operation":"open_thread","thread_id":"not-a-uuid"}),
+        json!({"application":"codex_app","operation":"open_thread","thread_id":thread_id,"title_contains":"Synthetic filter"}),
+        json!({"application":"obsidian","operation":"open_thread","thread_id":thread_id}),
+        json!({"application":"obsidian","operation":"activate","thread_id":thread_id}),
+        json!({"application":"codex_app","operation":"open_thread","thread_id":thread_id,"url":"https://example.com"}),
+    ] {
+        assert_eq!(
+            make_scene(invalid).validate().unwrap_err().code,
+            "INVALID_SCENE"
+        );
+    }
+
+    let (mut engine, provider, _, created) = setup();
+    let lease = created.lease.clone().unwrap();
+    let before = engine.read(provider, created.world.id).unwrap();
+    let updated = engine
+        .replace_scene(
+            provider,
+            created.world.id,
+            &lease,
+            before.revision,
+            valid,
+            1,
+        )
+        .unwrap();
+    let action = engine
+        .native_window_action(
+            created.world.id,
+            "open-codex-thread",
+            InteractionSource::Click,
+            updated.revision,
+            2,
+        )
+        .unwrap()
+        .unwrap();
+    assert_eq!(action.application, NativeWindowApplication::CodexApp);
+    assert_eq!(action.operation, NativeWindowOperation::OpenThread);
+    assert_eq!(action.thread_id, Some(thread_id));
+    assert_eq!(action.title_contains, None);
 }
 
 #[test]

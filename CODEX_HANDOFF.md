@@ -24,9 +24,10 @@
 
 ## 当前验证与仓库状态（2026-10-29）
 
-- 当前可复现的命令、环境、退出码和验证分层以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。最近一次 `npm run check:local`：28 项 UI、107 项 Rust、120 项 Python 测试通过，并通过 fmt/check/Clippy、离线契约和 27 个 Provider Skill 引用检查。
-- B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证；真实 Codex/Claude Code 会话绑定、Android 通知和实际设备传输仍为 `NOT_RUN`。
-- B08-03 的单窗口 Global Agent Overview 已在当前 Tauri release 用合成数据完成 L1-L4 UI 验收（首屏/来源列表/详情/回执/清理）；A6/A7 为 `PASS`，A4/A5 的真实 Harness 实例与会话接入仍为 `NOT_RUN`。
+- 当前可复现的命令、环境、退出码和验证分层以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。最近一次 `npm run check:local`：28 项 UI、138 项 Python 测试通过，Rust fmt/check/test/Clippy、离线契约和 27 个 Provider Skill 引用检查通过。
+- B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 现有 Claude Code `agents --json`、Codex CLI 本机状态库和 Codex App connector 三种独立来源；Codex App 的真实快照进入 release Provider 与原生深链接仍未验收。
+- B08-03 的单窗口 Global Agent Overview 已在当前 Tauri release 用合成数据完成 L1-L4 UI 验收（首屏/来源列表/详情/回执/清理）；A6/A7 为 `PASS`。Codex App 列表的四字段投影与来源新鲜度已有定向测试和合成 release smoke；真实 connector bridge 仍为 `BLOCKED`，不计作真实会话显示。
+- B09-02 Android 通知和实际设备传输仍为 `NOT_RUN`，等待真机、应用与权限选择。
 - Python 提供者已统一按真实 wire envelope 读取顶层 `world.deleted.world_id`；Tauri-hosted `lease_probe.py` 最终 41 项通过，包含删除事件送达原成员检查。
 - 本地 Tauri release 和用户人工验收状态按验证矩阵记录；浏览器预览、合成 provider、真实协议和原生 UI 证据不可互相替代。
 - 当前主仓库是 GitHub `exomind-team/WinCraft`，默认分支 `dev`，远端为私有仓库。之前的 `ARCJ137442/WinCraft` 公开历史已转入该仓库；可达历史扫描没有发现凭据命中，但一个旧提交曾包含本机绝对目录。重新公开前必须清理或替换该历史并再次扫描。

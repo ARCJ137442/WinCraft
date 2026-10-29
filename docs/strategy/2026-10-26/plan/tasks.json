@@ -2046,8 +2046,8 @@
     {
       "id": "B08-02",
       "batch": "B08",
-      "title": "两类真实Harness先行适配",
-      "status": "NOT_STARTED",
+    "title": "Claude Code、Codex CLI 与 Codex APP 三源适配",
+    "status": "IN_PROGRESS",
       "depends_on": [
         "B08-01",
         "B00-03"
@@ -2059,18 +2059,21 @@
         "R074"
       ],
       "targets": [
-        "proposed: examples/integrations/agent-board/adapters/"
+      "examples/integrations/agent-board/live_sources.py",
+      "examples/integrations/agent-board/live_provider.py",
+      "examples/integrations/agent-board/global_overview.py"
       ],
-      "inputs": "本地已安装Harness及用户选定会话/端点；不能自动读取所有session日志。",
+    "inputs": "Claude Code agents CLI、Codex CLI app-server状态库和明确授权的Codex App connector；不能自动读取任意session日志。",
       "implementation_steps": [
-        "先选择本地确实存在的两种Harness，固定其API版本",
-        "优先官方事件/SDK，文件解析仅显式授权且记录脆弱性",
-        "重新启动/多实例/子会话的发现离开重建测试"
+      "将Claude Code、Codex CLI本机状态库与Codex App connector建成三个独立source_id和单独状态通道",
+      "Claude Code使用agents --json；Codex CLI app-server thread/list始终启用useStateDbOnly=true；Codex App只接收授权Agent提供的connector快照",
+      "为每个来源保留独立健康、新鲜度、缺失身份与重连边界；失败不得把其他来源标陈旧",
+      "对重新启动、多实例、子会话和connector桥接做发现与重建测试；不扫描任意会话日志"
       ],
       "acceptance": [
         {
           "id": "B08-02-A1",
-          "criterion": "两种真实来源可同看且来源证据分开"
+        "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲"
         },
         {
           "id": "B08-02-A2",
@@ -2079,6 +2082,14 @@
         {
           "id": "B08-02-A3",
           "criterion": "适配失败仅对应来源stale"
+      },
+      {
+        "id": "B08-02-A4",
+        "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开"
+      },
+      {
+        "id": "B08-02-A5",
+        "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界"
         }
       ],
       "verification_level": "L2-L5",
@@ -2165,6 +2176,10 @@
           "id": "B08-03-A7",
           "criterion": "Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。",
           "level": "L3-L4"
+      },
+      {
+        "id": "B08-03-A8",
+        "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露"
         }
       ],
       "verification_level": "L1-L5",
@@ -2180,7 +2195,7 @@
         "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
         "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED",
         "B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.",
-        "Keep B08-02 real instance/session selection and any approval/write capability NOT_RUN until explicitly selected and separately authorized."
+      "Read-only status aggregation may enumerate the explicitly selected source inventories; keep approval/write capability NOT_RUN until separately authorized. Codex App data still requires the authorized Agent bridge."
       ],
       "priority": "P1",
       "evidence_required": [

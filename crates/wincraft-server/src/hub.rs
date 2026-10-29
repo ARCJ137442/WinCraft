@@ -31,8 +31,8 @@ mod capability_tests {
     use super::{Hub, StateChange};
     use serde_json::json;
     use wincraft_core::{
-        EventSource, Fault, InteractionSource, JoinPolicy, Kind, NativeWindowOperation, Node,
-        Scene, ShortcutSpec, WindowSpec,
+        EventSource, Fault, InteractionSource, JoinPolicy, Kind, NativeWindowApplication,
+        NativeWindowOperation, Node, Scene, ShortcutSpec, WindowSpec,
     };
 
     fn native_action_world(hub: &Hub) -> (uuid::Uuid, uuid::Uuid, wincraft_core::LeaseKey, u64) {
@@ -70,6 +70,18 @@ mod capability_tests {
                         "note-input",
                         Kind::Input,
                         json!({"label":"Message","action":"message.submit"}),
+                        vec![],
+                    ),
+                    Node::new(
+                        "open-codex-thread",
+                        Kind::Button,
+                        json!({
+                            "label":"Open Codex thread",
+                            "appearance":"link",
+                            "action":"codex_app.open_thread",
+                            "native_window_action":{"application":"codex_app","operation":"open_thread",
+                                "thread_id":"00000000-0000-4000-8000-000000000001"}
+                        }),
                         vec![],
                     ),
                 ],
@@ -133,6 +145,14 @@ mod capability_tests {
             .unwrap()
             .iter()
             .any(|feature| feature == "external_window_actions"));
+        assert_eq!(
+            native_capabilities["button_features"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|feature| feature == "codex_thread_navigation"),
+            cfg!(windows)
+        );
         assert!(native_capabilities["event_subscriptions"]["events"]
             .as_array()
             .unwrap()
@@ -188,6 +208,50 @@ mod capability_tests {
             .unwrap();
         assert!(called);
         assert!(!event_id.is_nil());
+        native.disconnect(session);
+
+        let native = Hub::new(true);
+        let (session, world_id, _lease, revision) = native_action_world(&native);
+        if cfg!(windows) {
+            let mut called = false;
+            native
+                .interact_with_source_with_native_window_action(
+                    world_id,
+                    "open-codex-thread",
+                    serde_json::Value::Null,
+                    InteractionSource::Click,
+                    revision,
+                    |action| {
+                        assert_eq!(action.application, NativeWindowApplication::CodexApp);
+                        assert_eq!(action.operation, NativeWindowOperation::OpenThread);
+                        assert_eq!(
+                            action.thread_id.unwrap().to_string(),
+                            "00000000-0000-4000-8000-000000000001"
+                        );
+                        called = true;
+                        Ok(())
+                    },
+                )
+                .unwrap();
+            assert!(called);
+        } else {
+            let mut called = false;
+            let error = native
+                .interact_with_source_with_native_window_action(
+                    world_id,
+                    "open-codex-thread",
+                    serde_json::Value::Null,
+                    InteractionSource::Click,
+                    revision,
+                    |_| {
+                        called = true;
+                        Ok(())
+                    },
+                )
+                .unwrap_err();
+            assert_eq!(error.code, "UNSUPPORTED_CAPABILITY");
+            assert!(!called);
+        }
         native.disconnect(session);
     }
 
@@ -721,6 +785,9 @@ impl Hub {
         ];
         if self.native_windows {
             button_features.push("external_window_actions");
+            if cfg!(windows) {
+                button_features.push("codex_thread_navigation");
+            }
         }
         let component_leases = if protocol.supports_component_leases() {
             json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true,
@@ -1132,6 +1199,12 @@ impl Hub {
                 return Err(Fault::new(
                     "UNSUPPORTED_CAPABILITY",
                     "native external window actions are not available on this host",
+                ));
+            }
+            if action.application == NativeWindowApplication::CodexApp && !cfg!(windows) {
+                return Err(Fault::new(
+                    "UNSUPPORTED_CAPABILITY",
+                    "Codex App thread navigation is only available on Windows hosts",
                 ));
             }
             focus(&action)?;

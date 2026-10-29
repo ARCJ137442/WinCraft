@@ -51,7 +51,8 @@
     "selection_groups",
     "appearance_variants",
     "key_value_actions",
-    "external_window_actions"
+    "external_window_actions",
+    "codex_thread_navigation"
   ],
   "scene_features": [
     "theme_tokens",

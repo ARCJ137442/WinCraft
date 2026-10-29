@@ -55,7 +55,7 @@
 | B07-03 | 类型状态槽与受控共享高级通道 | B07-02 | L1-L2 |
 | B07-04 | 多来源组合性质与真实窄验收 | B07-02, B07-03 | L1-L5 |
 | B08-01 | 统一活动模型与只读聚合器 | B01-03, B01-04 | L1-L2 |
-| B08-02 | 两类真实Harness先行适配 | B08-01, B00-03 | L2-L5 |
+| B08-02 | Claude Code、Codex CLI 与 Codex APP 三源适配 | B08-01, B00-03 | L2-L5 |
 | B08-03 | 扩到五类并作组件级组合 | B08-02, B07-04 | L1-L5 |
 | B08-04 | 决策卡与官方批准回传 | B08-02, B03-04 | L2-L5 |
 | B09-01 | 设备消息信封与外部传输端口 | B01-03, B08-01 | L1-L2 |
@@ -1140,23 +1140,26 @@ cargo test --workspace
 
 **证据：** baseline commit及工作区差异、实际命令/退出码与环境、用例状态和不含秘密的证据路径、未测项/阻塞来源、回滚验证结果
 
-## B08-02 · 两类真实Harness先行适配
+## B08-02 · Claude Code、Codex CLI 与 Codex APP 三源适配
 
 **前置：** B08-01, B00-03；**需求：** R023, R024, R071, R074
 
-**输入：** 本地已安装Harness及用户选定会话/端点；不能自动读取所有session日志。
+**输入：** Claude Code agents CLI、Codex CLI app-server状态库和明确授权的Codex App connector；不能自动读取任意session日志。
 
-**定位：** `proposed: examples/integrations/agent-board/adapters/`
+**定位：** `examples/integrations/agent-board/live_sources.py`；`examples/integrations/agent-board/live_provider.py`；`examples/integrations/agent-board/global_overview.py`
 
 ### 实施
-1. 先选择本地确实存在的两种Harness，固定其API版本
-2. 优先官方事件/SDK，文件解析仅显式授权且记录脆弱性
-3. 重新启动/多实例/子会话的发现离开重建测试
+1. 将Claude Code、Codex CLI本机状态库与Codex App connector建成三个独立source_id和单独状态通道
+2. Claude Code使用agents --json；Codex CLI app-server thread/list始终启用useStateDbOnly=true；Codex App只接收授权Agent提供的connector快照
+3. 为每个来源保留独立健康、新鲜度、缺失身份与重连边界；失败不得把其他来源标陈旧
+4. 对重新启动、多实例、子会话和connector桥接做发现与重建测试；不扫描任意会话日志
 
 ### 验收
-- **B08-02-A1** 两种真实来源可同看且来源证据分开
+- **B08-02-A1** Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲
 - **B08-02-A2** 不把全部任意既有CLI会话假定可枚举
 - **B08-02-A3** 适配失败仅对应来源stale
+- **B08-02-A4** Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开
+- **B08-02-A5** 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界
 
 **验证层/目录：** L2-L5 / current WinCraft checkout
 
@@ -1196,6 +1199,7 @@ cargo test --workspace
 - **B08-03-A5** 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口
 - **B08-03-A6** 合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。
 - **B08-03-A7** Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。
+- **B08-03-A8** 总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露
 
 **验证层/目录：** L1-L5 / current WinCraft checkout
 
@@ -1207,7 +1211,7 @@ python -m unittest tests.test_agent_activity_board tests.test_agent_global_overv
 python examples/integrations/agent-board/global_overview_provider.py --runtime <actual local descriptor> --duration-seconds 120
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Keep B08-02 real instance/session selection and any approval/write capability NOT_RUN until explicitly selected and separately authorized.
+**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Read-only status aggregation may enumerate the explicitly selected source inventories; keep approval/write capability NOT_RUN until separately authorized. Codex App data still requires the authorized Agent bridge.
 
 **回滚：** 回到只读聚合器单writer模式；不更改来源任务。
 

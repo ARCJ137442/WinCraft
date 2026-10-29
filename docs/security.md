@@ -20,7 +20,7 @@ host token 仍是粗粒度接入凭证，不是成熟多租户身份体系。持
 
 客户端不知道宿主函数名就能任意执行的模式不存在。组件 action 是不透明业务标识，仅回传对应提供者。提供者业务执行的安全由提供者处理，宿主 action.result 不能证明业务 exactly-once。
 
-跨应用原生窗口操作走单独的 `native_window_action` 白名单：当前只允许宿主登记的 Obsidian 与 TrafficMonitor 窗口，以及激活、最大化、恢复、最小化四个枚举操作，且只能由用户点击触发。Rust/Tauri 宿主校验已接受场景、revision、写者状态、组件 disabled 状态和窗口标题筛选，然后在宿主进程中调用原生 API；headless host 拒绝执行。协议不携带进程路径、shell 命令、AHK 源码或任意代码。关闭、启动进程、原始坐标/句柄和自动动作不属于此 allowlist。
+跨应用原生操作走单独的 `native_window_action` 白名单。Obsidian 与 TrafficMonitor 只允许对宿主登记的既有窗口执行枚举窗口操作；Codex App 另有 `codex_thread_navigation` capability，只接受 UUID `thread_id` 并由宿主构造固定 `codex://threads/<UUID>` URI。不会接受任意 URL、shell 命令、可执行路径、AHK 源码或任意代码。Rust/Tauri 宿主校验场景 revision、活动 writer lease、组件 disabled 状态及 capability，并且仅在用户点击时调用 Windows URI 处理器；headless 与非 Windows host 拒绝该 Codex 动作。Windows 接受 URI 只证明跳转请求已交给系统，不证明 Codex App 已加载会话。关闭窗口、手动启动进程、原始坐标/句柄和自动动作不属于此 allowlist。
 
 窗口状态订阅按 WebSocket session 绑定，只能订阅已加入世界的有限类型，并只发出最小状态。读者订阅不授予写权；leave/destroy/disconnect 清理订阅。窗口状态事件不会自动触发本地动作；订阅与动作授权分离。
 

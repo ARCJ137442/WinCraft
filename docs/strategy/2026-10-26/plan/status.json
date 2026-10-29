@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-03 synthetic overview verified at L1-L4; B08-02 real instance selection and B09-02 Android source selection remain open",
-  "next_action": "B08-03 synthetic global overview now has L1-L4 evidence: bounded Codex/Claude summary, source/session navigation, freshness and action receipts in the current Tauri release. B08-03-A4/A5 remain NOT_RUN for real Harness adapters/instance identity. B08-02 still needs exact Codex and Claude Code session identities/endpoints; B09-02 still needs a selected Android app/device and notification permission.",
+  "active_batch": "B08-02 Codex App bridge BLOCKED; CLI adapters and synthetic UI row verified; B08-03 remains in progress",
+  "next_action": "Implement and verify a persistent local Agent-to-Provider bridge for Codex App connector snapshots; then validate actual release rows and UUID-only codex:// navigation. Keep the Codex App subtarget blocked until real connector data reaches the release world. Continue independent acceptance tasks.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -39,7 +39,7 @@
     "B07-03": "VERIFIED",
     "B07-04": "VERIFIED",
     "B08-01": "VERIFIED",
-    "B08-02": "NOT_STARTED",
+    "B08-02": "IN_PROGRESS",
     "B08-03": "IN_PROGRESS",
     "B08-04": "NOT_STARTED",
     "B09-01": "VERIFIED",
@@ -61,7 +61,9 @@
     "Windows UIA/IME/screen-reader, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
-    "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed."
+    "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
+    "B08-02-A4 Codex App live bridge is blocked in the current local runner: real connector snapshots were not accepted by the persistent Provider stdin path. Opening Codex App alone does not populate the Provider; a verified Agent relay is required.",
+    "B08-02-A4 Codex App live bridge and native link are stalled: actual connector metadata was read, but the local PTY/stdin path did not deliver its snapshot to the running release Provider. Opening Codex App alone does not populate the Provider; a verified persistent Agent relay is required."
   ],
   "completed_this_delivery": [
     "本机基线与锁文件/环境核对，UI/Rust/Python/交接包检查",
@@ -120,7 +122,8 @@
     "2026-10-29: B07-04 verified disjoint scope ownership under deterministic interleavings, stale/out-of-scope write rejection, disconnect/rejoin fencing and parent cleanup. A real x64 TrafficMonitor bridge plus the currently open Obsidian Obsidian Workspace dashboard were projected into separate scopes; stopping the staged TrafficMonitor source made only its scope stale. Original app configuration and Obsidian notes/settings were not written.",
     "2026-10-29: B07-04 verified deterministic multi-scope interleavings, permission fencing/rejoin, owner-slot cleanup, and real-source failure isolation between a fresh x64 TrafficMonitor bridge and the read-only Obsidian Obsidian Workspace projection.",
     "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
-    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself."
+    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself.",
+    "2026-10-29: B08-02 expanded to three independent sources. Claude agents --json returned two blocked background-agent records while no Claude-named process was running; UI labels CLI reachability separately. Codex App fields and freshness projection pass focused/full tests; actual connector snapshot transport is blocked in the local runner. No real titles, projects, outputs or IDs were written to evidence."
   ],
   "history": [
     null,

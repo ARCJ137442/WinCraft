@@ -9,7 +9,7 @@
     "kind": { "const": "wincraft.activity.draft" },
     "schema_version": { "const": "draft-2026-10-29" },
     "source_type": {
-      "enum": ["claude-code", "codex", "opencode", "deepseek-harness", "omp", "fixture"]
+      "enum": ["claude-code", "codex", "codex-app", "opencode", "deepseek-harness", "omp", "fixture"]
     },
     "device_id": {
       "type": "string",
@@ -41,6 +41,9 @@
       ]
     },
     "display_name": { "type": "string", "maxLength": 96 },
+    "project_label": { "type": "string", "maxLength": 96 },
+    "codex_app_thread_id": { "type": "string", "format": "uuid" },
+    "last_output_kind": { "enum": ["agent_message", "connector_summary", "unavailable"] },
     "model_name": { "type": "string", "maxLength": 96 },
     "source_status": { "type": "string", "minLength": 1, "maxLength": 128 },
     "normalized_status": {
@@ -49,6 +52,8 @@
         "running",
         "waiting_input",
         "waiting_approval",
+        "blocked",
+        "not_loaded",
         "completed",
         "failed",
         "cancelled",
@@ -64,7 +69,7 @@
     "summary": { "type": "string", "maxLength": 256 },
     "control_capabilities": { "const": [] },
     "provenance": {
-      "enum": ["synthetic", "official-api", "explicit-hook", "approved-log"]
+      "enum": ["synthetic", "official-api", "official-cli", "explicit-hook", "approved-log"]
     }
   },
   "required": [
@@ -90,6 +95,16 @@
     "provenance"
   ],
   "allOf": [
+    {
+      "if": {
+        "properties": { "source_type": { "const": "codex-app" } },
+        "required": ["source_type"]
+      },
+      "then": {
+        "required": ["project_label", "codex_app_thread_id", "last_output_kind"],
+        "properties": { "provenance": { "const": "official-api" } }
+      }
+    },
     {
       "if": {
         "properties": { "freshness": { "enum": ["stale", "disconnected"] } },

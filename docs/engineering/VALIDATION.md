@@ -424,7 +424,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 | Agent Board provider + Tauri release | PASS | 使用真实 release Tauri host 呈现合成快照；UIA 确认叶会话/等待/断线计数和父子顺序，scene 只有只读组件；没有连接 Harness 数据源。|
 | provider world cleanup | PASS | 自然到期与交互式 PTY Ctrl+C 都确认销毁唯一测试世界，管理器恢复 0 个世界。非 TTY 执行器的强制 Ctrl+C 会直接杀进程并留 stale 世界；该测试副本随后由管理器关闭。|
 | GitHub Actions run `40818791865` | PASS | B08-01 commit `fce1c87` 的 Windows source job 全量 `npm run check:local` 成功，用时 6m03s；不代表真实 Harness adapter 或审批 UI 已验收。 |
-| 真实 Harness adapter / approval flow | NOT_RUN | 留待 B08-02，并要求先有用户选择和授权的具体来源；当前原型不枚举既有会话。|
+| 真实 Harness adapter / approval flow | NOT_RUN（CLI 适配进行中） | B08-02 已加入 Claude `agents --json` 与 Codex app-server `thread/list` 的只读 adapter；Codex CLI 状态库与 Codex App connector 不同源，故最终适配及 approval flow 尚未验收。|
 
 本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-01-validation.json`。原始 Harness、Obsidian 笔记和外心业务数据均未读取；本任务 fixture 全部为仓库内合成数据。
 
@@ -446,7 +446,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 
 ## B08-03 全局面板切换验收计划
 
-2026-10-29 新增用户决定：一个全局悬浮窗先显示 Codex 并行会话量与 Claude Code 各会话状态，用户可以按来源/实例/会话切换，详情渐进披露；切换需保留来源身份、新鲜度与撤销状态。对应 B08-03-A4/A5 当前为 `NOT_RUN`。实际会话读取仍以用户选定的具体实例/会话为界。
+2026-10-29 用户补充：一个全局悬浮窗按需切换 Claude Code、Codex CLI 与 Codex App 三种独立来源；Codex App 行显示会话名、状态、项目与最近 Agent 输出，来源健康与最近更新时间常驻可见，详情渐进披露。Codex App connector 与 Codex CLI state DB 是不同来源，不能合并计数。本机 CLI adapter 只读取明确列出的只读状态接口，不扫描任意会话日志。合成总览 A6/A7 已通过；真实 Codex App 快照桥接、三来源原生呈现与当前 A4/A5/A8 保持 `NOT_RUN` 或 `BLOCKED`，详见下方 B08-02 记录。
 
 ## 2026-10-29 公开仓库脱敏预检
 
@@ -454,6 +454,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 |---|---|---|
 | Gitleaks 8.30.1 历史扫描 | PASS（凭据规则） | 官方发布校验和已核对；扫描全部可达历史（`--all --full-history`），退出码 0，0 条凭据规则命中。 |
 | Gitleaks 当前工作目录扫描 | FAIL（仅忽略的本机证据） | 523 个文件副本中有 5 条 `generic-api-key` 命中，全部位于 `.gitignore` 排除的 `evidence/local/` 旧 `.runtime.json` 测试描述文件。匹配值未写入输出或证据；这些文件不是可分享内容。 |
+| 本阶段暂存差异定向脱敏扫描 | PASS（scope-limited） | Gitleaks CLI 当前未安装；自定义脱敏扫描检查暂存新增行中的凭据样式、Windows 用户路径、runtime descriptor 名称及本轮实际 Codex thread ID/标题/输出，均无命中。此窄扫描不等价于完整 Gitleaks。 |
 | 跟踪文件与 Git 历史个人路径 | FAIL（公开准备） | 当前跟踪文件不含本机用户目录路径；历史提交 `5d64341c9e69` 的旧验收文档曾包含一条本机绝对路径。该提交属于此前公开的历史。公开前需清理/替换历史，再验证新候选历史。 |
 | 已跟踪截图 | PASS（内容审查） | `evidence/assistant-run/manager-preview.png` 与 `world-preview.png` 只呈现明确标注的浏览器合成数据；桌面应用图标为通用图形。 |
 | 当前仓库公开状态 | BLOCKED | `exomind-team/WinCraft` 当前为私有。用户有未来公开意向，但尚未授权本轮改可见性。忽略证据中的描述文件和历史个人路径均须先处置。 |
@@ -479,15 +480,15 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| Agent Board + Global Overview Python tests | PASS | 18 项专项测试覆盖 stale 不变 idle、父子计数、身份/来源隔离、限量预览、空态、页码边界、过期 detail action 拒绝、action.result 回执、world.deleted 顶层事件和 manager 已删除后的只读 cleanup 确认。 |
-| `npm run check:local` | PASS | 退出码 0；28 项 UI、107 项 Rust、120 项 Python 测试通过，并通过 fmt/check/Clippy、离线契约和 27 个 Provider Skill 引用检查。 |
+| Agent Board + Global Overview Python tests | PASS | 当前 27 项专项测试覆盖身份/来源隔离、Codex App 标题/状态/项目/输出投影、source health/freshness、限量预览、空态、分页、过期 detail action 拒绝、回执和清理。 |
+| `npm run check:local` | PASS | 退出码 0；28 项 Node UI、138 项 Python 测试通过，Rust workspace fmt/check/test/Clippy、离线契约和 27 个 Provider Skill 引用检查通过。 |
 | `python scripts/check_contracts.py` | PASS | draft activity/schema fixtures 与仓库内 Python 语法检查通过；本项不验证真实 Harness 来源。 |
 | `python skills/wincraft-provider/scripts/verify.py` | PASS | 27 个仓库内 Provider Skill 路径可解析。 |
 | 当前 Windows Tauri release + synthetic provider | PASS（L3-L4 UI） | 本地 Rust/Tauri WebSocket 真实连接；Computer Use 看到总览 `520×421`、Claude 列表 `520×422`、Codex 列表 `520×512`、单会话详情 `520×477`。来源切换、详情、返回均出现动作确认；截图中没有可见窗口级滚动条。 |
 | 临时世界清理 | PASS（真实 release 闭环） | 关闭世界后 provider 收到顶层 `world.deleted` 并自行退出，退出码 0；管理器最后显示 `0` 个开放世界，无人工中断或重复销毁请求。 |
-| 真实 Codex/Claude 会话适配与实例身份 | NOT_RUN | 真实实例仍未唯一选定；没有读取会话日志、源标识或真实任务内容。全局面板目前只展示合成数据，A4/A5 总体验收继续 `NOT_RUN`。 |
+| 三来源 live adapter 总体验收 | PARTIAL | Claude Code 与 Codex CLI 的只读状态可同窗显示；Codex App connector 元数据已由 Agent 读取，但实际 snapshot 没有进入 release Provider。Codex App live rows 和原生链接状态详见下方 B08-02。 |
 
-脱敏本地记录：`evidence/local/nextgen-2026-10-29/cua-window-state-20261029.json`。真实源接入前仍需确定明确实例/endpoint 与读取范围；不能将此 synthetic PASS 推广为多 Harness 适配已完成。
+脱敏本地记录：`evidence/local/nextgen-2026-10-29/cua-window-state-20261029.json`。该记录验证的是 synthetic PASS；实时 CLI 来源另见 B08-02 记录，不能把两种证据合并成 Codex App 连接已完成。
 
 ## 2026-10-29 `world.deleted` 事件封套与 Provider 清理
 
@@ -502,3 +503,31 @@ Rust transport 实际发送的世界删除 occurrence 将 `world_id` 放在事�
 | Global Overview manager-close lifecycle | PASS | 当前 release 关闭合成世界后，provider 收到顶层删除事件并以退出码 0 正常停止；没有再调用 destroy，manager 归零。 |
 
 脱敏本地证据：`evidence/local/nextgen-2026-10-29/b08-03-global-overview-validation.json`。这修正避免了本地 manager 已关闭窗口而 Provider 仍等到时限后误报清理不确定。
+
+## 2026-10-29 B08-02 Claude Code、Codex CLI 与 Codex App 三来源适配（进行中）
+
+**Given** 三种独立来源：Claude Code `agents --json`、Codex CLI app-server `thread/list`、以及授权 Agent 经 Codex App connector 提供的快照；**When** Live Provider 汇总；**Then** 每个来源有独立身份、状态和最近成功读取时间，Codex App 页面逐项提供标题、状态、项目和最近输出，缺少桥接数据时明确等待，不把 Codex CLI 查询成功等同于 APP 会话在线。
+
+Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 Claude 会话。当前查询成功返回 2 条 `blocked` 后台 Agent 记录，同时本机没有 Claude 命名进程；界面显示“CLI 可查询 / 后台 Agent 阻塞”，不宣称 Claude Code 会话在线。Codex CLI 仍只读本机状态库且固定 `useStateDbOnly=true`。本次 Codex App connector 只读取 `list_threads`/`list_projects` 元数据并对 5 个 active 项读取限长 Agent 消息；共观察 38 个 Codex 项（5 active、2 idle、31 notLoaded），没有保存标题、项目名、内容或原始 ID。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Claude Code `agents --json` / Codex CLI `thread/list` | PASS（L1-L2） | Claude CLI 查询成功，当前返回 2 个 blocked 后台 Agent；Codex CLI `useStateDbOnly=true` 返回 0 条。本地状态没有扫描 JSONL 或完整会话日志。|
+| Codex App connector 只读枚举 | PASS（来源读取） | `list_threads` 与 `list_projects` 返回独立于 Codex CLI state DB 的 Codex App 数据；active Agent 消息只读限长，不读取完整 turn/tool history。|
+| 三来源规范化、独立健康、新鲜度与 Codex App 四字段行 | PASS（L1-L2） | `tests.test_agent_live_sources` / `tests.test_agent_global_overview` 共 27 项定向测试通过；覆盖 App 标题/状态/项目/最近输出、受限链接、来源失败隔离、上次成功时间与 CLI/App 状态映射。|
+| `npm run check:local` | PASS | 28 Node UI tests、137 Python tests、Rust workspace fmt/check/test/Clippy、离线契约与 Provider Skill 引用校验均通过。|
+| `npm run desktop:build` | PASS | 当前 release 产物为 `target/release/wincraft-desktop.exe`。Python provider 场景无需重新编译宿主，但本次仍重建了 release。|
+| Tauri release + 合成 ASCII bridge smoke | PASS（L3 可访问性） | Computer Use accessibility tree 在真实 release 窗口中看到会话名、状态、项目和输出四项，以及来源健康与相对更新时间。样例内容为合成 Smoke/Demo，不代表真实 Codex App 会话。|
+| Codex App 实际快照进入 release Provider | BLOCKED | 当前本地执行器的 PTY/stdin 不能稳定将真实 connector JSONL 行送入持续 Provider；实际窗口仍正确显示“等待 Agent 桥接”。Codex App 打开本身不会自动向 Provider 推送快照。需要验证一个持久 Agent→Provider stdin relay。|
+| Codex App 原生深链接点击与目标加载 | NOT_RUN | 只通过单元测试验证 UUID-only `codex://threads/<UUID>` allowlist；本轮没有确认实际点击和目标会话加载。|
+| Pixel screenshot / 最新来源列表的人工观感 | NOT_RUN | Computer Use 后续被物理 Escape 停止；只保留其前 accessibility tree 证据，不把它作为像素级验收。|
+
+本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-02-three-source-ui-validation.json`。不保存 runtime descriptor、来源标题、项目名、工作目录、提示词、输出片段或原始 thread ID。B08-02 整体保持 `IN_PROGRESS`；真实 Codex App bridge 与原生深链接验收仍待完成。
+
+## 2026-10-29 B09-02 Android 设备可用性探查
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `adb devices -l` | BLOCKED | 命令成功，列表为空；旧 adb daemon 自动重启。未读取设备内容、应用列表或通知。|
+
+没有连接真机，也未选择通知应用或授予通知权限；B09-02 保持 `BLOCKED`，等待设备与授权条件，不把合成信封结果当成 Android 验收。

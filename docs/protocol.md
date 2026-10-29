@@ -64,7 +64,9 @@ Scene 为 `{root, data, theme?}`。Node 为 `{id, kind, props?, children?}`。�
 
 选项按钮可组成静态 `selection_group`，指定一致的 `selection_mode: "single" | "multiple"` 和布尔 `pressed` 状态。单选组最多一个 pressed 项。Renderer 为每组维护一个 Tab 停靠点；方向键移动焦点，单选组同时请求选中项，空格继续触发当前选项。未设置此组语义的按钮保留普通 Tab 行为。只有 host 宣告 `button_features: ["selection_groups"]` 时才能使用。
 
-原生 Windows host 可额外宣告 `external_window_actions`。按钮可以声明宿主登记的应用 ID（当前 `obsidian`、`traffic_monitor`）、枚举操作（`activate`、`maximize`、`restore`、`minimize`）与有界标题子串；用户点击后由宿主操作已存在的匹配窗口，再把动作交给提供者确认。宿主不启动外部应用、不执行提供者命令，也不接受任意可执行路径。headless host 不宣告该能力。`native_window_action` 是可扩展的宿主窗口服务，只用于跨应用窗口；WinCraft 世界本身仍通过 `window.configure` 管理。添加新动作必须保持类型化、有限、由本地用户交互触发并返回原生结果。
+原生 Windows host 可额外宣告 `external_window_actions`，用于宿主登记的 `obsidian` 与 `traffic_monitor` 已存在窗口；按钮只能选择枚举操作和有界标题子串。
+
+Windows host 还可单独宣告 `codex_thread_navigation`。此按钮动作只接受 `application:"codex_app"`、`operation:"open_thread"` 和 UUID `thread_id`；宿主自行构造 `codex://threads/<UUID>` 并交给 Windows 协议处理器。它不接受任意 URL、shell 命令、可执行路径或任意参数。用户点击、有效 writer lease、匹配 revision、未禁用组件与 host capability 均为执行前提；headless 和非 Windows host 不宣告此能力。OS 接受 URI 只证明已发起跳转请求，不证明 Codex App 已加载会话。添加新原生动作必须保持类型化、有限、由本地用户交互触发并返回原生结果。
 
 属性值可用 `{"$path":"/focus/remaining"}` 读取 JSON Pointer 数据。没有表达式、循环脚本、网络读取、HTML 或 CSS 注入。复杂业务计算留给提供者。key_value 接收 `{key,value}` 列表，首版最多渲染 64 行。
 

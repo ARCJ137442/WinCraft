@@ -29,6 +29,7 @@
 | 下一世代集成来源锁与局部阻塞 | [research/integration-source-lock.json](research/integration-source-lock.json) |
 | Host UI 中英文资源 | [apps/desktop/src/locales/zh-CN.json](../apps/desktop/src/locales/zh-CN.json)、[en-US.json](../apps/desktop/src/locales/en-US.json) |
 | Agent 提供者入门与 TrafficMonitor 接入 | [skills/wincraft-provider/SKILL.md](../skills/wincraft-provider/SKILL.md)、[references/trafficmonitor.md](../skills/wincraft-provider/references/trafficmonitor.md) |
+| Agent Activity 三来源只读总览示例 | [examples/integrations/agent-board/README.md](../examples/integrations/agent-board/README.md) |
 | 宿主原生窗口动作 allowlist | [references/native-window-actions.md](../skills/wincraft-provider/references/native-window-actions.md) |
 | Popup-Ask 到临时 WinCraft 世界的可选传输 | [references/popup-ask.md](../skills/wincraft-provider/references/popup-ask.md) |
 | 可提交的本机验收摘要 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |

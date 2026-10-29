@@ -290,6 +290,28 @@ at the original installation's configuration or put source values in evidence.
 - `examples/integrations/agent-board/global_overview_provider.py` — B08-03 single-window
   Codex/Claude Code source switcher using synthetic activity only. Local `view.*`
   navigation does not grant access to live sessions or provide approval/write actions.
+- `examples/integrations/agent-board/live_provider.py` and `live_sources.py` — read-only
+  local CLI status adapters. Claude Code uses `agents --json`; Codex CLI uses the
+  experimental app-server `thread/list` method with `useStateDbOnly=true`. The Codex CLI
+  state database is not the Codex App connector; never merge their counts as one source.
+  Claude `agents --json` reports background-agent records, not every interactive Claude
+  conversation. A successful CLI query proves that the command responded, not that the
+  Claude Code UI or an interactive session is open; keep source reachability separate from
+  agent status and display the last successful read age.
+- When an authorized Codex App connector is available to the calling Agent, that Agent can
+  send a whitelisted JSONL snapshot to `live_provider.py --codex-app-bridge` over stdin:
+  UUID thread id, title, status, project label, source order, and a bounded last-output
+  excerpt. `list_threads`/`list_projects` supply sidebar metadata; use `read_thread` only
+  with a small turn limit and output cap when an exact last assistant message is needed.
+  Do not send full tool results, cwd, credentials, complete turn histories, or JSONL
+  rollouts. The Provider treats every title/output as untrusted plain text and does not
+  execute it. Having Codex App open does not automatically populate the bridge; until an
+  authorized Agent sends a snapshot, report the source as waiting for the bridge.
+- Codex App title links require `codex_thread_navigation`. The host accepts only a typed
+  UUID and constructs `codex://threads/<UUID>` itself; never send a general URL or shell
+  command. Clicks are explicit user actions, and OS acceptance is not proof that the
+  target conversation loaded. Missing identity/state yields a partial source; a source
+  failure stales only that source.
 - `examples/integrations/device-inbox/README.md` — B09-01 draft message envelope,
   duplicate/TTL/revocation policy, and synthetic-only read-only projection. Authentication
   evidence must come from an external transport adapter; this example opens no listener.

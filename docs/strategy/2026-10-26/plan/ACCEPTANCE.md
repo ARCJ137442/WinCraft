@@ -125,9 +125,11 @@
 | B08-01-A1 | B08-01 | L1-L2 | 断线不是任务完成或空闲 | PASS |
 | B08-01-A2 | B08-01 | L1-L2 | 模型名/显示名不作身份 | PASS |
 | B08-01-A3 | B08-01 | L1-L2 | 只读面板没有批准/写文件/继续执行权限 | PASS |
-| B08-02-A1 | B08-02 | L2-L5 | 两种真实来源可同看且来源证据分开 | NOT_RUN |
-| B08-02-A2 | B08-02 | L2-L5 | 不把全部任意既有CLI会话假定可枚举 | NOT_RUN |
-| B08-02-A3 | B08-02 | L2-L5 | 适配失败仅对应来源stale | NOT_RUN |
+| B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲 | NOT_RUN |
+| B08-02-A2 | B08-02 | L2-L5 | 不把全部任意既有CLI会话假定可枚举 | PASS |
+| B08-02-A3 | B08-02 | L2-L5 | 适配失败仅对应来源stale | PASS |
+| B08-02-A4 | B08-02 | L2-L5 | Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开 | BLOCKED |
+| B08-02-A5 | B08-02 | L2-L5 | 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界 | NOT_RUN |
 | B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | NOT_RUN |
 | B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | NOT_RUN |
 | B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | NOT_RUN |
@@ -135,6 +137,7 @@
 | B08-03-A5 | B08-03 | L1-L5 | 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口 | NOT_RUN |
 | B08-03-A6 | B08-03 | L1-L2 | 合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。 | PASS |
 | B08-03-A7 | B08-03 | L3-L4 | Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。 | PASS |
+| B08-03-A8 | B08-03 | L1-L5 | 总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露 | BLOCKED |
 | B08-04-A1 | B08-04 | L2-L5 | 显示任务不自动具备批准权限 | NOT_RUN |
 | B08-04-A2 | B08-04 | L2-L5 | 批准前显示具体操作与来源，token不在卡片中 | NOT_RUN |
 | B08-04-A3 | B08-04 | L2-L5 | 网络超时只读回结果，不盲重放副作用 | NOT_RUN |

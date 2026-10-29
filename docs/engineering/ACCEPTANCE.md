@@ -65,7 +65,7 @@
 | W24 | 健康状态降噪与恢复提示 | `online` host 行与空的健康 provider badge 隐藏；`stale`、`vacant`、来源暂停/过期/错误仍可见且可访问 |
 | W25 | 无标题栏 Obsidian Workspace HUD | `Obsidian Workspace` 以 `--hide-titlebar`、provider geometry、`position_control=human`、`resizable=false`、`background_drag_enabled=true` 创建窗口；无标题栏时未配置动作的非文本背景可拖动，文本/按钮/输入与选中内容不启动移动；穿透恢复和托盘全局隐藏/显示仍可用 |
 | W26 | Windows 虚拟桌面范围 | 默认只在当前桌面；provider 可显式请求所有桌面；若平台未实现请求必须明确报告 unsupported，不能把 Tauri no-op 记作通过。当前 Windows 公共 Tauri/tao API 不支持，整体保持未实现 |
-| W27 | 提供者原生窗口动作 | 仅响应用户点击；宿主只对已存在、可见的 allowlisted 应用窗口执行 `activate`/`maximize`/`restore`/`minimize`；可选标题子串生效；无匹配或系统拒绝时显示失败；不启动进程、不执行命令、不记录真实标题。Obsidian Workspace 标题是 Obsidian `activate` 的实测用例 |
+| W27 | 提供者原生窗口动作 | Obsidian/TrafficMonitor 仍只对已存在、可见的 allowlisted 窗口执行枚举操作；另验证 Codex App `codex_thread_navigation` 只接受 UUID thread_id 并构造固定 `codex://threads/<UUID>`，仅响应用户点击；无 protocol handler 时动作失败且不误报会话已打开。禁止任意 URL、shell、进程路径和会话正文。|
 
 首版未提供鼠标跟随或外部窗口附着；不要把它们列为“验证失败”，应列为未实现。
 

@@ -26,6 +26,8 @@ NORMALIZED_STATUSES = (
     "running",
     "waiting_input",
     "waiting_approval",
+    "blocked",
+    "not_loaded",
     "completed",
     "failed",
     "cancelled",
@@ -38,6 +40,8 @@ STATUS_LABELS = {
     "running": "进行中",
     "waiting_input": "等待输入",
     "waiting_approval": "来源等待批准",
+    "blocked": "来源报告阻塞",
+    "not_loaded": "未加载",
     "completed": "已完成",
     "failed": "失败",
     "cancelled": "已取消",
@@ -53,6 +57,7 @@ FRESHNESS_LABELS = {
 SOURCE_TYPE_LABELS = {
     "claude-code": "Claude Code",
     "codex": "Codex",
+    "codex-app": "Codex App",
     "opencode": "OpenCode",
     "deepseek-harness": "DeepSeek Harness",
     "omp": "omp",
@@ -164,12 +169,19 @@ def validate_and_refresh(
 
     ordered_identities: list[tuple[str, str, str, str]] = []
 
+    def source_order(identity: tuple[str, str, str, str]) -> tuple[int, tuple[str, str, str, str]]:
+        '''按来源序号保留同层线程顺序'''
+        return by_identity[identity]["source_sequence"], identity
+
     def visit(identity: tuple[str, str, str, str]) -> None:
         ordered_identities.append(identity)
-        for child in sorted(children[identity]):
+        for child in sorted(children[identity], key=source_order):
             visit(child)
 
-    for root in sorted(identity for identity, parent in parents.items() if parent is None):
+    for root in sorted(
+        (identity for identity, parent in parents.items() if parent is None),
+        key=source_order,
+    ):
         visit(root)
 
     result: list[dict[str, Any]] = []
@@ -177,8 +189,7 @@ def validate_and_refresh(
         record = by_identity[identity]
         status = record["normalized_status"]
         freshness = record["freshness"]
-        result.append(
-            {
+        normalized_record = {
                 "identity": identity,
                 "source_type_label": SOURCE_TYPE_LABELS[record["source_type"]],
                 "display_name": record.get("display_name") or SOURCE_TYPE_LABELS[record["source_type"]],
@@ -196,7 +207,10 @@ def validate_and_refresh(
                 "depth": depth(identity),
                 "is_leaf": not children[identity],
             }
-        )
+        for field in ("project_label", "codex_app_thread_id", "last_output_kind"):
+            if field in record:
+                normalized_record[field] = record[field]
+        result.append(normalized_record)
     return result
 
 

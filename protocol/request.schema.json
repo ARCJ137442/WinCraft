@@ -794,14 +794,28 @@
                   "enum": ["default", "link", "title"]
                 },
                 "native_window_action": {
-                  "type": "object",
-                  "properties": {
-                    "application": {"type": "string", "enum": ["obsidian", "traffic_monitor"]},
-                    "operation": {"type": "string", "enum": ["activate", "minimize", "restore"]},
-                    "title_contains": {"type": "string", "maxLength": 128}
-                  },
-                  "required": ["application", "operation"],
-                  "additionalProperties": false
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "application": {"type": "string", "enum": ["obsidian", "traffic_monitor"]},
+                        "operation": {"type": "string", "enum": ["activate", "maximize", "minimize", "restore"]},
+                        "title_contains": {"type": "string", "maxLength": 128}
+                      },
+                      "required": ["application", "operation"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "application": {"const": "codex_app"},
+                        "operation": {"const": "open_thread"},
+                        "thread_id": {"type": "string", "format": "uuid"}
+                      },
+                      "required": ["application", "operation", "thread_id"],
+                      "additionalProperties": false
+                    }
+                  ]
                 },
                 "shortcut": {
                   "type": "string",

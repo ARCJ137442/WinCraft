@@ -73,6 +73,8 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
 Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
 
+只读 Agent Activity 总览示例见 [`examples/integrations/agent-board/README.md`](examples/integrations/agent-board/README.md)。它把 Claude Code 后台 Agent、Codex CLI 本机状态库和 Codex App connector 分开采集；Codex App 内容需要有权 Agent 通过 connector 桥接，单纯打开 Codex App 不会自动向 Provider 提供数据。该示例不读取完整会话日志，也不提供批准、写文件或继续执行动作。
+
 ## 单独看前端
 
 ```powershell

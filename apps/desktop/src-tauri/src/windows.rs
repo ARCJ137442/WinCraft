@@ -370,11 +370,16 @@ fn tray_tooltip() -> String {
     )
 }
 
-fn executable_name_for_application(application: NativeWindowApplication) -> &'static str {
+fn executable_name_for_application(application: NativeWindowApplication) -> Option<&'static str> {
     match application {
-        NativeWindowApplication::Obsidian => "obsidian.exe",
-        NativeWindowApplication::TrafficMonitor => "TrafficMonitor.exe",
+        NativeWindowApplication::Obsidian => Some("obsidian.exe"),
+        NativeWindowApplication::TrafficMonitor => Some("TrafficMonitor.exe"),
+        NativeWindowApplication::CodexApp => None,
     }
+}
+
+fn codex_thread_uri(thread_id: Uuid) -> String {
+    format!("codex://threads/{thread_id}")
 }
 
 fn normalized_title_filter(value: Option<&str>) -> String {
@@ -404,20 +409,34 @@ fn select_external_window_match_index(
 #[cfg(test)]
 mod native_window_action_tests {
     use super::{
-        executable_name_for_application, normalized_title_filter,
+        codex_thread_uri, executable_name_for_application, normalized_title_filter,
         select_external_window_match_index, title_matches_filter,
     };
+    use uuid::Uuid;
     use wincraft_core::NativeWindowApplication;
 
     #[test]
     fn application_ids_map_only_to_registered_process_images() {
         assert_eq!(
             executable_name_for_application(NativeWindowApplication::Obsidian),
-            "obsidian.exe"
+            Some("obsidian.exe")
         );
         assert_eq!(
             executable_name_for_application(NativeWindowApplication::TrafficMonitor),
-            "TrafficMonitor.exe"
+            Some("TrafficMonitor.exe")
+        );
+        assert_eq!(
+            executable_name_for_application(NativeWindowApplication::CodexApp),
+            None
+        );
+    }
+
+    #[test]
+    fn codex_thread_uri_uses_only_the_codex_threads_scheme() {
+        let thread_id = Uuid::parse_str("00000000-0000-4000-8000-000000000001").unwrap();
+        assert_eq!(
+            codex_thread_uri(thread_id),
+            "codex://threads/00000000-0000-4000-8000-000000000001"
         );
     }
 
@@ -527,6 +546,11 @@ unsafe extern "system" fn collect_external_window(
 
 #[cfg(windows)]
 fn perform_window_action(action: &NativeWindowAction) -> Result<(), String> {
+    if action.application == NativeWindowApplication::CodexApp {
+        return perform_codex_thread_navigation(action);
+    }
+    let executable_name = executable_name_for_application(action.application)
+        .ok_or_else(|| "Codex App requires the thread-navigation operation".to_owned())?;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         BringWindowToTop, EnumWindows, GetForegroundWindow, IsIconic, IsWindow, IsZoomed,
         SetForegroundWindow, ShowWindow, SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE,
@@ -534,7 +558,7 @@ fn perform_window_action(action: &NativeWindowAction) -> Result<(), String> {
 
     let foreground = unsafe { GetForegroundWindow() };
     let mut search = ExternalWindowSearch {
-        executable_name: executable_name_for_application(action.application).into(),
+        executable_name: executable_name.into(),
         title_filter: normalized_title_filter(action.title_contains.as_deref()),
         matches: Vec::new(),
     };
@@ -587,7 +611,43 @@ fn perform_window_action(action: &NativeWindowAction) -> Result<(), String> {
                     return Err("Windows did not minimize the matching application window".into());
                 }
             }
+            NativeWindowOperation::OpenThread => {
+                return Err(
+                    "Codex App thread navigation requires the Codex App application id".into(),
+                );
+            }
         }
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn perform_codex_thread_navigation(action: &NativeWindowAction) -> Result<(), String> {
+    use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+
+    if action.operation != NativeWindowOperation::OpenThread || action.title_contains.is_some() {
+        return Err("Invalid Codex App thread-navigation action".into());
+    }
+    let thread_id = action
+        .thread_id
+        .ok_or_else(|| "Codex App thread-navigation action is missing a thread id".to_owned())?;
+    let verb: Vec<u16> = "open\0".encode_utf16().collect();
+    let url: Vec<u16> = codex_thread_uri(thread_id)
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect();
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            verb.as_ptr(),
+            url.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    if result as isize <= 32 {
+        return Err("Windows could not open the Codex App thread link".into());
     }
     Ok(())
 }
