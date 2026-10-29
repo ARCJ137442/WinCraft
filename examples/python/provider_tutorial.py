@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
-from client import Client, RpcError, add_runtime_args, require_runtime
+from client import Client, RpcError, add_runtime_args, event_world_id, require_runtime
 from theme_demo import sample_theme
 
 LESSONS: tuple[tuple[str, str], ...] = (
@@ -592,7 +592,7 @@ async def run(args: argparse.Namespace) -> None:
 
                 event_name = message.get('event')
                 data = message.get('data', {})
-                if event_name == 'world.deleted' and data.get('world_id') == world_id:
+                if event_name == 'world.deleted' and event_world_id(message) == world_id:
                     deleted = True
                     return
                 if event_name in ('connection.error', 'connection.closed'):

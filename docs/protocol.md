@@ -114,6 +114,8 @@ WebView 通过 caller-bound Tauri IPC 携带 node_id、value、expected_revision
 
 `world.snapshot` 仅向有读资格的会话发送；`interaction` 仅向当次写入者；`world.deleted` 发给原成员。UI 首次监听建立后读取快照，使用 sequence 拒绝晚到旧快照。
 
+`world.deleted` 的生命周期封套是 `{"event":"world.deleted","world_id":"<uuid>"}`，`world_id` 位于事件顶层，不包在 `data` 中。`interaction` 则使用前述 `data` 对象。Provider 收到匹配自身 world 的删除事件后应停止该窗口处理并跳过重复销毁；若事件丢失、销毁返回 `NOT_FOUND`，先用只读 `world.snapshot` 确认该 world 已不存在，不盲目重试。
+
 `event.subscribe` 只对当前 session 已加入的世界有效，最多注册 32 个会话级订阅；离开/销毁世界或断开连接时自动清理。当前只支持 `window.geometry_changed` 与 `window.visibility_changed` 两种 `delivery:"state"` 事件。事件含 event/subscription/world ID、world `sequence`、`window_revision`、来源和可选 `cause_id`，payload 只含最新窗口状态；几何事件携带物理 `position` 或语义 `anchor`，尺寸为逻辑像素。读取者可订阅，但订阅本身不会授予加入、写租约或任何动作权限。
 
 状态事件可以合并；序号有间隔是合法的，接收方应采用最新状态，不能要求每一帧拖动都送达。`cause_id` 是造成该快照变化的直接请求或内部交互 ID，不是幂等键。`interaction` 仍是独立的 occurrence 通道，不能静默丢弃；广播滞后时服务端发 `resync_required` 并断开，提供者需重连、重新加入并重建。状态事件只通知观察者，宿主没有自动事件→动作规则。

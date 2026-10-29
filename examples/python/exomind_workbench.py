@@ -19,7 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
-from client import Client, add_runtime_args, require_runtime
+from client import Client, add_runtime_args, event_world_id, require_runtime
 
 MAX_RESPONSE_BYTES = 128 * 1024
 DEFAULT_POLL_INTERVAL = 1.0
@@ -686,7 +686,7 @@ async def run(args: argparse.Namespace) -> None:
                     continue
                 if message.get("event") in ("connection.error", "connection.closed", "provider.error"):
                     raise ConnectionError("WinCraft provider session disconnected")
-                if message.get("event") == "world.deleted":
+                if message.get("event") == "world.deleted" and event_world_id(message) == world_id:
                     deleted = True
                     return
                 if message.get("event") != "interaction":

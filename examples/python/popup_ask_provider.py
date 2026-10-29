@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from client import Client, add_runtime_args, require_runtime
+from client import Client, add_runtime_args, event_world_id, require_runtime
 
 DEFAULT_TIMEOUT_SECONDS = 1800
 MAX_TIMEOUT_SECONDS = 86400
@@ -348,9 +348,8 @@ def _terminal_for_host_message(
     - 🎯关闭是取消；连接中断保留为未知结果
     '''
     name = message.get('event')
-    data = message.get('data')
     if name == 'world.deleted':
-        if not isinstance(data, dict) or data.get('world_id') != world_id:
+        if event_world_id(message) != world_id:
             return None
         return module.cancelled_payload(module.CANCEL_REASON_WINDOW_CLOSED), True
     if name in ('connection.error', 'connection.closed', 'provider.error'):

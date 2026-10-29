@@ -48,6 +48,14 @@ The shared Python client keeps its event queue bounded and replaces adjacent que
 updates for the same subscription/type with the newest sequence. It preserves intervening
 occurrence messages such as `interaction` and `world.deleted` in order.
 
+`world.deleted` is a lifecycle occurrence, not a `window.event` payload. The server sends
+`{"event":"world.deleted","world_id":"<uuid>"}` with `world_id` at the top level;
+`interaction` uses `data.world_id`. Use `client.event_world_id(message)` to handle both
+envelopes, then compare the result with the provider's own world ID. On a matching delete,
+stop that world's loop and skip a second `world.destroy`. If the event was missed and
+destroy returns `NOT_FOUND`, confirm the world is absent with read-only `world.snapshot`
+before reporting cleanup complete; do not blindly retry a timed-out destroy.
+
 Window state events are observations. They do not trigger host actions, and subscribing
 does not authorize `window.configure`, cross-application actions, or any other write.
 The provider must still hold the current writer lease for writes. The host has no

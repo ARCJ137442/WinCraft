@@ -8,7 +8,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from client import Client, add_runtime_args, require_runtime
+from client import Client, add_runtime_args, event_world_id, require_runtime
 
 async def run(args: argparse.Namespace) -> None:
     async with Client(args.runtime, "python.focus-demo", args.ws_url) as c:
@@ -56,7 +56,7 @@ async def run(args: argparse.Namespace) -> None:
                 message = await c.events.get()
                 if message.get("event") in ("connection.error", "connection.closed", "provider.error"):
                     raise ConnectionError(message.get("error", "Disconnected"))
-                if message.get("event") == "world.deleted":
+                if message.get("event") == "world.deleted" and event_world_id(message) == world_id:
                     print("World was closed by the local operator.")
                     return
                 if message.get("event") != "interaction":

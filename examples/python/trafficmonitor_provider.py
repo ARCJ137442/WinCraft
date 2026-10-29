@@ -18,7 +18,7 @@ from typing import Any
 if __package__:
     from .client import Client, add_runtime_args, require_runtime
 else:
-    from client import Client, add_runtime_args, require_runtime
+    from client import Client, add_runtime_args, event_world_id, require_runtime
 
 BRIDGE_SCHEMA = "wincraft.trafficmonitor.v1"
 MAX_METRICS_BYTES = 16_384
@@ -205,7 +205,7 @@ async def run(args: argparse.Namespace) -> None:
                     event = await asyncio.wait_for(client.events.get(), timeout=args.interval)
                 except TimeoutError:
                     continue
-                if event.get("event") == "world.deleted" and event.get("data", {}).get("world_id") == world_id:
+                if event.get("event") == "world.deleted" and event_world_id(event) == world_id:
                     return
                 if event.get("event") in ("connection.error", "connection.closed"):
                     raise ConnectionError(event.get("error", "WinCraft connection closed"))

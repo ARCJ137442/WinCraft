@@ -24,6 +24,18 @@ class RpcError(RuntimeError):
         super().__init__(f"{self.code}: {error.get('message', '')}")
 
 
+def event_world_id(message: Any) -> str | None:
+    """Read a world ID from top-level lifecycle events or nested event data."""
+    if not isinstance(message, Mapping):
+        return None
+    value = message.get("world_id")
+    if isinstance(value, str) and value:
+        return value
+    data = message.get("data")
+    value = data.get("world_id") if isinstance(data, Mapping) else None
+    return value if isinstance(value, str) and value else None
+
+
 class EventQueue(asyncio.Queue[dict[str, Any]]):
     """Bounded event queue that retains only the newest queued state per subscription/type."""
 
@@ -542,3 +554,38 @@ def add_runtime_args(parser: Any) -> None:
 def require_runtime(parser: Any, args: Any) -> None:
     if not args.runtime:
         parser.error("--runtime PATH or WINCRAFT_RUNTIME is required; no default port is guessed")
+
+
+async def destroy_world_safely(
+    client: Client,
+    world_id: str,
+    lease: Mapping[str, Any],
+    *,
+    provider_name: str = "Provider",
+) -> None:
+    """Destroy only this provider's world and finish cleanup before propagating Ctrl+C."""
+    cleanup = asyncio.create_task(
+        client.call("world.destroy", {"world_id": world_id, "lease": dict(lease)})
+    )
+    was_cancelled = False
+    while not cleanup.done():
+        try:
+            await asyncio.shield(cleanup)
+        except asyncio.CancelledError:
+            was_cancelled = True
+        except Exception as exc:
+            raise RuntimeError(
+                f"{provider_name} world cleanup outcome is unknown; inspect the manager before retrying"
+            ) from exc
+    if cleanup.cancelled():
+        raise RuntimeError(
+            f"{provider_name} world cleanup was cancelled; inspect the manager before retrying"
+        )
+    error = cleanup.exception()
+    if error is not None:
+        raise RuntimeError(
+            f"{provider_name} world cleanup outcome is unknown; inspect the manager before retrying"
+        ) from error
+    print(f"{provider_name} world cleanup confirmed.", flush=True)
+    if was_cancelled:
+        raise asyncio.CancelledError

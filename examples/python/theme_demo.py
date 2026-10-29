@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from client import Client, RpcError, add_runtime_args, require_runtime
+from client import Client, RpcError, add_runtime_args, event_world_id, require_runtime
 
 DEFAULT_TITLE: str = 'Python 提供者 · 主题预览'
 '''预览世界的默认标题'''
@@ -93,7 +93,7 @@ async def run(args: argparse.Namespace) -> None:
                 message = await client.events.get()
                 name = message.get('event')
                 data = message.get('data', {})
-                if name == 'world.deleted' and isinstance(data, dict) and data.get('world_id') == world_id:
+                if name == 'world.deleted' and event_world_id(message) == world_id:
                     deleted = True
                     return
                 if name in ('connection.error', 'connection.closed', 'provider.error'):

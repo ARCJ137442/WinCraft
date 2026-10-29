@@ -273,6 +273,7 @@ async def check_scoped_world_discovery(
     owner: Client,
     observer: Client,
     private_world_id: str,
+    checks: list[str],
 ) -> None:
     '''验证 world.list 限于已加入或显式开放世界，且不隐含读取权限。'''
     fixture_title = 'Discovery fixture'
@@ -326,6 +327,7 @@ async def check_scoped_world_discovery(
                 message = await observer.events.get()
                 if message.get('event') == 'world.deleted' and message.get('world_id') == matches[0]['id']:
                     break
+        checks.append('world_deleted_top_level_id_reaches_original_member')
         await assert_no_window_event(observer, subscription['subscription_id'])
     finally:
         for item in created_worlds:
@@ -503,7 +505,7 @@ async def run(args: argparse.Namespace) -> None:
             checks.extend(['discovery_requires_bearer', 'origin_is_rejected'])
 
             async with Client(args.runtime, 'probe.reader-b', args.ws_url) as b:
-                await check_scoped_world_discovery(a, b, world_id)
+                await check_scoped_world_discovery(a, b, world_id, checks)
                 checks.extend([
                     'invite_world_metadata_hidden_until_membership',
                     'open_world_list_metadata_does_not_grant_read',

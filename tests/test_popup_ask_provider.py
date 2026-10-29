@@ -246,15 +246,19 @@ except PopupInstanceBusyError:
             cancelled_payload=lambda reason: {'status': 'cancelled', 'reason': reason},
             error_payload=lambda message: {'status': 'error', 'message': message},
         )
-        self.assertEqual(
-            popup._terminal_for_host_message(
-                module,
-                {'event': 'world.deleted', 'data': {'world_id': 'current'}},
-                'current',
-                {'unknown': 'outcome unknown'},
-            ),
-            ({'status': 'cancelled', 'reason': 'window_closed'}, True),
-        )
+        for deleted_event in (
+            {'event': 'world.deleted', 'world_id': 'current'},
+            {'event': 'world.deleted', 'data': {'world_id': 'current'}},
+        ):
+            self.assertEqual(
+                popup._terminal_for_host_message(
+                    module,
+                    deleted_event,
+                    'current',
+                    {'unknown': 'outcome unknown'},
+                ),
+                ({'status': 'cancelled', 'reason': 'window_closed'}, True),
+            )
         self.assertIsNone(
             popup._terminal_for_host_message(
                 module,
