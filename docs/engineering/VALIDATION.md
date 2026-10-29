@@ -659,7 +659,7 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 |---|---|---|
 | 未选择来源的拒绝与未知来源校验 | PASS（单测） | 定向测试验证空列表、重复项及未知 source ID 均在启动 CLI 适配器前失败关闭。|
 | `codex` + `claude-code` source selection | PASS（单测） | 43 项 live-source/overview 定向测试通过；未选 Codex App 时不调用 Desktop SQLite/rollout fallback，不保留上一轮 App 行，UI 标记“本轮未查询”。|
-| `npm run check:local` / CodeGraph | PASS | 本次工作树 28 项 Node UI、116 项 Rust workspace、159 项 Python 测试，契约与 27 个 Provider Skill 引用通过；CodeGraph 同步 5 个源文件后为 85 files、2,191 nodes、current。|
+| `npm run check:local` / CodeGraph / GitHub Actions | PASS | 本次工作树 28 项 Node UI、116 项 Rust workspace、159 项 Python 测试，契约与 27 个 Provider Skill 引用通过；CodeGraph 为 85 files、2,191 nodes、current。提交 `115cdc8` 的 GitHub Actions run [40914976329](https://github.com/exomind-team/WinCraft/actions/runs/40914976329) 在 Windows 上完整通过，耗时 7m59s。|
 | 当前真实 Codex CLI / Claude 只读 adapter | PASS（本机只读） | 一次聚合快照显示 Codex CLI 来源 `online`、0 条可列会话；Claude `agents --json` 来源 `online`、2 条 `blocked` 后台 Agent。仅将来源健康和状态计数写入本机摘要，没有保存会话名称、项目、ID、输出或原始响应。|
 | 当前 Tauri release global overview | PASS（协议/scene） | 当前 release 上以 `--sources codex claude-code` 运行实时只读 Provider：较早 60 秒 smoke 提交 4 次场景，最新 30 秒 smoke 提交 2 次；均退出 0 并走自身世界清理路径。Codex CLI 来源 `online`/0 条列表行，Claude 来源 `online`/2 条 `blocked` 后台 Agent；Codex App 标记 `not_requested` 且未读取。该 run 不提供像素截图或托盘验收。|
 | 当前 release 像素验收 | NOT_RUN | Computer Use 窗口重新激活仍失败；不重试旧句柄/坐标，列表密度、真实点击和 DPI/多屏由人工按指南验收。|
