@@ -518,6 +518,7 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | `npm run check:local` | PASS | 28 Node UI tests、138 Python tests、Rust workspace fmt/check/test/Clippy、离线契约与 Provider Skill 引用校验均通过。|
 | `npm run desktop:build` | PASS | 当前 release 产物为 `target/release/wincraft-desktop.exe`。Python provider 场景无需重新编译宿主，但本次仍重建了 release。|
 | GitHub Actions run `40852232278` / commit `6a44c00` | PASS | Windows hosted `npm run check:local` 通过，用时 11m26s；workflow 不启动 Tauri 窗口，也不替代本机原生/人工验收。|
+| GitHub Actions run `40853925244` / commit `d5987b3` | PASS | 后续文档同步提交的 Windows hosted `npm run check:local` 通过，用时 11m12s；不增加原生 UI 验收证据。|
 | Tauri release + 合成 ASCII bridge smoke | PASS（L3 可访问性） | Computer Use accessibility tree 在真实 release 窗口中看到会话名、状态、项目和输出四项，以及来源健康与相对更新时间。样例内容为合成 Smoke/Demo，不代表真实 Codex App 会话。|
 | Codex App 实际快照进入 release Provider | BLOCKED | 当前本地执行器的 PTY/stdin 不能稳定将真实 connector JSONL 行送入持续 Provider；实际窗口仍正确显示“等待 Agent 桥接”。Codex App 打开本身不会自动向 Provider 推送快照。需要验证一个持久 Agent→Provider stdin relay。|
 | Codex App 原生深链接点击与目标加载 | NOT_RUN | 只通过单元测试验证 UUID-only `codex://threads/<UUID>` allowlist；本轮没有确认实际点击和目标会话加载。|
@@ -529,6 +530,6 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `adb devices -l` | BLOCKED | 命令成功，列表为空；旧 adb daemon 自动重启。未读取设备内容、应用列表或通知。|
+| `adb devices -l` | PASS（仅设备可见性） | 命令成功，当前有 1 台在线设备、1 台离线设备；设备 ID 与型号未保存。未枚举应用、请求通知权限或读取通知。|
 
-没有连接真机，也未选择通知应用或授予通知权限；B09-02 保持 `BLOCKED`，等待设备与授权条件，不把合成信封结果当成 Android 验收。
+B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授予通知权限。后续只能在明确选择与授权后读取脱敏摘要；不把合成信封结果当成 Android 验收。

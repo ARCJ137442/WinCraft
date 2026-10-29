@@ -1641,7 +1641,8 @@
       ],
       "level": "L5-L6",
       "criterion": "未授权应用通知不被读取或上传",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence": "BLOCKED: one ADB device is online, but no app/source or notification permission was selected. No app enumeration or notification read occurred."
     },
     {
       "id": "B09-02-A2",
@@ -1652,7 +1653,8 @@
       ],
       "level": "L5-L6",
       "criterion": "摘要带来源时间与不确定性",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence": "BLOCKED: one ADB device is online, but no app/source or notification permission was selected. No app enumeration or notification read occurred."
     },
     {
       "id": "B09-02-A3",
@@ -1663,7 +1665,8 @@
       ],
       "level": "L5-L6",
       "criterion": "用户撤销后停止监听与后续转发",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence": "BLOCKED: one ADB device is online, but no app/source or notification permission was selected. No app enumeration or notification read occurred."
     },
     {
       "id": "B09-03-A1",
