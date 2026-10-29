@@ -1388,8 +1388,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲",
-      "status": "BLOCKED",
-      "evidence": "Claude Code and Codex CLI are independently read; a synthetic Codex App row renders, but the actual Codex App connector snapshot did not reach the release Provider."
+      "status": "PARTIAL",
+      "evidence": "Claude Code and Codex CLI are independently read; Codex Desktop local-state metadata is read-only and a real authorized Codex App list/read snapshot reached the live Provider once. Native visible rendering and persistent relay remain unverified."
     },
     {
       "id": "B08-02-A2",
@@ -1430,8 +1430,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开",
-      "status": "BLOCKED",
-      "evidence": "Current release UIA displayed title, status, project and output from a synthetic snapshot. Actual connector data was not visible; UUID-only native click/load remains NOT_RUN."
+      "status": "PARTIAL",
+      "evidence": "Unit tests cover title/status/project/output and UUID-only action; a real authorized App snapshot reached the live Provider once. Computer Use reactivation failed before screenshot verification, and native UUID click/load remains NOT_RUN."
     },
     {
       "id": "B08-02-A5",
@@ -1444,8 +1444,8 @@
       ],
       "level": "L2-L5",
       "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界",
-      "status": "BLOCKED",
-      "evidence": "Source health/age and stale TTL render in tests and synthetic UIA. Real Codex App connector freshness is unavailable because the snapshot did not reach the release Provider."
+      "status": "PARTIAL",
+      "evidence": "Source freshness and stale TTL are covered by tests; a real captured_at MCP snapshot reached the Provider once. Screenshot verification and continuous relay freshness remain NOT_RUN."
     },
     {
       "id": "B08-03-A1",
@@ -1551,8 +1551,8 @@
       ],
       "level": "L1-L5",
       "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露",
-      "status": "BLOCKED",
-      "evidence": "Current release UIA showed the four card fields from synthetic Codex App data. Real connector data remains blocked; no real session display is claimed."
+      "status": "PARTIAL",
+      "evidence": "Synthetic release UIA covered the card layout; a real authorized Codex App list/read snapshot reached the current Provider and local Desktop metadata fallback is implemented. Pixel-level release presentation, continuous freshness and native thread navigation remain NOT_RUN."
     },
     {
       "id": "B08-04-A1",

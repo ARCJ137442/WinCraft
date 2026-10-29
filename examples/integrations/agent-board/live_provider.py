@@ -164,15 +164,14 @@ async def run(args: argparse.Namespace) -> None:
     app_snapshot_task: asyncio.Task[dict[str, Any] | None] | None = None
     async with Client(args.runtime, 'python.agent-board.global-overview.live', args.ws_url) as client:
         codex_app_links_enabled = False
-        if args.codex_app_bridge:
-            try:
-                client.require_capabilities(
-                    button_features=('external_window_actions', 'codex_thread_navigation')
-                )
-                codex_app_links_enabled = True
-            except RuntimeError:
-                # App statuses remain readable; host navigation fails closed without the capability.
-                codex_app_links_enabled = False
+        try:
+            client.require_capabilities(
+                button_features=('external_window_actions', 'codex_thread_navigation')
+            )
+            codex_app_links_enabled = True
+        except RuntimeError:
+            # Local metadata remains readable; navigation fails closed without host capability.
+            codex_app_links_enabled = False
 
         created = await client.call(
             'world.create',
@@ -203,9 +202,10 @@ async def run(args: argparse.Namespace) -> None:
                 client, world_id, lease, snapshot, state
             )
             print(
-                'Live Agent Overview reads Claude Code agents --json and Codex CLI '
-                'thread/list with useStateDbOnly=true. Codex App connector snapshots are '
-                'accepted only from the authorized Agent stdin bridge; no session logs are read.',
+                'Live Agent Overview reads Claude Code agents --json, Codex CLI thread/list '
+                'with useStateDbOnly=true, and bounded Codex Desktop local metadata. Only '
+                'the matched latest agent_message may be read from a local rollout tail; '
+                'Codex App connector snapshots are accepted from the authorized Agent stdin bridge.',
                 flush=True,
             )
 

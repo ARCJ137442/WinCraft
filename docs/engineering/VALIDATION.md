@@ -592,3 +592,46 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | `adb devices -l` | PASS（仅设备可见性） | 命令成功，当前有 1 台在线设备、1 台离线设备；设备 ID 与型号未保存。未枚举应用、请求通知权限或读取通知。|
 
 B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授予通知权限。后续只能在明确选择与授权后读取脱敏摘要；不把合成信封结果当成 Android 验收。
+
+## 2026-10-29 Agent Activity 三来源会话卡片与输出增量
+
+**Given** Codex CLI、Codex App、Claude Code 的独立只读会话投影；**When** 打开默认总览或某个来源页；**Then** 会话卡片按 Codex App 截图的密度显示名称、状态、项目与可归因的最近 Agent 输出，较长内容通过来源页/详情渐进披露。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_agent_live_sources tests.test_agent_global_overview -v` | PASS | 38 项定向行为测试通过。覆盖三种来源同一张卡片上的四个字段、Codex Desktop local-state 回退/connector 去重合并、未知状态不计作运行、rollout UUID 匹配、敏感文本脱敏、Codex 最近四线程读取上限/进程内缓存，以及 Claude 日志尾部只取 assistant 文本。 |
+| `npm run check:local` | PASS | 退出码 0：28 项 Node UI 测试、116 项 Rust workspace 测试、154 项 Python 测试；Rust fmt/check/Clippy、离线契约与 27 个 Provider Skill 引用检查通过。 |
+| 本机只读来源查询 | PARTIAL | Codex CLI app-server 与 Claude `agents --json` 查询可返回状态；本机 Codex CLI 没有可供验证的会话。Claude 返回的当前 session IDs 未与 `~/.claude/projects` 中 transcript 文件名匹配，因此没有真实 Claude Agent 输出被显示或保存。 |
+| Codex Desktop local-state fallback | PASS（合成与本机只读） | SQLite read-only 查询只选 `originator=Codex Desktop` 的有限线程；标题/项目进入同一会话卡片，没有权威运行状态时显示未知。session meta UUID 匹配后才从最近四条 rollout 尾部提取 Agent 消息；MCP bridge 对同一 thread ID 优先并不产生重复卡片。 |
+| 本机 Codex Desktop state DB / rollout smoke | PARTIAL | 本机只读查询发现 Desktop-originator 行并触发 128 行上限；本次最近四条有界 rollout 尾部没有找到可呈现的 `agent_message`，状态继续显示未知。没有显示或保存线程标题、路径、ID或消息正文。 |
+| Codex App MCP snapshot → live Provider | PASS（真实本机协议数据） | 当前 Codex App `list_threads` 与四条 `read_thread` 的有界消息快照经 stdin 进入独立 Provider；Provider 汇总报告 Codex App 来源 online/partial，随后临时世界清理确认。没有保存快照或输出片段；这证明真实数据到达 Provider，不证明像素布局或点击深链接。 |
+| 当前源码 release 的可见 UI | NOT_RUN | 本轮没有重建/重启 release 窗口或采集像素截图；Computer Use 恢复捕获失败，错误为 `failed to activate captured window`。现有 Tauri 进程仍在运行，Python scene 结构与来源映射由定向测试验证。 |
+| Codex App 标题深链接点击/目标加载 | NOT_RUN | Host 宣告能力并通过 UUID allowlist 的单测；本轮未点击真实 App thread 链接或确认目标会话加载。 |
+| Popup-Ask `surface_opacity=0.92` | PASS（代码/单测） | `npm run check:local` 中的 Popup 窗口规格回归通过；本轮未重新构建或实际打开新规格的 release Popup。 |
+| CodeGraph / diff 检查 | PASS | `npm run codegraph:sync` 无待同步文件；`npm run codegraph:status` 为 current（85 files、2,183 nodes）；`git -c core.whitespace=cr-at-eol diff --check` 退出码 0（工作树含 CRLF 文件）。 |
+
+来源输出只在 Provider 进程内短暂保留、裁剪与脱敏，不写入仓库、日志或证据。Codex CLI 的 `thread/read` 响应可能带有更早 turns，但只保留最多四个最近线程中的最后一条 `agentMessage`；`thread/list.preview`（通常是初始用户消息）不会显示。Claude 只读取唯一匹配 session ID 的日志尾部。无输出或身份无法匹配时 UI 明示不可用，不将用户提示、工具返回或其他会话内容伪装成 Agent 输出。Codex App 一次性 MCP 快照到 Provider 已实测；持续自动 relay、release 像素/深链接验收和 Claude 实际 transcript 映射仍未验收。
+
+## 2026-10-29 TeamSense 本机 Codex 数据源对照
+
+**Given** TeamSense 既有 Codex 本机采集代码与其 App 用量静态调查；**When** 评估是否可替代 WinCraft 的 Codex App connector；**Then** 只复用已证明的只读字段和来源边界，不把用量采集器说成实时会话/消息采集器。
+
+| 检查 | 状态 | 结论 |
+|---|---|---|
+| Codex rollout 与 state SQLite 采集实现 | PASS（源码审阅） | TeamSense `codex-usage-collector` 扫描 `sessions` / `archived_sessions` 的 JSONL，只解析 `event_msg.token_count`，用只读 `state_*.sqlite` 查询会话名、cwd、模型、source 与时间；游标状态本机持久化。它不读对话正文、Agent 输出或实时运行状态。 |
+| Codex 账号额度采集 | PASS（源码/契约审阅） | 独立 `codex_quota` 模块从本机 `auth.json` 在内存中取 access token/account ID，读取 `/backend-api/wham/usage`，再核对请求期间账号是否切换；报告不含访问令牌。该私有 quota 路径与 rollout 历史分开，不等于 Codex App 分析图表 API。 |
+| Codex Desktop 静态分析 | PARTIAL | TeamSense 调查文档记录了 App bundle 中的模块及若干相对 API 路径；没有实际请求验证个人账号图表端点、完整响应 Schema 或更新时间。现有本机采集器没有实现这些 analytics 路径。 |
+| 能否替代 WinCraft 的会话卡片 | NO | TeamSense 现有本机采集器可供研究本机 thread metadata，但不提供状态与最后 Agent 输出；自身 SQL 也未取 `originator` 作为 App/CLI 来源区分。WinCraft 的真实 App snapshot bridge 仍需单独打通。 |
+
+本次只读审阅了 TeamSense 源码、设计记录与本机 Codex 状态数据库字段；另对当前会话对应的 rollout 尾部做了 256 KiB 的结构检查，仅输出事件类别与文本长度，不展示或持久化消息正文。没有读取 `auth.json`、修改 TeamSense 或对 TeamSense 服务发起写入。TeamSense 的后续来源字段与 rollout 输出读取可作为 WinCraft 新适配器的设计参考，不能直接视为已接入或已验收。
+
+### Codex Desktop 本机元数据回退场景
+
+**Given** 本机 Codex `state_*.sqlite` 中唯一标记为 `originator=Codex Desktop` 的线程元数据，**When** Agent bridge 没有快照而本机数据库可读，**Then** 默认总览仍显示经脱敏的会话名与项目；没有受信状态时显示“状态未知”，只有 rollout 中精确匹配 session meta 的 `agent_message` 才可显示为最近 Agent 输出。Bridge 对同一 thread 提供权威字段时优先采用它；数据库缺字段、线程 ID 不匹配或 rollout 路径无法验证时失败关闭。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Codex Desktop `state_*.sqlite` local-state adapter | PASS（合成与本机只读） | SQLite 以 read-only/query-only 打开；只选 `originator=Codex Desktop`、最近有界行、非 archived 记录。title/name 与 cwd 末级项目进入会话卡片，原始路径/ID不进入 scene；没有实时 App status 时明确为未知。本机查询因来源数量到达上限标 partial。 |
+| rollout 尾部 Agent 输出 | PASS（合成） / PARTIAL（本机） | 只接受 sessions/archived_sessions 中以 `rollout-*.jsonl` 命名、且头部 `session_meta.payload.id` 与线程 UUID 匹配的文件；最多读取尾部 1 MiB，仅抽取 `event_msg.agent_message` 或 `task_complete.last_agent_message`，输出裁剪/脱敏并只保存在进程内。本机最近四条有界尾部未找到可呈现 Agent 消息，故真实输出仍不可验证。 |
+| MCP bridge 与本机状态合并 | PASS（合成） | 同一 thread ID 不重复；connector 状态/项目/输出优先，本机可见但 connector 未覆盖的线程保留并使来源标为 partial。 |
+| 当前源码 release / 实时 APP 卡片 | NOT_RUN | 本地 Agent Activity 窗口的重新激活返回 `failed to activate captured window`；按 Computer Use 恢复规则停止进一步 UI 输入。Tauri Host 仍运行，临时 Provider 已到时限退出；没有截图级 PASS。 |

@@ -36,6 +36,8 @@ external business system.
 - One temporary world contains the request and all questions. Options are typed buttons;
   single- and multi-select state is provider-owned. Selected-option previews are
   rendered as ordinary `text` components.
+- The Popup-Ask question window requests `surface_opacity=0.92` for readability;
+  this provider-specific setting does not change the passive HUD default of `0.8`.
 - Each question has a multiline `textarea`. Tab from the chosen option moves directly
   to its notes field. The current renderer allows up to 8192 UTF-16 code units per
   question and shows the count. Click **Save notes** to keep editing, or press Ctrl+Enter

@@ -22,6 +22,8 @@ from typing import Any
 from client import Client, add_runtime_args, event_world_id, require_runtime
 
 DEFAULT_TIMEOUT_SECONDS = 1800
+DEFAULT_POPUP_SURFACE_OPACITY: float = 0.92
+'''📜阻塞式问答窗比被动 HUD 更不透明，便于阅读与填写'''
 MAX_TIMEOUT_SECONDS = 86400
 POPUP_MUTEX_NAME = r"Local\WinCraft.PopupAsk.v1"
 
@@ -227,6 +229,7 @@ def build_window_spec(title: str, remembered: dict[str, Any]) -> dict[str, Any]:
         "title": title[:100],
         "width": remembered.get("width", 620.0),
         "height": remembered.get("height", 520.0),
+        "surface_opacity": DEFAULT_POPUP_SURFACE_OPACITY,
     }
     position = remembered.get("position")
     if isinstance(position, dict) and type(position.get("x")) is int and type(position.get("y")) is int:

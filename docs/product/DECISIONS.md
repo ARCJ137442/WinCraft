@@ -10,7 +10,7 @@
 |---|---|
 | 世界就是窗口 | UUID 寻址一个窗口实例；不暗含永久存档 |
 | 业务状态外置、运行状态可重建 | 宿主不维护外心计时/任务/笔记的另一份权威业务状态 |
-| 全局 Harness 纵览单窗切换与渐进披露 | 一个悬浮世界聚合用户选定的来源/实例/会话；Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App connector 是三种独立来源，采集方式、来源健康和会话状态分别表达。Codex App 行显示会话名、状态、项目与最近 Agent 输出；按来源/实例/会话切换并按需展开详情；身份、新鲜度与撤销状态可辨，完整日志和操作权限不默认披露 |
+| 全局 Harness 纵览单窗切换与渐进披露 | 一个悬浮世界聚合用户选定的来源/实例/会话；Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App connector 是三种独立来源，采集方式、来源健康和会话状态分别表达。会话卡片显示名称、状态、项目与最近 Agent 输出；按来源/实例/会话切换并按需展开详情；身份、新鲜度与撤销状态可辨，完整日志和操作权限不默认披露 |
 | 多读单写，先窗口再组件 | 首版整个世界只有一个活动写租约；其他会话只能看不可变快照 |
 | 无固定绑定/常客 | 加入、租约、动作路由仅在内存中；断线即清理会话 |
 | 宿主托盘化、管理界面自用 | 不需常驻主窗口；管理器是内部提供者生成的世界 |
@@ -30,6 +30,7 @@
 | 健康连接状态降噪 | provider 世界正常 `online` 时不显示“已连接”状态行/徽标；启动、断开、过期、错误等异常状态仍显示 |
 | Windows 虚拟桌面范围 | 每个窗口默认只出现在当前 Windows 虚拟桌面；provider 可请求“显示在所有桌面”，TrafficMonitor/外心悬浮工作台是开启示例。该决定已记录，但 Windows 公共 Tauri API 尚不能实现该 pinning，不能先提供假成功开关 |
 | 悬浮工作面默认半透明 | 默认 `surface_opacity=0.8`，窗口保持原生透明背景；provider 可读取快照并用 `window.configure` 调整该值 |
+| 阻塞式提问窗可更不透明 | Popup-Ask 属于需要阅读和填写的临时窗口，可以采用高于被动 HUD 的不透明度；不改变其他窗口的 0.8 默认 |
 | 窗口文本默认可选 | `text_selectable=true`；provider 可读写窗口级默认，组件样式可覆盖，标题栏始终不可选 |
 | 国际化从早期进入 | host 自有静态文案提供 `zh-CN` 与 `en-US` key catalog；机器 ID 不翻译；provider 原始文本不自动翻译；内部管理器提供语言切换 |
 | 受限主题与可信界面分离 | provider 可用有限 theme tokens 贴近来源软件；不接受 CSS/HTML/JS/远程资源；标题栏、来源身份、权限与接管区域由 host 控制；本机缩放、高对比与减少动画优先于 provider 主题 |
@@ -51,6 +52,8 @@
 - 首批 10 个组件；前端采用无框架 TypeScript，而非搬入整个外心 React 应用。Tauri 原生窗口与外心窗口模式保留。
 - 限制 16 个世界（包含内部管理器）、每世界 256 节点/深度 16、单消息 256 KiB，以便先验证完整链路。
 - 管理器为进程内可信提供者，与外部同用 Engine/Scene/事件语义；它有明确的本地操作员权限，不要求绕本机 WebSocket 自发 HTTP。
+- Agent Activity 总览最多预览两条 Codex CLI、两条 Codex App、三条 Claude Code 会话；Codex CLI 只读取最近四个线程的 `agentMessage`，Claude 仅在 session ID 唯一匹配本地 transcript 时读取其有界尾部。Codex App 可从本机只读 state DB 的 `Codex Desktop` originator 取得标题/项目，并只解析经过 session meta 匹配的有限 rollout 尾部；该路径不提供运行状态，状态保持未知；授权 Agent bridge 按 thread ID 补充或覆盖实时字段。来源不给出或不能唯一匹配输出时明确显示不可用，不从用户提示或工具结果推断。
+- Popup-Ask provider 按上述可读性要求把自身窗口默认不透明度设为 `0.92`；这是本轮实施值，其他窗口仍按全局默认 `0.8` 或各自 provider 配置。
 - 协议接受表示权威模型已更新，不保证 OS 已应用；native report 单独说明成功/失败。
 
 ## 未决定或未完成

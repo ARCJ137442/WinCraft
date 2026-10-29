@@ -435,11 +435,17 @@ except PopupInstanceBusyError:
         self.assertEqual(window, {
             "title": "Next question", "position": {"x": -240, "y": 80},
             "width": 640.0, "height": 520.0,
+            "surface_opacity": popup.DEFAULT_POPUP_SURFACE_OPACITY,
         })
         self.assertNotIn("world_id", window)
         self.assertEqual(popup.build_window_spec("Fresh", {}), {
             "title": "Fresh", "width": 620.0, "height": 520.0,
+            "surface_opacity": popup.DEFAULT_POPUP_SURFACE_OPACITY,
         })
+
+    def test_popup_ask_opacity_is_higher_than_passive_hud_default(self):
+        self.assertEqual(popup.DEFAULT_POPUP_SURFACE_OPACITY, 0.92)
+        self.assertGreater(popup.build_window_spec("Prompt", {})["surface_opacity"], 0.8)
 
 
 if __name__ == "__main__":

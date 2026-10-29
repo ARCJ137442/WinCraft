@@ -82,11 +82,12 @@ from an Agent that has the authorized Codex App MCP tools. The Agent can resolve
 active threads; connector summaries are labeled separately. The Python Provider does
 not invoke `mcp__codex_app` itself.
 
-Opening Codex App alone does not send a snapshot to the Provider. The source stays
-`等待 Agent 桥接` until an authorized Agent supplies one. Codex App rows show the
-conversation title, status, project and a bounded recent-output excerpt; opening details
-reveals more of the same output. Exact assistant messages and connector summaries are
-labeled differently.
+Opening Codex App alone does not send a connector snapshot to the Provider. The
+read-only local state fallback can still show rows explicitly marked `Codex Desktop`,
+with unknown status when no live status source is available. Recent Agent text is shown
+only when a bounded, session-ID-matched rollout tail contains an `agent_message`;
+otherwise the card says the output is unavailable. An authorized Agent bridge can add
+live status and exact output excerpts; connector summaries are labeled separately.
 
 The bridge accepts only `thread_id`, `title`, `status`, `project_label`, a bounded
 `last_agent_output`, its `last_output_kind`, and a source order. It does not accept
@@ -114,14 +115,46 @@ Codex App deep link.
 
 ## Shared session card fields
 
-The source tabs use one session-card shape: name, status, project label and the latest
-source text that can be represented truthfully. Codex App connector snapshots can
-provide an exact bounded `agent_message`. Codex CLI `thread/list` can provide a
-bounded `preview`, but does not identify its speaker; the UI labels it as an
-unattributed conversation preview. Claude Code `agents --json` provides name/state/
-cwd but no latest-output field, so the UI says the source does not provide one instead
-of reading session logs. CLI project labels use only the last working-directory
-segment; absolute paths and source session IDs are not rendered.
+The default overview and source tabs use the same compact session-card shape: name,
+status, project label, and a bounded latest-output excerpt. The default overview shows
+up to two Codex CLI sessions, two Codex App sessions, and three Claude Code sessions;
+source tabs reveal the rest. Per-session details reveal a longer bounded excerpt and
+the source freshness.
+
+Codex App cards can fall back to the local Codex Desktop state database. The provider
+opens the newest `state_*.sqlite` read-only, filters rows by the exact
+`originator=Codex Desktop` marker, and uses only thread identity, title/name, cwd,
+updated time, archive state, and the local rollout pointer. Without an authorized live
+snapshot, thread status remains `unknown`. For at most four recent rows, the provider
+accepts only a `rollout-*.jsonl` path under a sessions directory whose
+`session_meta.payload.id` matches the thread UUID, then reads a bounded 1 MiB tail and
+extracts only `event_msg.agent_message` or `task_complete.last_agent_message`. User
+messages, tool output, reasoning, absolute paths, and unmatched rollouts stay out of
+the card. The local state query never writes to SQLite; its output cache is process
+memory only.
+
+An authorized Codex App bridge snapshot can enrich a matching local row with the live
+status, project and output by thread ID; the connector record takes precedence for that
+thread while local-only rows remain visible. A mixed local/bridge list is marked
+partial. Local state provenance is `local-state-db`; it is distinct from the
+`official-api` connector provenance. Codex CLI uses
+`thread/list` with `useStateDbOnly=true`, then calls read-only
+`thread/read` for at most the four most recently updated threads and extracts only the
+last `agentMessage`; the app-server response may contain earlier turns, but they are
+discarded in memory. The `thread/list` preview is ignored because it usually contains
+the initial user message; when no `agentMessage` is available, the card reports no
+recent Agent output. Claude Code uses `agents --json` session IDs
+to seek one exact transcript file under its local projects directory and reads at most
+the last 256 KiB; only the latest assistant text block is kept, while user messages,
+thinking blocks, tool results, and absolute paths are omitted. If the CLI session cannot
+be uniquely matched to a transcript, the output remains unavailable rather than being
+guessed from another conversation. Both CLI adapters clip and redact the selected text
+and keep it only in process memory. They never write transcript text to the repository,
+logs, or evidence. CLI project labels use only the last working-directory segment;
+absolute paths and source session IDs are not rendered.
+
+When a source does not expose a usable Agent message, the card says `暂无最近 Agent
+输出`; it does not relabel a user prompt or tool output as an Agent response.
 
 ## Validate the model
 

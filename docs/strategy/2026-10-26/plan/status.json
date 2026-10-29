@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-02 BLOCKED on the real Codex App connector relay; B09-02 BLOCKED pending Android source selection/permission; B08-03 synthetic session-card rendering verified, five-Harness/component-owner criteria still open.",
-  "next_action": "Keep B08-02 BLOCKED until an authorized current Codex App connector snapshot is confirmed in the persistent release Provider and UUID-only navigation is tested. Synthetic PTY snapshot delivery is verified in the current Windows release, but it is not the live connector. Continue independent release/manual gates and B03/B04 work. For B09-02, wait for the user-selected Android app/source and notification permission.",
+  "active_batch": "B08-02 BLOCKED on release UI/deep-link and sustained Codex App relay acceptance; one real Agent-fed snapshot now reached the Provider and a read-only local-state fallback supplies bounded metadata. B09-02 remains BLOCKED pending Android source selection/permission; B08-03 synthetic session-card rendering is verified, five-Harness/component-owner criteria remain open.",
+  "next_action": "Use the current running release Host to inspect the updated provider scene when Computer Use can capture the world; verify the Codex Desktop local-state cards and a real authorized MCP snapshot, then test UUID-only thread navigation. Keep status unknown when no live App status or Agent message is supplied. The current source edits are provider/schema/documentation-only, so they do not require a new Tauri binary for this protocol check. Continue independent release/manual gates and B03/B04 work. For B09-02, wait for the user-selected Android app/source and notification permission.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -129,7 +129,8 @@
     "2026-10-29: B01-03 runtime inventory verified at L1-L2: 0.4-preview provider.inventory.register/list is capability-gated, endpoint-scoped, bounded and metadata-only; grants are never accepted from providers; duplicate names remain separate by instance_id; disconnect/expiry and world-membership isolation pass through loopback WebSocket tests. Stable 0.3 world.list is unchanged.",
     "2026-10-29: B09-02 availability recheck found one online and one offline ADB device; no app list, notification permission or notification content was accessed. Task remains BLOCKED pending the user-selected app/source and permission.",
     "2026-10-29: Global Overview cards now show name/status/project/source text with truthful source labels. The current Windows release UIA rendered four Codex App fields from a synthetic PTY snapshot; real Codex App connector delivery did not appear, so B08-02 is BLOCKED and no real session is claimed.",
-    "2026-10-29: Stage commit 32c8eee was pushed to exomind-team/WinCraft/dev; GitHub Actions run 40876095509 passed Windows npm run check:local in 11m42s. This confirms automated source checks only; native tray, pixel and live Codex App connector acceptance remain separate."
+    "2026-10-29: Stage commit 32c8eee was pushed to exomind-team/WinCraft/dev; GitHub Actions run 40876095509 passed Windows npm run check:local in 11m42s. This confirms automated source checks only; native tray, pixel and live Codex App connector acceptance remain separate.",
+    "2026-10-29: Added read-only Codex Desktop state_*.sqlite fallback keyed by originator=Codex Desktop. It supplies bounded title/project metadata, marks missing runtime status unknown, and reads only a rollout tail with matching session_meta UUID for agent_message/task_complete output. A real authorized Codex App list/read snapshot was sent once to the current live Provider; source data reached the Provider and the temporary world was cleaned. No snapshot text was persisted. Current local state smoke found no Agent message in the four recent bounded rollout tails; release UI pixels and UUID deep-link acceptance remain NOT_RUN after Computer Use returned failed to activate captured window."
   ],
   "history": [
     null,

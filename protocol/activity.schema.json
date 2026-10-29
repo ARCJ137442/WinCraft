@@ -71,7 +71,7 @@
     "summary": { "type": "string", "maxLength": 256 },
     "control_capabilities": { "const": [] },
     "provenance": {
-      "enum": ["synthetic", "official-api", "official-cli", "explicit-hook", "approved-log"]
+      "enum": ["synthetic", "official-api", "official-cli", "local-state-db", "explicit-hook", "approved-log"]
     }
   },
   "required": [
@@ -104,7 +104,7 @@
       },
       "then": {
         "required": ["project_label", "codex_app_thread_id", "last_output_kind"],
-        "properties": { "provenance": { "const": "official-api" } }
+        "properties": { "provenance": { "enum": ["official-api", "local-state-db"] } }
       }
     },
     {

@@ -1,5 +1,7 @@
 import json
+import sqlite3
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,6 +21,7 @@ from global_overview import (  # noqa: E402
 )
 from live_sources import (  # noqa: E402
     LIVE_SOURCE_LABELS,
+    LiveSnapshot,
     SourceReadError,
     load_live_snapshot,
     merge_codex_app_snapshot,
@@ -26,6 +29,12 @@ from live_sources import (  # noqa: E402
     normalize_claude_agents,
     normalize_codex_threads,
     summarize_live_snapshot,
+    _codex_last_agent_output,
+    _read_claude_latest_outputs,
+    _read_claude_last_agent_output,
+    _read_codex_rollout_agent_output,
+    _read_codex_latest_outputs,
+    read_codex_app_local_threads,
 )
 
 NOW = datetime(2026, 10, 29, 8, 0, tzinfo=timezone.utc)
@@ -37,7 +46,63 @@ def walk_nodes(node):
         yield from walk_nodes(child)
 
 
+def create_codex_app_state_fixture(root, rows):
+    root.mkdir(parents=True, exist_ok=True)
+    database = root / 'state_fixture.sqlite'
+    connection = sqlite3.connect(database)
+    try:
+        connection.execute(
+            'CREATE TABLE threads ('
+            'id TEXT, title TEXT, name TEXT, cwd TEXT, model TEXT, source TEXT, '
+            'tokens_used INTEGER, updated_at_ms INTEGER, originator TEXT, '
+            'rollout_path TEXT, archived INTEGER)'
+        )
+        for row in rows:
+            rollout_path = None
+            if row.get('agent_output') is not None:
+                rollout_path = root / 'sessions' / '2026' / '10' / '29' / f"rollout-{row['id']}.jsonl"
+                rollout_path.parent.mkdir(parents=True, exist_ok=True)
+                entries = [
+                    {'type': 'session_meta', 'payload': {'id': row['id']}},
+                    {'type': 'event_msg', 'payload': {'type': 'user_message', 'message': 'synthetic private prompt'}},
+                    {'type': 'event_msg', 'payload': {'type': 'agent_message', 'message': row['agent_output']}},
+                    {'type': 'event_msg', 'payload': {'type': 'tool_output', 'message': 'synthetic tool output'}},
+                ]
+                rollout_path.write_text(
+                    ''.join(json.dumps(entry) + '\n' for entry in entries),
+                    encoding='utf-8',
+                )
+            connection.execute(
+                'INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (
+                    row['id'],
+                    row.get('title', ''),
+                    row.get('name'),
+                    row.get('cwd', ''),
+                    row.get('model'),
+                    row.get('source', 'vscode'),
+                    row.get('tokens_used', 0),
+                    row.get('updated_at_ms', 0),
+                    row.get('originator', 'Codex Desktop'),
+                    str(rollout_path) if rollout_path else None,
+                    row.get('archived', 0),
+                ),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+    return database
+
+
 class LiveSourceNormalizationTests(unittest.TestCase):
+    def setUp(self):
+        local_state = patch(
+            'live_sources.read_codex_app_local_threads',
+            return_value=([], 'unavailable'),
+        )
+        local_state.start()
+        self.addCleanup(local_state.stop)
+
     def test_codex_app_snapshot_keeps_requested_fields_and_redacts_preview(self):
         thread_id = '00000000-0000-4000-8000-000000000001'
         payload = {
@@ -237,6 +302,165 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             ['First in connector order', 'Second in connector order'],
         )
 
+    def test_codex_desktop_local_state_adds_safe_metadata_and_agent_output(self):
+        desktop_id = '00000000-0000-4000-8000-000000000101'
+        cli_id = '00000000-0000-4000-8000-000000000102'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                root,
+                [
+                    {
+                        'id': desktop_id,
+                        'title': 'Synthetic Desktop title',
+                        'name': 'Synthetic Desktop session',
+                        'cwd': 'C:/Private/SyntheticProject',
+                        'originator': 'Codex Desktop',
+                        'updated_at_ms': 200,
+                        'agent_output': 'Synthetic Agent reply token=synthetic-secret C:\\Private\\note.md',
+                    },
+                    {
+                        'id': cli_id,
+                        'title': 'Synthetic CLI session',
+                        'cwd': 'C:/Private/OtherProject',
+                        'originator': 'Codex CLI',
+                        'updated_at_ms': 100,
+                    },
+                    {
+                        'id': '00000000-0000-4000-8000-000000000104',
+                        'title': 'Synthetic Desktop without output',
+                        'cwd': 'C:/Private/SecondProject',
+                        'originator': 'Codex Desktop',
+                        'updated_at_ms': 150,
+                    },
+                    {
+                        'id': '00000000-0000-4000-8000-000000000103',
+                        'title': 'Archived Desktop session',
+                        'cwd': 'C:/Private/ArchivedProject',
+                        'originator': 'Codex Desktop',
+                        'archived': 1,
+                        'updated_at_ms': 50,
+                    },
+                ],
+            )
+            records, health = read_codex_app_local_threads(
+                observed_at=NOW,
+                sequence=6,
+                codex_root=root,
+            )
+
+        self.assertEqual(health, 'local_state')
+        self.assertEqual(len(records), 2)
+        record = next(item for item in records if item['codex_app_thread_id'] == desktop_id)
+        self.assertEqual(record['source_type'], 'codex-app')
+        self.assertEqual(record['provider_id'], 'codex-app-local-state')
+        self.assertEqual(record['display_name'], 'Synthetic Desktop session')
+        self.assertEqual(record['project_label'], 'SyntheticProject')
+        self.assertEqual(record['normalized_status'], 'unknown')
+        self.assertEqual(record['last_output_kind'], 'agent_message')
+        self.assertEqual(
+            record['summary'],
+            'Synthetic Agent reply [凭据已隐藏] [本机路径]',
+        )
+        ACTIVITY_VALIDATOR.validate(record)
+        with (
+            patch('live_sources.read_codex_app_local_threads', return_value=(records, 'local_state')),
+            patch('live_sources.read_codex_threads', return_value=([], 'online')),
+            patch('live_sources.read_claude_agents', return_value=([], 'online')),
+        ):
+            live_snapshot = load_live_snapshot(sequence=7, now=NOW)
+        self.assertEqual(live_snapshot.projection['source_health']['codex-app'], 'local_state')
+        self.assertEqual(
+            live_snapshot.projection['data_mode_label'],
+            '本机 Codex Desktop 状态库只读 · Agent 状态待桥接',
+        )
+        self.assertEqual(len(live_snapshot.records_by_source['codex-app']), 2)
+
+        projection = aggregate_activities(records, now=NOW)
+        projection.update(
+            {
+                'source_health': {'codex': 'online', 'codex-app': 'local_state', 'claude-code': 'online'},
+                'source_labels': LIVE_SOURCE_LABELS,
+                'data_mode_label': '本机 Codex Desktop 状态库只读',
+            }
+        )
+        scene, _, _ = build_global_overview_scene(projection, GlobalOverviewState())
+        preview = scene['data']['codex_app_preview'][0]
+        self.assertEqual(preview['project'], '项目：SyntheticProject')
+        self.assertEqual(
+            preview['output'],
+            '最近 Agent 输出：Synthetic Agent reply [凭据已隐藏] [本机路径]',
+        )
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '本机状态库可读')
+        self.assertEqual(scene['data']['summary']['codex_parallel'], '—')
+        app_scene, _, _ = build_global_overview_scene(
+            projection,
+            GlobalOverviewState(source='codex-app'),
+        )
+        source_summary = next(
+            node['props']['text']
+            for node in walk_nodes(app_scene['root'])
+            if node['id'] == 'global-source-summary'
+        )
+        self.assertIn('status unknown', source_summary)
+        serialized = json.dumps(scene, ensure_ascii=False)
+        for forbidden in (desktop_id, cli_id, 'C:/Private/', 'synthetic-secret', 'Private note'):
+            self.assertNotIn(forbidden, serialized)
+
+        previous = LiveSnapshot(
+            projection,
+            {'codex-app': records, 'codex': [], 'claude-code': []},
+            6,
+            {'codex-app': NOW},
+        )
+        merged = merge_codex_app_snapshot(
+            previous,
+            {
+                'snapshot_version': 1,
+                'source_health': 'online',
+                'captured_at': '2026-10-29T08:00:00Z',
+                'threads': [
+                    {
+                        'thread_id': desktop_id,
+                        'title': 'Connector title',
+                        'status': 'active',
+                        'project_label': 'Connector project',
+                        'last_agent_output': 'Connector Agent output',
+                        'last_output_kind': 'agent_message',
+                    }
+                ],
+            },
+            sequence=7,
+            now=NOW,
+            links_enabled=True,
+        )
+        merged_records = merged.records_by_source['codex-app']
+        self.assertEqual(len(merged_records), 2)
+        connector_record = next(item for item in merged_records if item['codex_app_thread_id'] == desktop_id)
+        local_only_record = next(item for item in merged_records if item['codex_app_thread_id'] != desktop_id)
+        self.assertEqual(connector_record['provider_id'], 'codex-app-connector')
+        self.assertEqual(connector_record['display_name'], 'Connector title')
+        self.assertEqual(connector_record['normalized_status'], 'running')
+        self.assertEqual(connector_record['summary'], 'Connector Agent output')
+        self.assertEqual(local_only_record['provider_id'], 'codex-app-local-state')
+        self.assertEqual(merged.projection['source_health']['codex-app'], 'partial')
+
+    def test_codex_desktop_local_rollout_path_fails_closed_without_session_meta_match(self):
+        thread_id = '00000000-0000-4000-8000-000000000111'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / '.codex'
+            rollout = root / 'sessions' / '2026' / '10' / '29' / f'rollout-{thread_id}.jsonl'
+            rollout.parent.mkdir(parents=True)
+            rollout.write_text(
+                json.dumps({'type': 'session_meta', 'payload': {'id': '00000000-0000-4000-8000-000000000999'}}) + '\n'
+                + json.dumps({'type': 'event_msg', 'payload': {'type': 'agent_message', 'message': 'Must not be displayed'}}) + '\n',
+                encoding='utf-8',
+            )
+
+            output = _read_codex_rollout_agent_output(rollout, thread_id)
+
+        self.assertEqual(output, '')
+
     def test_claude_source_shows_safe_name_and_project_without_paths_or_ids(self):
         payload = [
             {
@@ -319,7 +543,7 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             normalize_claude_agents(payload, observed_at=NOW, sequence=1)
         self.assertEqual(error.exception.reason_code, 'duplicate_session_identity')
 
-    def test_codex_active_flags_and_known_states_are_mapped(self):
+    def test_codex_active_flags_map_status_and_thread_preview_is_not_agent_output(self):
         payload = {
             'data': [
                 {
@@ -364,18 +588,156 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             'C:/Users/SyntheticUser/Develop/WinCraft',
             'rollout.jsonl',
             'synthetic-secret',
+            'Synthetic latest activity',
         ):
             self.assertNotIn(private_value, serialized)
         self.assertEqual(records[0]['display_name'], 'Synthetic Codex CLI session')
         self.assertEqual(records[0]['project_label'], 'WinCraft')
-        self.assertIn('Synthetic latest activity', records[0]['summary'])
-        self.assertIn('[凭据已隐藏]', records[0]['summary'])
-        self.assertIn('[本机路径]', records[0]['summary'])
-        self.assertEqual(records[0]['last_output_kind'], 'source_preview')
-        self.assertTrue(all(record['last_output_kind'] == 'unavailable' for record in records[1:]))
+        self.assertEqual(records[0]['summary'], '')
+        self.assertTrue(all(record['last_output_kind'] == 'unavailable' for record in records))
         self.assertTrue(all(record['session_id'].startswith('sha256-') for record in records))
         for record in records:
             ACTIVITY_VALIDATOR.validate(record)
+
+    def test_codex_thread_read_extracts_only_the_last_agent_message(self):
+        response = {
+            'thread': {
+                'turns': [
+                    {
+                        'items': [
+                            {'type': 'userMessage', 'content': [{'type': 'text', 'text': 'user text'}]},
+                            {'type': 'agentMessage', 'text': 'interim commentary', 'phase': 'commentary'},
+                        ]
+                    },
+                    {
+                        'items': [
+                            {
+                                'type': 'agentMessage',
+                                'text': 'last response token=synthetic-secret C:\\Synthetic\\note.md',
+                                'phase': 'final_answer',
+                            },
+                            {'type': 'commandExecution', 'aggregatedOutput': 'tool output must not be shown'},
+                            {'type': 'agentMessage', 'text': 'latest progress token=synthetic-secret', 'phase': 'commentary'},
+                        ]
+                    },
+                ]
+            }
+        }
+
+        self.assertEqual(
+            _codex_last_agent_output(response),
+            'latest progress [凭据已隐藏]',
+        )
+
+        records, _ = normalize_codex_threads(
+            {
+                'data': [
+                    {
+                        'id': 'synthetic-thread-id',
+                        'name': 'Synthetic Codex CLI session',
+                        'preview': 'first user prompt',
+                        'status': {'type': 'active', 'activeFlags': []},
+                    }
+                ]
+            },
+            observed_at=NOW,
+            sequence=1,
+            agent_outputs={'synthetic-thread-id': _codex_last_agent_output(response)},
+        )
+        self.assertEqual(records[0]['summary'], 'latest progress [凭据已隐藏]')
+        self.assertEqual(records[0]['last_output_kind'], 'agent_message')
+
+    def test_codex_latest_output_reads_are_bounded_and_cached_in_memory(self):
+        class FakeClient:
+            def __init__(self):
+                self.calls = []
+
+            def request(self, method, params, *, timeout_seconds=None):
+                self.calls.append((method, params['threadId'], timeout_seconds))
+                return {
+                    'thread': {
+                        'turns': [
+                            {'items': [{'type': 'agentMessage', 'text': 'Synthetic response', 'phase': 'final_answer'}]}
+                        ]
+                    }
+                }
+
+        client = FakeClient()
+        threads = [
+            {'id': f'synthetic-thread-{index}', 'updatedAt': index}
+            for index in range(6)
+        ]
+
+        outputs, partial = _read_codex_latest_outputs(client, threads)
+        self.assertFalse(partial)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(
+            [thread_id for _, thread_id, _ in client.calls],
+            ['synthetic-thread-5', 'synthetic-thread-4', 'synthetic-thread-3', 'synthetic-thread-2'],
+        )
+        self.assertEqual(set(outputs), {thread_id for _, thread_id, _ in client.calls})
+        self.assertTrue(all(method == 'thread/read' for method, _, _ in client.calls))
+        self.assertTrue(all(timeout == 1.5 for _, _, timeout in client.calls))
+
+        cached, cache_partial = _read_codex_latest_outputs(client, threads)
+        self.assertFalse(cache_partial)
+        self.assertEqual(len(client.calls), 4)
+        self.assertEqual(cached, outputs)
+
+    def test_claude_tail_reads_only_last_assistant_text_and_skips_user_and_tools(self):
+        session_id = 'synthetic-session-id'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            projects_dir = Path(temp_dir) / 'projects'
+            transcript = projects_dir / 'synthetic-project' / f'{session_id}.jsonl'
+            transcript.parent.mkdir(parents=True)
+            entries = [
+                {'type': 'user', 'message': {'content': 'user prompt'}},
+                {
+                    'type': 'assistant',
+                    'message': {
+                        'content': [
+                            {'type': 'thinking', 'thinking': 'private reasoning'},
+                            {'type': 'text', 'text': 'last assistant answer token=synthetic-secret'},
+                        ]
+                    },
+                },
+                {'type': 'tool_result', 'content': 'tool output must not be shown'},
+            ]
+            transcript.write_text(
+                ''.join(json.dumps(entry) + '\n' for entry in entries),
+                encoding='utf-8',
+            )
+
+            output = _read_claude_last_agent_output(session_id, projects_dir=projects_dir)
+
+        self.assertEqual(output, 'last assistant answer [凭据已隐藏]')
+        records, _ = normalize_claude_agents(
+            [
+                {
+                    'id': 'synthetic-agent-id',
+                    'sessionId': session_id,
+                    'state': 'active',
+                    'name': 'Synthetic Claude session',
+                    'cwd': 'C:/Projects/ClaudeProject',
+                }
+            ],
+            observed_at=NOW,
+            sequence=1,
+            latest_outputs={session_id: output},
+        )
+        self.assertEqual(records[0]['summary'], output)
+        self.assertEqual(records[0]['last_output_kind'], 'agent_message')
+
+    def test_claude_output_join_skips_shared_session_ids(self):
+        payload = [
+            {'id': 'agent-a', 'sessionId': 'shared-session-id'},
+            {'id': 'agent-b', 'sessionId': 'shared-session-id'},
+        ]
+        with patch('live_sources._read_claude_last_agent_output') as read_output:
+            outputs = _read_claude_latest_outputs(payload)
+
+        self.assertEqual(outputs, {})
+        read_output.assert_not_called()
 
     def test_each_source_session_page_exposes_name_status_project_and_output_truthfully(self):
         codex_records, _ = normalize_codex_threads(
@@ -392,11 +754,13 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             },
             observed_at=NOW,
             sequence=1,
+            agent_outputs={'codex-cli-id': 'A confirmed Codex CLI response'},
         )
         claude_records, _ = normalize_claude_agents(
             [
                 {
                     'id': 'claude-id',
+                    'sessionId': 'claude-id',
                     'name': 'Synthetic Claude session',
                     'cwd': 'C:/Projects/ClaudeProject',
                     'state': 'active',
@@ -404,6 +768,7 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             ],
             observed_at=NOW,
             sequence=1,
+            latest_outputs={'claude-id': 'A confirmed Claude Code response'},
         )
         app_records, _ = normalize_codex_app_snapshot(
             {
@@ -433,8 +798,8 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         )
 
         expectations = {
-            'codex': ('Synthetic CLI session', '项目：CodexProject', '会话预览（发言方未标注）：A recent thread preview'),
-            'claude-code': ('Synthetic Claude session', '项目：ClaudeProject', '来源未提供最近 Agent 输出'),
+            'codex': ('Synthetic CLI session', '项目：CodexProject', '最近 Agent 输出：A confirmed Codex CLI response'),
+            'claude-code': ('Synthetic Claude session', '项目：ClaudeProject', '最近 Agent 输出：A confirmed Claude Code response'),
             'codex-app': ('Synthetic App session', '项目：AppProject', '最近 Agent 输出：A confirmed Agent response'),
         }
         for source_id, (name, project, output) in expectations.items():
@@ -477,7 +842,189 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         self.assertNotIn('parent-id', json.dumps(records))
 
 
+class LocalCodexAppStateTests(unittest.TestCase):
+    def test_local_desktop_state_shows_only_desktop_metadata_and_verified_agent_output(self):
+        desktop_id = '00000000-0000-4000-8000-000000000101'
+        cli_id = '00000000-0000-4000-8000-000000000102'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                root,
+                [
+                    {
+                        'id': desktop_id,
+                        'title': 'Synthetic Desktop title',
+                        'name': 'Synthetic Desktop session',
+                        'cwd': 'C:/Private/SyntheticProject',
+                        'originator': 'Codex Desktop',
+                        'updated_at_ms': 200,
+                        'agent_output': 'Synthetic Agent reply token=synthetic-secret C:\\Private\\note.md',
+                    },
+                    {
+                        'id': cli_id,
+                        'title': 'Synthetic CLI session',
+                        'cwd': 'C:/Private/OtherProject',
+                        'originator': 'Codex CLI',
+                        'updated_at_ms': 100,
+                    },
+                    {
+                        'id': '00000000-0000-4000-8000-000000000103',
+                        'title': 'Archived Desktop session',
+                        'cwd': 'C:/Private/ArchivedProject',
+                        'originator': 'Codex Desktop',
+                        'archived': 1,
+                        'updated_at_ms': 50,
+                    },
+                    {
+                        'id': '00000000-0000-4000-8000-000000000104',
+                        'title': 'Synthetic Desktop without output',
+                        'cwd': 'C:/Private/SecondProject',
+                        'originator': 'Codex Desktop',
+                        'updated_at_ms': 150,
+                    },
+                ],
+            )
+            records, health = read_codex_app_local_threads(
+                observed_at=NOW,
+                sequence=6,
+                codex_root=root,
+            )
+
+        self.assertEqual(health, 'local_state')
+        self.assertEqual(len(records), 2)
+        record = next(item for item in records if item['codex_app_thread_id'] == desktop_id)
+        self.assertEqual(record['source_type'], 'codex-app')
+        self.assertEqual(record['provider_id'], 'codex-app-local-state')
+        self.assertEqual(record['display_name'], 'Synthetic Desktop session')
+        self.assertEqual(record['project_label'], 'SyntheticProject')
+        self.assertEqual(record['normalized_status'], 'unknown')
+        self.assertEqual(record['last_output_kind'], 'agent_message')
+        self.assertEqual(
+            record['summary'],
+            'Synthetic Agent reply [凭据已隐藏] [本机路径]',
+        )
+        ACTIVITY_VALIDATOR.validate(record)
+
+        projection = aggregate_activities(records, now=NOW)
+        projection.update(
+            {
+                'source_health': {
+                    'codex': 'online',
+                    'codex-app': 'local_state',
+                    'claude-code': 'online',
+                },
+                'source_labels': LIVE_SOURCE_LABELS,
+                'data_mode_label': '本机 Codex Desktop 状态库只读',
+            }
+        )
+        scene, _, _ = build_global_overview_scene(projection, GlobalOverviewState())
+        preview = next(
+            item for item in scene['data']['codex_app_preview']
+            if item['project'] == '项目：SyntheticProject'
+        )
+        self.assertEqual(preview['status'], '状态未知')
+        self.assertEqual(
+            preview['output'],
+            '最近 Agent 输出：Synthetic Agent reply [凭据已隐藏] [本机路径]',
+        )
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '本机状态库可读')
+        self.assertEqual(scene['data']['summary']['codex_parallel'], '—')
+        app_scene, _, _ = build_global_overview_scene(
+            projection,
+            GlobalOverviewState(source='codex-app'),
+        )
+        source_summary = next(
+            node['props']['text']
+            for node in walk_nodes(app_scene['root'])
+            if node['id'] == 'global-source-summary'
+        )
+        self.assertIn('status unknown', source_summary)
+        serialized = json.dumps(scene, ensure_ascii=False)
+        for forbidden in (
+            desktop_id,
+            cli_id,
+            'C:/Private/',
+            'synthetic-secret',
+            'synthetic private prompt',
+            'synthetic tool output',
+        ):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_bridge_enriches_local_rows_without_duplicate_threads(self):
+        desktop_id = '00000000-0000-4000-8000-000000000111'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                root,
+                [{
+                    'id': desktop_id,
+                    'title': 'Synthetic local title',
+                    'cwd': 'C:/Projects/SyntheticProject',
+                    'originator': 'Codex Desktop',
+                    'updated_at_ms': 200,
+                }],
+            )
+            local_records, local_health = read_codex_app_local_threads(
+                observed_at=NOW,
+                sequence=1,
+                codex_root=root,
+            )
+        self.assertEqual(local_health, 'local_state')
+        app_projection = aggregate_activities(local_records, now=NOW)
+        app_projection.update(
+            {
+                'source_health': {'codex': 'online', 'codex-app': 'local_state', 'claude-code': 'online'},
+                'source_labels': LIVE_SOURCE_LABELS,
+                'data_mode_label': '本机 Codex Desktop 状态库只读',
+            }
+        )
+        previous = LiveSnapshot(
+            app_projection,
+            {'codex-app': local_records, 'codex': [], 'claude-code': []},
+            1,
+            {'codex-app': NOW},
+        )
+
+        merged = merge_codex_app_snapshot(
+            previous,
+            {
+                'snapshot_version': 1,
+                'source_health': 'online',
+                'captured_at': '2026-10-29T08:00:00Z',
+                'threads': [
+                    {
+                        'thread_id': desktop_id,
+                        'title': 'Connector title',
+                        'status': 'active',
+                        'project_label': 'Connector project',
+                        'last_agent_output': 'Connector Agent output',
+                        'last_output_kind': 'agent_message',
+                    }
+                ],
+            },
+            sequence=2,
+            now=NOW,
+            links_enabled=True,
+        )
+
+        records = merged.records_by_source['codex-app']
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]['provider_id'], 'codex-app-connector')
+        self.assertEqual(records[0]['display_name'], 'Connector title')
+        self.assertEqual(records[0]['normalized_status'], 'running')
+        self.assertEqual(records[0]['summary'], 'Connector Agent output')
+        self.assertEqual(merged.projection['source_health']['codex-app'], 'online')
+
+
 class LiveSourceFailureTests(unittest.TestCase):
+    def setUp(self):
+        local_state = patch(
+            'live_sources.read_codex_app_local_threads',
+            return_value=([], 'unavailable'),
+        )
+        local_state.start()
+        self.addCleanup(local_state.stop)
+
     # 🤖【2026-10-29】回归：延迟到达与未来的来源时间不能冒充新鲜快照
     def test_codex_app_capture_time_controls_freshness_and_expiry_boundary(self):
         with (

@@ -55,6 +55,13 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.assertTrue(detail_targets)
         self.assertTrue(all(item["status"] and item["freshness"] for item in scene["data"]["claude_preview"]))
         self.assertTrue(all(item["project"] and item["output"] for item in scene["data"]["claude_preview"]))
+        self.assertTrue(scene["data"]["codex_cli_preview"])
+        self.assertTrue(
+            all(
+                item["name"] and item["status"] and item["project"] and item["output"]
+                for item in scene["data"]["codex_cli_preview"]
+            )
+        )
 
         nodes = list(walk_nodes(scene["root"]))
         claude_preview_row = next(
@@ -66,6 +73,18 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         )
         self.assertTrue(
             any(node["id"].startswith("global-claude-preview-output-") for node in nodes)
+        )
+        self.assertTrue(
+            any(node["id"].startswith("global-codex-cli-preview-name-") for node in nodes)
+        )
+        self.assertTrue(
+            any(node["id"].startswith("global-codex-cli-preview-status-") for node in nodes)
+        )
+        self.assertTrue(
+            any(node["id"].startswith("global-codex-cli-preview-project-") for node in nodes)
+        )
+        self.assertTrue(
+            any(node["id"].startswith("global-codex-cli-preview-output-") for node in nodes)
         )
         actions = [node["props"]["action"] for node in nodes if node["kind"] == "button"]
         self.assertTrue(actions)

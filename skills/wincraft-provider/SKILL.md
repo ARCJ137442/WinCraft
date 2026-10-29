@@ -315,9 +315,12 @@ at the original installation's configuration or put source values in evidence.
   Codex/Claude Code source switcher using synthetic activity only. Local `view.*`
   navigation does not grant access to live sessions or provide approval/write actions.
 - `examples/integrations/agent-board/live_provider.py` and `live_sources.py` — read-only
-  local CLI status adapters. Claude Code uses `agents --json`; Codex CLI uses the
-  experimental app-server `thread/list` method with `useStateDbOnly=true`. The Codex CLI
-  state database is not the Codex App connector; never merge their counts as one source.
+  local Harness adapters. Claude Code uses `agents --json`; Codex CLI uses the
+  experimental app-server `thread/list` method with `useStateDbOnly=true`; Codex Desktop
+  local fallback filters a read-only SQLite state database by the exact `Codex Desktop`
+  originator and keeps missing status explicitly unknown. A matched local rollout tail
+  contributes only a bounded, sanitized `agent_message`. The Codex CLI state database
+  and Codex App connector remain distinct sources; never merge their counts as one source.
   Claude `agents --json` reports background-agent records, not every interactive Claude
   conversation. A successful CLI query proves that the command responded, not that the
   Claude Code UI or an interactive session is open; keep source reachability separate from
@@ -329,8 +332,9 @@ at the original installation's configuration or put source values in evidence.
   with a small turn limit and output cap when an exact last assistant message is needed.
   Do not send full tool results, cwd, credentials, complete turn histories, or JSONL
   rollouts. The Provider treats every title/output as untrusted plain text and does not
-  execute it. Having Codex App open does not automatically populate the bridge; until an
-  authorized Agent sends a snapshot, report the source as waiting for the bridge.
+  execute it. Having Codex App open does not automatically populate the live bridge. The
+  local fallback can expose bounded title/project metadata, with status unknown until a
+  connector snapshot arrives; if neither source is available, report the source as waiting.
 - Codex App title links require `codex_thread_navigation`. The host accepts only a typed
   UUID and constructs `codex://threads/<UUID>` itself; never send a general URL or shell
   command. Clicks are explicit user actions, and OS acceptance is not proof that the
