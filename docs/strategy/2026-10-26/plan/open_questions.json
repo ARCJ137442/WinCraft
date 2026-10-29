@@ -16,8 +16,8 @@
     },
     {
       "id": "Q02",
-      "question": "TeamSense现行API/额度来源与账号范围",
-      "method": "读取实际项目源码和配置契约，不读密钥内容",
+      "question": "TeamSense实时用量投影的正式API/额度来源、账号范围与只读授权",
+      "method": "已审阅本地Codex采集器与静态调查；继续只读核对正式集成契约，不读密钥、不调用写API",
       "blocks": [
         "B05-02真实数据"
       ],

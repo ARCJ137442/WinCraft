@@ -60,7 +60,7 @@
     "B03-02 Popup needs real release success/cancel, position reuse, keyboard/IME and concurrent-window acceptance.",
     "Windows UIA/IME/screen-reader, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
-    "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
+    "TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权，未做在线请求。其他Harness、TouchAI和跨设备适配仍未实现，不用mock冒充。",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
     "Codex App subgoal STALLED per user instruction after the stage checkpoint: one real authorized snapshot reached the Provider, but no persistent relay exists; the local fallback provides bounded title/project metadata, cannot prove runtime status, and only shows UUID-matched Agent output. Current release visible UI and native UUID click/load remain unverified after Computer Use window activation failed.",
     "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization."

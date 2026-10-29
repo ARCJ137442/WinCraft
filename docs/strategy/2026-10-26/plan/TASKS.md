@@ -760,12 +760,12 @@ cargo test --workspace
 
 **前置：** B05-01；**需求：** R013, R063
 
-**输入：** TeamSense现行仓库/API与授权须本地核对；本包未定位。
+**输入：** TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权。
 
 **定位：** `proposed: examples/integrations/teamsense/`；`proposed: contracts/usage-observation.schema.json`
 
 ### 实施
-1. 在本地定位真实API/身份/数据口径，优先API其次明确DOM适配
+1. 核对TeamSense真实只读API、身份/账号/窗口数据口径和授权；不读取密钥、不调用写API
 2. 将服务器负载与quota分开建字段，带单位/更新时间/来源
 3. 未提供官方总额度时标unknown或estimate，不推导伪余额
 
