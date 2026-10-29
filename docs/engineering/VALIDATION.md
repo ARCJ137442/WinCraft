@@ -351,12 +351,14 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。单独运行结果为 **37 tests passed**，覆盖：full/optional/required/no-grant/ambiguous inventory、显式选择、过期/陈旧来源、未来时钟、重复身份、provider contract 版本、输入不变性、digest 稳定性、pack secret/path traversal/artifact rejection、缺失来源说明、adapter 不执行、resolution plan schema，以及验收标准改变/显式 reset 后旧结果失效。
 
+新增 `tools/pack/export_pack.py` draft exporter，并由 `tests/test_pack_export.py` 做本地 CLI/归档回归：输出只含 `pack.json` 和所引用的 blueprint JSON；schema、路径、大小、确定性字节和不覆盖现有目标均有检查。当前定向用例为 10 PASS、1 symlink 用例因 Windows 创建 symlink 返回 `OSError` 而 SKIP；symlink 检查仍保留在实现中。导出器只处理显式输入文件，不安装 Provider、不运行 adapter、不调用 Host。实际导入/应用仍属于 B06-03。
+
 | 验收 | 状态 | 证据范围 |
 |---|---|---|
-| B06-01-A1/A2/A3 配置包格式 | PASS（draft schema/fixtures） | Schema 与反例拒绝 provider binary、descriptor、lease、install hook、秘密字段与路径穿越；缺少来源映射为 blocker/degraded 说明。没有 runtime archive exporter/importer。|
+| B06-01-A1/A2/A3 配置包格式 | PASS（draft CLI export，L1-L2） | 新 exporter 只打包 pack 与其 blueprint；正反例拒绝 provider binary、descriptor、lease、install hook、秘密字段和路径穿越；缺少来源映射为 blocker/degraded 说明。没有 runtime import。|
 | B06-02-A1/A2/A3 纯规划器 | PASS（L0-L2 demo） | 确定性 digest、必选/可选缺源、歧义要求用户选择、权限≠能力、`mutates_host=false`、需要确认、外部 adapter 不执行。输入为显式 fixture JSON，不扫描本机。|
 
-这些结果验证的是集成进 `docs/strategy/2026-10-26` 的 draft contract 与纯规划演示；B06-01/02 的 task state 仍为 `IMPLEMENTED_UNVERIFIED`，因为 runtime export/import 与 Host apply adapter 尚未实现。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
+这些结果验证的是 draft contract、配置包导出 CLI 与纯规划演示，不代表 protocol 0.3 导入能力。B06-01 的 L1-L2 验收已完成；B06-02 task state 仍为 `IMPLEMENTED_UNVERIFIED`，因为 Host plan-apply adapter 尚未实现。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
 
 ## 2026-10-28 标题栏轴线与折叠尺寸
 

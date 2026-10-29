@@ -62,7 +62,7 @@
 
 导出必须剥离 token、lease、session、host UUID、设备路径、账户、真实通知/笔记、已授权能力和不可移植坐标；允许用户显式保存非敏感偏好。先导出匿名绑定占位，再在目标环境重新选择来源。旧格式迁移先计划/预览，保留原包和回退副本。
 
-示例见 `examples/packs/`；格式见 `contracts/pack.schema.json`，均是提案而不是现有导入能力。
+示例见 `examples/packs/`；格式见 `contracts/pack.schema.json`。本机 draft exporter 的使用说明位于仓库根目录 `tools/pack/README.md`：它只校验并导出 pack JSON 与引用的 blueprint JSON，不含 Provider 二进制、descriptor、lease 或安装逻辑，也不连接 Host。该工具不执行 import/apply；提案仍不是 protocol 0.3 接口。
 
 ## 当前 0.3 世界发现边界
 

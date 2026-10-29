@@ -30,7 +30,7 @@
     "B05-02": "IMPLEMENTED_UNVERIFIED",
     "B05-03": "IMPLEMENTED_UNVERIFIED",
     "B05-04": "IMPLEMENTED_UNVERIFIED",
-    "B06-01": "IMPLEMENTED_UNVERIFIED",
+    "B06-01": "VERIFIED",
     "B06-02": "IMPLEMENTED_UNVERIFIED",
     "B06-03": "NOT_STARTED",
     "B06-04": "IMPLEMENTED_UNVERIFIED",
@@ -131,7 +131,8 @@
     "2026-10-29: Global Overview cards now show name/status/project/source text with truthful source labels. The current Windows release UIA rendered four Codex App fields from a synthetic PTY snapshot; real Codex App connector delivery did not appear, so B08-02 is BLOCKED and no real session is claimed.",
     "2026-10-29: Stage commit 32c8eee was pushed to exomind-team/WinCraft/dev; GitHub Actions run 40876095509 passed Windows npm run check:local in 11m42s. This confirms automated source checks only; native tray, pixel and live Codex App connector acceptance remain separate.",
     "2026-10-29: Added read-only Codex Desktop state_*.sqlite fallback keyed by originator=Codex Desktop. It supplies bounded title/project metadata, marks missing runtime status unknown, and reads only a rollout tail with matching session_meta UUID for agent_message/task_complete output. A real authorized Codex App list/read snapshot was sent once to the current live Provider; source data reached the Provider and the temporary world was cleaned. No snapshot text was persisted. Current local state smoke found no Agent message in the four recent bounded rollout tails; release UI pixels and UUID deep-link acceptance remain NOT_RUN after Computer Use returned failed to activate captured window.",
-    "2026-10-30: B08-03-A1 PASS. Added the five planned Harness categories and separate Codex CLI/App rows with local version checks and explicit unknown/NOT_RUN boundaries: Codex CLI 0.138.0-alpha.7, Claude Code 2.1.302, OpenCode 1.1.14, omp 15.5.7; dsh --version failed, so DSH version remains unknown. Only Codex CLI and Claude Code have current read-only source smoke; other adapters are not claimed as integrated."
+    "2026-10-30: B08-03-A1 PASS. Added the five planned Harness categories and separate Codex CLI/App rows with local version checks and explicit unknown/NOT_RUN boundaries: Codex CLI 0.138.0-alpha.7, Claude Code 2.1.302, OpenCode 1.1.14, omp 15.5.7; dsh --version failed, so DSH version remains unknown. Only Codex CLI and Claude Code have current read-only source smoke; other adapters are not claimed as integrated.",
+    "2026-10-30: B06-01 VERIFIED at L1-L2 after adding tools/pack/export_pack.py and 10 passing exporter tests (one symlink test skipped because local Windows denied symlink creation). The exporter writes only the validated pack and blueprint JSON to a new deterministic .wcp file; B06-02 remains IMPLEMENTED_UNVERIFIED as a draft pure planner without Host integration."
   ],
   "history": [
     null,
@@ -170,6 +171,7 @@
     "2026-10-30: Commit 115cdc8e2de20b1f5749819a4cc5816542c819c7 added explicit live-source selection and was pushed to exomind-team/WinCraft/dev. GitHub Actions run 40914976329 passed on Windows in 7m59s; local HEAD and origin/dev match. The release executable was unchanged, and pixel/native UI acceptance remains NOT_RUN.",
     "2026-10-30: B08-03-A1 Harness version/source matrix recorded from local version-only checks. Codex CLI/Claude live read-only evidence retained; OpenCode, DSH and omp adapters remain NOT_RUN. DSH version unresolved because its local version command failed.",
     "2026-10-30: B02-03-A1 recheck is PARTIAL. A fresh Computer Use selection of the release manager failed to inject a click after re-enumeration with exact error 'foreground window did not report a process id'; no more UI input was sent. The synthetic tutorial provider process exited before its window was observed. A non-operator world.list showed zero visible worlds but could not verify invite-only/system-world cleanup. Full lesson flow remains unverified.",
-    "2026-10-30: B06-01-A1/A2/A3 and B06-02-A1/A2/A3 pass at draft-contract/pure-planner L0-L2 after 37 handoff tests. Added explicit pack artifact rejection and missing-provider explanation regressions. B06-01/02 remain IMPLEMENTED_UNVERIFIED because runtime pack export/import and Host integration are not present. Core/server/Tauri audit found no plan preview/apply/rollback entry point; B06-03 was corrected from IMPLEMENTED_UNVERIFIED to NOT_STARTED."
+    "2026-10-30: B06-01-A1/A2/A3 and B06-02-A1/A2/A3 pass at draft-contract/pure-planner L0-L2 after 37 handoff tests. Added explicit pack artifact rejection and missing-provider explanation regressions. Core/server/Tauri audit found no plan preview/apply/rollback entry point; B06-03 was corrected from IMPLEMENTED_UNVERIFIED to NOT_STARTED.",
+    "2026-10-30: B06-01 draft export is VERIFIED at L1-L2 with tools/pack/export_pack.py; the archive includes only the pack and referenced blueprint and never installs or executes an adapter. B06-02 planner/demo still lacks Host integration and remains IMPLEMENTED_UNVERIFIED; B06-03 runtime apply/rollback is NOT_STARTED."
   ]
 }

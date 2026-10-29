@@ -1031,7 +1031,7 @@
       "level": "L1-L2",
       "criterion": "包不包含提供者二进制/descriptor/lease",
       "status": "PASS",
-      "evidence": "PASS at draft-schema level: additionalProperties=false and targeted test_pack_rejects_provider_binary_descriptor_lease_and_install_hook reject top-level provider_binary, descriptor, lease, install_hook and nested adapter binary. This verifies the pack contract, not a runtime archive exporter."
+      "evidence": "PASS at draft-export level: tools/pack/export_pack.py and tests/test_pack_export.py produce a deterministic archive containing exactly pack.json and the referenced blueprint; artifact-field negatives verify provider binaries, descriptors, leases and install hooks are refused. No runtime import is implemented."
     },
     {
       "id": "B06-01-A2",
@@ -1061,7 +1061,7 @@
       "level": "L1-L2",
       "criterion": "读取恶意路径/未知字段失败且未执行文件",
       "status": "PASS",
-      "evidence": "PASS at draft-validation/planner level: path traversal is rejected by semantic validation; schema negatives reject unknown/runtime artifact fields; adapter reference remains non-executable and planner reports external_adapter_not_executed. No package importer or adapter process is implemented or run."
+      "evidence": "PASS at draft-export level: the exporter rejects traversal, absolute/backslash references, unknown schema fields and invalid blueprint files before creating output; tests verify the external adapter reference is copied as metadata only. Windows symlink creation was unavailable locally, so the symlink case is SKIP. No package importer or adapter process is implemented or run."
     },
     {
       "id": "B06-02-A1",
