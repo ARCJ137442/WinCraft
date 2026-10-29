@@ -3211,3 +3211,354 @@ fn state_slot_scope_and_reader_quotas_are_enforced_without_global_name_collision
         MAX_STATE_SLOTS_PER_SCOPE + 1
     );
 }
+
+#[test]
+fn deterministic_multiscope_interleavings_preserve_owners_and_sibling_business_state() {
+    let mut state = setup_scoped_world();
+    let authority_key = state.authority_lease.clone();
+    let joined_a = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let joined_b = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let lease_a = joined_a.lease.unwrap();
+    let lease_b = joined_b.lease.unwrap();
+    let slot_a = state
+        .engine
+        .create_state_slot(
+            state.writer_a,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: lease_a.clone(),
+                name: "focus.counter".into(),
+                schema: StateSlotSchema::Integer {
+                    min: Some(0),
+                    max: Some(1_000),
+                },
+                initial_value: json!(0),
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: state.scope_b.scope_id,
+                    generation: state.scope_b.generation,
+                }],
+            },
+            4,
+        )
+        .unwrap();
+    let slot_b = state
+        .engine
+        .create_state_slot(
+            state.writer_b,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: lease_b.clone(),
+                name: "tasks.counter".into(),
+                schema: StateSlotSchema::Integer {
+                    min: Some(0),
+                    max: Some(1_000),
+                },
+                initial_value: json!(0),
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: state.scope_a.scope_id,
+                    generation: state.scope_a.generation,
+                }],
+            },
+            4,
+        )
+        .unwrap();
+
+    let mut scope_revision_a = joined_a.snapshot.revision;
+    let mut scope_revision_b = joined_b.snapshot.revision;
+    let mut slot_revision_a = slot_a.revision;
+    let mut slot_revision_b = slot_b.revision;
+    let mut focus_data = json!({"value":"focus-private"});
+    let mut tasks_data = json!({"value":"tasks-private"});
+    let mut focus_props = json!({"text":{"$path":"/focus/value"}});
+    let mut tasks_props = json!({"text":{"$path":"/tasks/value"}});
+    let mut random = 0x0b07_0403_u64;
+
+    for step in 0..96_u64 {
+        random = random
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        let writer_is_a = random & 1 == 0;
+        let operation = (random >> 8) & 3;
+        let (session, lease, scope_id, own_node, sibling_node, revision) = if writer_is_a {
+            (
+                state.writer_a,
+                &lease_a,
+                state.scope_a.scope_id,
+                "focus-value",
+                "tasks-value",
+                scope_revision_a,
+            )
+        } else {
+            (
+                state.writer_b,
+                &lease_b,
+                state.scope_b.scope_id,
+                "tasks-value",
+                "focus-value",
+                scope_revision_b,
+            )
+        };
+        let now = step + 5;
+
+        match operation {
+            0 => {
+                let text = format!("owner-{}-step-{step}", if writer_is_a { "a" } else { "b" });
+                let props = json!({"text":text});
+                let result = state
+                    .engine
+                    .patch_scope(
+                        session,
+                        state.world_id,
+                        lease,
+                        revision,
+                        &[SceneOp::Props {
+                            node_id: own_node.into(),
+                            props: props.as_object().unwrap().clone(),
+                        }],
+                        now,
+                    )
+                    .unwrap();
+                if writer_is_a {
+                    scope_revision_a = result.revision;
+                    focus_props = props;
+                } else {
+                    scope_revision_b = result.revision;
+                    tasks_props = props;
+                }
+            }
+            1 => {
+                let data = json!({
+                    "value":format!("{}-step-{step}", if writer_is_a { "focus" } else { "tasks" })
+                });
+                let result = state
+                    .engine
+                    .replace_scope_data(session, state.world_id, lease, revision, data.clone(), now)
+                    .unwrap();
+                if writer_is_a {
+                    scope_revision_a = result.revision;
+                    focus_data = data;
+                } else {
+                    scope_revision_b = result.revision;
+                    tasks_data = data;
+                }
+            }
+            2 => {
+                let (slot_id, generation, expected_revision, next_value) = if writer_is_a {
+                    (slot_a.slot_id, slot_a.generation, slot_revision_a, step)
+                } else {
+                    (slot_b.slot_id, slot_b.generation, slot_revision_b, step)
+                };
+                let result = state
+                    .engine
+                    .compare_and_set_state_slot(
+                        session,
+                        StateSlotCompareAndSetRequest {
+                            world_id: state.world_id,
+                            lease: lease.clone(),
+                            slot_id,
+                            generation,
+                            expected_revision,
+                            value: json!(next_value),
+                        },
+                        now,
+                    )
+                    .unwrap();
+                if writer_is_a {
+                    slot_revision_a = result.revision;
+                } else {
+                    slot_revision_b = result.revision;
+                }
+            }
+            _ => {
+                let before_scene = state.engine.worlds[&state.world_id].scene.clone();
+                let error = state
+                    .engine
+                    .patch_scope(
+                        session,
+                        state.world_id,
+                        lease,
+                        revision,
+                        &[SceneOp::Props {
+                            node_id: sibling_node.into(),
+                            props: json!({"text":"cross-scope write rejected"})
+                                .as_object()
+                                .unwrap()
+                                .clone(),
+                        }],
+                        now,
+                    )
+                    .unwrap_err();
+                assert_eq!(error.code, "SCOPE_FORBIDDEN");
+                assert_eq!(state.engine.worlds[&state.world_id].scene, before_scene);
+                assert_eq!(
+                    state.engine.worlds[&state.world_id].scopes[&scope_id].revision,
+                    revision
+                );
+            }
+        }
+
+        if step % 12 == 0 {
+            let before_scene = state.engine.worlds[&state.world_id].scene.clone();
+            assert_eq!(
+                state
+                    .engine
+                    .patch_scope(
+                        state.writer_a,
+                        state.world_id,
+                        &lease_a,
+                        scope_revision_a - 1,
+                        &[SceneOp::Props {
+                            node_id: "focus-value".into(),
+                            props: json!({"text":"stale owner message"})
+                                .as_object()
+                                .unwrap()
+                                .clone(),
+                        }],
+                        now,
+                    )
+                    .unwrap_err()
+                    .code,
+                "SCOPE_REVISION_CONFLICT"
+            );
+            assert_eq!(state.engine.worlds[&state.world_id].scene, before_scene);
+        }
+
+        let world = &state.engine.worlds[&state.world_id];
+        assert_eq!(world.authority.as_ref().unwrap().key, authority_key);
+        assert_eq!(world.scene.data["focus"], focus_data);
+        assert_eq!(world.scene.data["tasks"], tasks_data);
+        assert_eq!(
+            serde_json::Value::Object(world.scene.root.find("focus-value").unwrap().props.clone()),
+            focus_props
+        );
+        assert_eq!(
+            serde_json::Value::Object(world.scene.root.find("tasks-value").unwrap().props.clone()),
+            tasks_props
+        );
+        for slot in world.state_slots.values() {
+            let owner_scope = world.scopes.get(&slot.owner_scope_id).unwrap();
+            assert_eq!(owner_scope.generation, slot.owner_scope_generation);
+            assert!(slot.schema.validate_value(&slot.value).is_ok());
+            for (reader_scope_id, generation) in &slot.reader_scopes {
+                assert_eq!(world.scopes[reader_scope_id].generation, *generation);
+            }
+        }
+    }
+
+    let sibling_before_disconnect = state
+        .engine
+        .read_scope(
+            state.writer_b,
+            state.world_id,
+            state.scope_b.scope_id,
+            state.scope_b.generation,
+        )
+        .unwrap();
+    state.engine.disconnect(state.writer_a);
+    let sibling_after_disconnect = state
+        .engine
+        .read_scope(
+            state.writer_b,
+            state.world_id,
+            state.scope_b.scope_id,
+            state.scope_b.generation,
+        )
+        .unwrap();
+    assert_eq!(
+        sibling_after_disconnect.data,
+        sibling_before_disconnect.data
+    );
+    assert_eq!(
+        sibling_after_disconnect.root,
+        sibling_before_disconnect.root
+    );
+
+    let replacement_writer = state
+        .engine
+        .register_with_protocol(
+            "scope.focus.replacement".into(),
+            false,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    let replacement_join = state
+        .engine
+        .join_scope(
+            replacement_writer,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            200,
+        )
+        .unwrap();
+    let replacement_lease = replacement_join.lease.unwrap();
+    assert!(replacement_lease.epoch > lease_a.epoch);
+    assert_eq!(
+        state
+            .engine
+            .compare_and_set_state_slot(
+                replacement_writer,
+                StateSlotCompareAndSetRequest {
+                    world_id: state.world_id,
+                    lease: lease_a,
+                    slot_id: slot_a.slot_id,
+                    generation: slot_a.generation,
+                    expected_revision: slot_revision_a,
+                    value: json!(999),
+                },
+                201,
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE_LEASE"
+    );
+    state
+        .engine
+        .compare_and_set_state_slot(
+            replacement_writer,
+            StateSlotCompareAndSetRequest {
+                world_id: state.world_id,
+                lease: replacement_lease,
+                slot_id: slot_a.slot_id,
+                generation: slot_a.generation,
+                expected_revision: slot_revision_a,
+                value: json!(999),
+            },
+            201,
+        )
+        .unwrap();
+
+    let world_revision = state.engine.worlds[&state.world_id].revision;
+    state
+        .engine
+        .patch_scope_structure(
+            state.owner,
+            state.world_id,
+            &state.authority_lease,
+            world_revision,
+            &[SceneOp::Remove {
+                node_id: "focus-panel".into(),
+            }],
+            202,
+        )
+        .unwrap();
+    let world = &state.engine.worlds[&state.world_id];
+    assert!(!world.state_slots.contains_key(&slot_a.slot_id));
+    let remaining_slot = &world.state_slots[&slot_b.slot_id];
+    assert!(!remaining_slot
+        .reader_scopes
+        .contains_key(&state.scope_a.scope_id));
+    assert_eq!(world.authority.as_ref().unwrap().key, authority_key);
+}

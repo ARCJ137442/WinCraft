@@ -44,12 +44,13 @@ Otherwise it modifies only an empty plugin selection and preserves the other byt
 If the setting already contains another plugin selection, the helper refuses to
 overwrite it; enable the WinCraft item in the staged app's UI instead.
 
-`OpenHardwareMonitorApi.dll`, `LibreHardwareMonitorLib.dll`, and
-`TrafficMonitor.sys` are optional; the script copies them only when present. The
-verified V1.86 x64 Lite archive contains none of them. The script never requests
-elevation. If a different package includes `TrafficMonitor.sys`, review its effects
-before any elevated launch; do not install a driver just to make the provider demo
-pass. Do not use the original installation as the test target.
+`OpenHardwareMonitorApi.dll` and `LibreHardwareMonitorLib.dll` are optional; the
+script copies them only when present. `TrafficMonitor.sys` is deliberately never
+staged: the WinCraft bridge consumes ordinary plugin callbacks and does not require
+a kernel driver. The verified V1.86 x64 Lite archive contains none of these optional
+files. The script never requests elevation. Missing hardware readings remain
+unavailable rather than prompting a driver install. Do not use the original
+installation as the test target.
 
 ## Start the provider
 

@@ -71,7 +71,8 @@ foreach ($name in $requiredFiles) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot $name) -Destination $workRoot
 }
 $copiedOptionalFiles = @()
-foreach ($name in @('OpenHardwareMonitorApi.dll', 'LibreHardwareMonitorLib.dll', 'TrafficMonitor.sys')) {
+# The WinCraft bridge consumes TrafficMonitor's plugin callbacks; the demo never stages a kernel driver.
+foreach ($name in @('OpenHardwareMonitorApi.dll', 'LibreHardwareMonitorLib.dll')) {
     $sourceFile = Join-Path $sourceRoot $name
     if (Test-Path -LiteralPath $sourceFile -PathType Leaf) {
         Copy-Item -LiteralPath $sourceFile -Destination $workRoot

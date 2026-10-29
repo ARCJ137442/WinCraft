@@ -222,6 +222,11 @@ scope-generation specific, and slots never become provider business truth or arb
 JSON references. Call `client.require_state_slots(version=1)` before using slot helpers.
 Follow the [scope preview guide](references/component-scopes-preview.md) exactly; use
 the capability-aware SDK helpers and never treat preview methods as stable 0.3.
+For real-source scope isolation, `examples/python/composition_probe.py` requires an
+explicit runtime descriptor, TrafficMonitor bridge path, and currently open Obsidian
+vault. It runs a fixed read-only Obsidian Workspace query, creates/destroys only its own test
+world, and waits for the runner to stop the staged TrafficMonitor copy; never point it
+at the original installation's configuration or put source values in evidence.
 
 ## Provider invariants
 
@@ -271,6 +276,9 @@ the capability-aware SDK helpers and never treat preview methods as stable 0.3.
 - `examples/python/lease_probe.py` — protocol acceptance against the actual Rust host.
 - `examples/python/scope_probe.py` — opt-in 0.4 preview probe against the actual Rust host;
   uses synthetic scopes and cleans up only its temporary world.
+- `examples/python/composition_probe.py` — B07-04 real-source fault-isolation probe using
+  an explicit staged TrafficMonitor snapshot path and an open Obsidian vault; both source
+  integrations are read-only and its temporary WinCraft world is destroyed.
 - `examples/python/theme_demo.py` — synthetic theme preview, host-chrome boundary, and an explicit invalid-token rejection probe.
 - `examples/python/popup_ask_provider.py` — optional WinCraft transport for an installed
   Popup-Ask skill; it reuses that skill's validate-only parser and result serializer.

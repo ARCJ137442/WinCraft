@@ -387,3 +387,23 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 CI 回顾：GitHub Actions 在 2026-10-28 连续 9 次于 `npm run check:local` 失败，日志共同显示 Windows 默认 `cp1252` 读取 UTF-8 夹具，以及 LF/CRLF checkout 使翻译源哈希误报；提交 `5e5f7e9` 显式固定 UTF-8 并按文本规范化换行，随后 Actions 更新到 Node 24 运行时。后续运行 `40801981651`、`40726526250` 均成功。本任务提交 `6eda1a0` 的 Windows hosted run `40809546638` 也成功，`npm run check:local` 步骤通过；job 用时 6 分 54 秒。该结果只证明自动检查，不是 Tauri 原生 UI 证据。
 
 脱敏本地证据见 `evidence/local/nextgen-2026-10-29/b07-03-validation.json`。Headless 探针使用合成标识与临时 world；descriptor 仅由 Python client 为连接读取，临时文件在探针后删除，没有被复制或写入证据。回滚边界：移除 preview state slot 方法、capability、SDK helper 和 fixture 即可关闭高级共享；稳定 0.3 与已有 scope 结构能力不变。
+
+## 2026-10-29 B07-04 多来源组合与故障隔离
+
+**Given** 两个互不重叠的 provider scope，分别由 TrafficMonitor bridge 与只读 Obsidian Obsidian Workspace 提供投影；**When** TrafficMonitor 的临时 x64 stage 被停止、其桥接快照转为过期；**Then** 仅 TrafficMonitor scope 更新为 stale，Obsidian Workspace scope 的投影保持不变，父 authority 仍独占窗口几何。
+
+Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两个 scope 的局部 props/data/CAS 写、越界 sibling 写与旧 revision 写。每步验证 owner scope generation、schema/value、reader grant generation、两边 namespace 与组件 props 独立；随后断开 scope A writer、用新会话/epoch 重加入、拒绝旧 lease，再删除 scope A 并验证其 owner slot 删除、scope B reader grant 清理。测试不依赖随机 crate，失败序列稳定可复现。
+
+真实来源窄验收使用当前已授权的两条本地只读来源：TrafficMonitor bridge 提供由 `OnMonitorInfo` 持续生成的 snapshot；Obsidian CLI 对用户当前活动 vault 执行仓库内固定的 Obsidian Workspace dashboard 查询。组合 probe 把两个来源投影到分离的 `traffic` 与 `life` data namespace，并各自连接一个 scope writer。验收通过后只停止临时 stage copy 进行故障注入；原安装与配置不变，Obsidian 笔记/插件设置没有写入，临时 WinCraft world 已销毁。为了避免环境中原始 stage 携带的 `TrafficMonitor.sys`，`stage_demo.ps1` 现在从临时副本中排除该系统驱动；fresh configuration 未复制。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-core --test invariants deterministic_multiscope_interleavings_preserve_owners_and_sibling_business_state -- --nocapture` | PASS | seed 0x0b070403 的 96 步 interleaving 通过；跨 scope / stale revision 写不提交，disconnect 后 sibling scope data 与 subtree 不变，新 lease 取得更高 epoch，父删除清理 owner slot 和 reader grant。|
+| `python -m unittest tests.test_multisource_composition tests.test_trafficmonitor_provider tests.test_trafficmonitor_staged_config -v` | PASS | 12 tests；组合 scene 只使用两组 namespaced bindings，Obsidian Workspace scope 使用 display-only title；来源错误 projection 仅在本 scope 变化并保留 last reading。|
+| TrafficMonitor bridge x64 build + isolated stage | PASS | `build_bridge.ps1 -Architecture x64` 与 `stage_demo.ps1 -EnableBridgeItem` 成功；version 1.8.6.0，`ReuseConfiguration=false`，没有 optional driver 被复制。原先的 stale stage process 被停止，新临时 stage 在故障注入后重启并再次确认 snapshot fresh/advancing。|
+| Obsidian Obsidian Workspace fixed CLI query | PASS | Obsidian CLI 在已打开的活动 vault 找到 Obsidian Workspace dashboard，返回结构通过 provider 解析。vault 名、笔记标题、事项与提醒内容不写入日志或 evidence。|
+| `composition_probe.py` + real headless Rust WebSocket | PASS | 两个真实来源先写入分离 scope；停止 staged TrafficMonitor 后，仅 traffic scope 变 stale，Obsidian Workspace scope 数据完全相同；临时 world 销毁成功。未连接 Tauri renderer。|
+| `npm run check:local` | PASS | 28 Node UI tests、offline schema/contracts、Rust fmt/check/test/Clippy、90 Python tests 与 19 Provider Skill references 全部通过；Rust workspace 共 107 tests（core unit 10、core invariants 60、desktop 18、server 19）。|
+| B07-04 Tauri release/native UI | NOT_RUN | 此验收检查 scope 权限与业务数据隔离；窗口几何仍只由 root authority 控制。|
+
+本地 evidence：`evidence/local/nextgen-2026-10-29/b07-04-validation.json`。原始 TrafficMonitor installation/config 没有改动；新 x64 copy 是临时 stage，provider bridge 文件只保存在该 stage。不要把它当成已完成安装升级；用户要求后续引导其把旧版正式升级换代。

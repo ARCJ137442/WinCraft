@@ -1304,7 +1304,8 @@
       ],
       "level": "L1-L5",
       "criterion": "多写者只在互不重叠权限域成立",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: deterministic seed-based 96-step interleaving alternates independent props/data/CAS writes. Cross-scope writes return SCOPE_FORBIDDEN without changing scene/revision; a single world-authority lease remains responsible for geometry."
     },
     {
       "id": "B07-04-A2",
@@ -1317,7 +1318,8 @@
       ],
       "level": "L1-L5",
       "criterion": "任何序列不产生无owner可变资源",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: each interleaving checks slot owner-scope existence/generation/schema and every reader grant generation. Disconnect/rejoin fences the old lease with a higher epoch; parent scope removal deletes its owned slot and clears its grant from the sibling slot."
     },
     {
       "id": "B07-04-A3",
@@ -1330,7 +1332,8 @@
       ],
       "level": "L1-L5",
       "criterion": "真实来源失败不会改变其他区域业务状态",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: real x64 TrafficMonitor bridge snapshot and read-only Obsidian Obsidian Workspace query were composed into separate scopes over the real Rust WebSocket host. Stopping the staged TrafficMonitor source marked only its scope stale; Obsidian Workspace scope data remained identical. The temporary world was destroyed; no Obsidian or original TrafficMonitor configuration writes occurred."
     },
     {
       "id": "B08-01-A1",

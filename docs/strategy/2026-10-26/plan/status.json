@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B07-04 after B07-03 L1-L2 verification",
-  "next_action": "B07-03 typed state slots are VERIFIED for L1-L2 after full local checks and a real headless WebSocket probe. Continue B07-04 synthetic multi-scope properties/revocation, then use only already authorized real sources for its real-source acceptance. Native tray, visual, click-through and multi-display gates remain separate manual acceptance items.",
+  "active_batch": "B08-01 after B07-04 verification",
+  "next_action": "B07-04 A1-A3 are VERIFIED with deterministic interleavings and a real TrafficMonitor + Obsidian Obsidian Workspace scope-isolation probe. Continue B08-01: define a read-only normalized activity projection with explicit source/instance/session/parent/task/freshness identity; keep unknown/stale separate from idle and do not add approval, file-write or continue-execution permissions.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -37,7 +37,7 @@
     "B07-01": "VERIFIED",
     "B07-02": "VERIFIED",
     "B07-03": "VERIFIED",
-    "B07-04": "NOT_STARTED",
+    "B07-04": "VERIFIED",
     "B08-01": "NOT_STARTED",
     "B08-02": "NOT_STARTED",
     "B08-03": "NOT_STARTED",
@@ -116,7 +116,9 @@
     "2026-10-29: Built the release EXE from committed source 27b8677; the actual Tauri host passed 40 lease_probe checks and the B07-02 scope probe. Added the Chinese release acceptance guide with remaining manual gates kept NOT_RUN.",
     "2026-10-29: Checkpoint release deliverable prepared from committed source 27b8677: wincraft-desktop.exe (12,060,160 bytes, SHA-256 572507C80123CB0236E4024BCA2AD51B97E7FD034C1963591287BBD2BE56DB98), real Tauri lease_probe (40 checks) and B07-02 scope probe pass, and docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md documents manual gates. Tray-triggered manager opening/normal tray exit and visual native gates remain NOT_RUN.",
     "2026-10-29: B07-03 typed state slots verified in 0.4-preview.1: scalar schemas, owner-scope CAS, generation-specific reader grants, quotas, cleanup on child/parent revocation, Python fail-closed helpers, preview request schema/fixtures, and real headless WebSocket concurrency/slow-reader checks pass. Stable 0.3 remains unchanged; provider business truth remains external.",
-    "B07-03 commit 6eda1a0 passed Windows Actions run 40809546638; hosted npm run check:local is green."
+    "B07-03 commit 6eda1a0 passed Windows Actions run 40809546638; hosted npm run check:local is green.",
+    "2026-10-29: B07-04 verified disjoint scope ownership under deterministic interleavings, stale/out-of-scope write rejection, disconnect/rejoin fencing and parent cleanup. A real x64 TrafficMonitor bridge plus the currently open Obsidian Obsidian Workspace dashboard were projected into separate scopes; stopping the staged TrafficMonitor source made only its scope stale. Original app configuration and Obsidian notes/settings were not written.",
+    "2026-10-29: B07-04 verified deterministic multi-scope interleavings, permission fencing/rejoin, owner-slot cleanup, and real-source failure isolation between a fresh x64 TrafficMonitor bridge and the read-only Obsidian Obsidian Workspace projection."
   ],
   "history": [
     null,
@@ -139,6 +141,8 @@
     "2026-10-28: Added docs/platforms/capability-matrix.md for B11-03. Core/protocol portability is separated from native adapters; Windows evidence is recorded while macOS/Linux X11/Wayland builds and native behavior remain NOT_RUN/unsupported. No cross-platform equivalence claim is made.",
     "2026-10-28: Added docs/governance-release-checklist.md for B11-04. It preserves license/provenance, separates source/release authorization, requires current evidence and redacted packages, and forbids publishing/tagging/permission changes without explicit approval. B11-04 is IMPLEMENTED_UNVERIFIED; public release authorization and signing remain absent.",
     "2026-10-29: B07-03 L1-L2 PASS. Real Rust WebSocket probe confirms concurrent CAS has one winner, unauthorized and revoked readers/writers fail closed, typed-value rejection is atomic, owner/reader scope revocation is fenced, and a slow network reader does not block owner mutations. Full npm run check:local passes; no Tauri release/native UI claim is made.",
-    "2026-10-29: B07-03 commit 6eda1a0d5aa2492ad730e6cf44829b4f2cc62834 passed Windows GitHub Actions run 40809546638 (Prototype verification); npm run check:local succeeded. Native GUI gates remain separate."
+    "2026-10-29: B07-03 commit 6eda1a0d5aa2492ad730e6cf44829b4f2cc62834 passed Windows GitHub Actions run 40809546638 (Prototype verification); npm run check:local succeeded. Native GUI gates remain separate.",
+    "2026-10-29: B07-04 A1-A3 PASS. Seeded 96-step core interleaving preserved scope ownership and sibling data; real headless composition probe used two authorized local sources and verified staged TrafficMonitor failure did not alter the Obsidian Workspace scope. The stage copy used fresh config, excluded TrafficMonitor.sys, and was restarted after the probe.",
+    "2026-10-29: B07-04 A1-A3 PASS. Seeded 96-step interleaving preserves disjoint ownership and sibling data. A real headless composition probe uses an isolated x64 TrafficMonitor 1.8.6.0 bridge stage and the active read-only Obsidian Workspace dashboard; stopping TrafficMonitor changes only its scope to stale. The provider world is destroyed and the stage is restarted."
   ]
 }
