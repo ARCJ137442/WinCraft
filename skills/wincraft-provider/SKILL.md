@@ -279,6 +279,9 @@ at the original installation's configuration or put source values in evidence.
 - `examples/python/composition_probe.py` — B07-04 real-source fault-isolation probe using
   an explicit staged TrafficMonitor snapshot path and an open Obsidian vault; both source
   integrations are read-only and its temporary WinCraft world is destroyed.
+- `examples/integrations/agent-board/README.md` — B08-01 draft activity model and a
+  synthetic-only read-only aggregate provider. It does not connect to live Harness
+  sessions, and the activity schema is not a protocol 0.3 host method.
 - `examples/python/theme_demo.py` — synthetic theme preview, host-chrome boundary, and an explicit invalid-token rejection probe.
 - `examples/python/popup_ask_provider.py` — optional WinCraft transport for an installed
   Popup-Ask skill; it reuses that skill's validate-only parser and result serializer.

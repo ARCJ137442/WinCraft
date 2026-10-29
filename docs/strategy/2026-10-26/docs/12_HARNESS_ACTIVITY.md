@@ -31,9 +31,15 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 ## 标准活动投影（提案）
 
-统一 `device_id / provider_id / source_instance_id / source_type / session_id / parent_session_id / task_id`。PID、窗口标题、项目路径都不是跨设备稳定身份。业务状态采用 `idle / running / waiting_input / waiting_approval / completed / failed / cancelled / unknown`，保留 `source_status` 与 `mapping_version`。连接/新鲜度单独用 `freshness` 表达 `fresh / stale / disconnected / unknown`；不把断线自动写成业务终态。
+统一 `device_id / provider_id / source_instance_id / source_type / session_id / parent_session_id / task_id`。PID、窗口标题、项目路径都不是跨设备稳定身份。`source_status` 保留来源原值，`normalized_status` 使用 `idle / running / waiting_input / waiting_approval / completed / failed / cancelled / unknown / stale`，同时保留 `mapping_version`。连接/新鲜度单独用 `freshness` 表达 `fresh / stale / disconnected / unknown`；不把断线自动写成业务终态。
 
 必须附 source revision/sequence、observed_at、expires_at、权威级别与可用动作。发现后加入、心跳过期离线、重连生成新实例；“进程还在”不代表 Agent 忙，“没有日志”不等于已完成。父子会话允许多层，不把子任务重复计入母任务汇总。
+
+### 仓库内 B08-01 提案原型
+
+`protocol/activity.schema.json` (`draft-2026-10-29`) 将原始 `source_status`、映射后的 `normalized_status` 与 `freshness` 分开；它是原始 handoff `draft-2026-10-26` 的仓库实现提案，未替换已保留的 handoff schema。身份键只由 `device_id / provider_id / source_instance_id / session_id` 组成；显示名与模型名仅作标签。若 freshness 为 `stale` 或 `disconnected`，normalized status 必须为 `stale`；未知新鲜度对应 `unknown`，不能回落到 `idle`。
+
+`examples/integrations/agent-board/` 目前只使用仓库内的 synthetic fixtures。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。该 schema 是 `draft-2026-10-26` 提案，不是 protocol 0.3 接口或真实 Harness 适配。
 
 ## Harness 适配证据表
 

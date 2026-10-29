@@ -408,3 +408,21 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 | B07-04 Tauri release/native UI | NOT_RUN | 此验收检查 scope 权限与业务数据隔离；窗口几何仍只由 root authority 控制。|
 
 本地 evidence：`evidence/local/nextgen-2026-10-29/b07-04-validation.json`。原始 TrafficMonitor installation/config 没有改动；新 x64 copy 是临时 stage，provider bridge 文件只保存在该 stage。不要把它当成已完成安装升级；用户要求后续引导其把旧版正式升级换代。
+
+
+## 2026-10-29 B08-01 统一活动模型与只读聚合器
+
+**Given** 两个合成 Harness 实例，其中一个实例有父会话和两个子会话，另一个实例使用与前者相同的显示名/模型名；**When** 聚合器校验身份、新鲜度和父子结构并生成 Agent Board；**Then** 断线保持为 stale、未知保持为 unknown，父容器不与子任务重复计数，标签变化不合并实例，界面没有批准/写文件/继续执行动作。
+
+`protocol/activity.schema.json` 是 `draft-2026-10-29` 提案，不是 protocol 0.3 host API。身份键为 `device_id / provider_id / source_instance_id / session_id`；freshness 单独表达来源时效；完整父子树要求缺父项、循环和重复身份失败关闭。场景只写显示摘要和聚合数字，不把 source/session/task ID、模型名或原始来源状态复制进宿主数据。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_agent_activity_board -v` | PASS | 9 tests：freshness 条件、过期投影、稳定身份、叶节点去重、父树完整性、空控制能力、场景无交互动作和 provider cleanup cancellation。|
+| `python scripts/check_contracts.py` | PASS | 校验 draft 活动 Schema、4 条合成记录及 disconnected-as-idle / approval-capability 两种负例。|
+| `npm run check:local` | PASS | 28 Node UI、107 Rust workspace、99 Python tests；fmt/check/Clippy、离线契约和 19 个 Skill references 全部通过。|
+| Agent Board provider + Tauri release | PASS | 使用真实 release Tauri host 呈现合成快照；UIA 确认叶会话/等待/断线计数和父子顺序，scene 只有只读组件；没有连接 Harness 数据源。|
+| provider world cleanup | PASS | 自然到期与交互式 PTY Ctrl+C 都确认销毁唯一测试世界，管理器恢复 0 个世界。非 TTY 执行器的强制 Ctrl+C 会直接杀进程并留 stale 世界；该测试副本随后由管理器关闭。|
+| 真实 Harness adapter / approval flow | NOT_RUN | 留待 B08-02，并要求先有用户选择和授权的具体来源；当前原型不枚举既有会话。|
+
+本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-01-validation.json`。原始 Harness、Obsidian 笔记和外心业务数据均未读取；本任务 fixture 全部为仓库内合成数据。

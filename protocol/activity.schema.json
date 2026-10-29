@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:proposal:activity:draft-2026-10-29",
+  "title": "Read-only Agent activity record (draft)",
+  "description": "Proposal for a normalized read-only Harness activity record. This is not protocol 0.3. B08-01 keeps control_capabilities empty.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "wincraft.activity.draft" },
+    "schema_version": { "const": "draft-2026-10-29" },
+    "source_type": {
+      "enum": ["claude-code", "codex", "opencode", "deepseek-harness", "omp", "fixture"]
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "provider_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "mapping_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "source_instance_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"
+    },
+    "parent_session_id": {
+      "anyOf": [
+        { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+        { "type": "null" }
+      ]
+    },
+    "task_id": {
+      "anyOf": [
+        { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+        { "type": "null" }
+      ]
+    },
+    "display_name": { "type": "string", "maxLength": 96 },
+    "model_name": { "type": "string", "maxLength": 96 },
+    "source_status": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "normalized_status": {
+      "enum": [
+        "idle",
+        "running",
+        "waiting_input",
+        "waiting_approval",
+        "completed",
+        "failed",
+        "cancelled",
+        "unknown",
+        "stale"
+      ]
+    },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "source_sequence": { "type": "integer", "minimum": 0 },
+    "freshness": { "enum": ["fresh", "stale", "disconnected", "unknown"] },
+    "authority": { "enum": ["source", "adapter_mapping", "unknown"] },
+    "summary": { "type": "string", "maxLength": 256 },
+    "control_capabilities": { "const": [] },
+    "provenance": {
+      "enum": ["synthetic", "official-api", "explicit-hook", "approved-log"]
+    }
+  },
+  "required": [
+    "kind",
+    "schema_version",
+    "source_type",
+    "device_id",
+    "provider_id",
+    "mapping_version",
+    "source_instance_id",
+    "session_id",
+    "parent_session_id",
+    "task_id",
+    "source_status",
+    "normalized_status",
+    "observed_at",
+    "expires_at",
+    "source_sequence",
+    "freshness",
+    "authority",
+    "summary",
+    "control_capabilities",
+    "provenance"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "freshness": { "enum": ["stale", "disconnected"] } },
+        "required": ["freshness"]
+      },
+      "then": { "properties": { "normalized_status": { "const": "stale" } } }
+    },
+    {
+      "if": {
+        "properties": { "freshness": { "const": "unknown" } },
+        "required": ["freshness"]
+      },
+      "then": { "properties": { "normalized_status": { "const": "unknown" } } }
+    },
+    {
+      "if": {
+        "properties": { "normalized_status": { "const": "stale" } },
+        "required": ["normalized_status"]
+      },
+      "then": {
+        "properties": { "freshness": { "enum": ["stale", "disconnected"] } }
+      }
+    }
+  ]
+}

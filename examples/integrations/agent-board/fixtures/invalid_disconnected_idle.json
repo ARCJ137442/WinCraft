@@ -1,0 +1,22 @@
+{
+  "kind": "wincraft.activity.draft",
+  "schema_version": "draft-2026-10-29",
+  "source_type": "fixture",
+  "device_id": "fixture-device",
+  "provider_id": "fixture.invalid",
+  "mapping_version": "1",
+  "source_instance_id": "fixture-invalid-instance",
+  "session_id": "fixture-invalid-session",
+  "parent_session_id": null,
+  "task_id": null,
+  "source_status": "connection.lost",
+  "normalized_status": "idle",
+  "observed_at": "2026-10-29T09:59:00Z",
+  "expires_at": "2026-10-29T10:01:00Z",
+  "source_sequence": 1,
+  "freshness": "disconnected",
+  "authority": "unknown",
+  "summary": "Invalid synthetic fixture",
+  "control_capabilities": [],
+  "provenance": "synthetic"
+}

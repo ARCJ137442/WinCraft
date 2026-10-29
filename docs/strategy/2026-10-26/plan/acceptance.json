@@ -1346,7 +1346,8 @@
       ],
       "level": "L1-L2",
       "criterion": "断线不是任务完成或空闲",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: schema conditionals reject disconnected/stale records normalized as idle or completed; expiry converts fresh records to stale without mutating source data. The synthetic projection preserves stale and unknown as separate statuses."
     },
     {
       "id": "B08-01-A2",
@@ -1359,7 +1360,8 @@
       ],
       "level": "L1-L2",
       "criterion": "模型名/显示名不作身份",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: identity is device_id + provider_id + source_instance_id + session_id. Tests show display_name/model_name changes do not change identity, and equal labels across two instances remain distinct."
     },
     {
       "id": "B08-01-A3",
@@ -1372,7 +1374,8 @@
       ],
       "level": "L1-L2",
       "criterion": "只读面板没有批准/写文件/继续执行权限",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: control_capabilities is const empty; the rendered scene contains no buttons, inputs, context actions, or native window actions. No approval, file-write, or continue-execution APIs are called."
     },
     {
       "id": "B08-02-A1",

@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-01 after B07-04 verification",
-  "next_action": "B07-04 A1-A3 are VERIFIED with deterministic interleavings and a real TrafficMonitor + Obsidian Obsidian Workspace scope-isolation probe. Continue B08-01: define a read-only normalized activity projection with explicit source/instance/session/parent/task/freshness identity; keep unknown/stale separate from idle and do not add approval, file-write or continue-execution permissions.",
+  "active_batch": "B08-02 after B08-01 verification",
+  "next_action": "B08-01 verified at L1-L2 with a draft normalized activity schema, synthetic-only read-only Agent Board, stale/identity/leaf-rollup regressions, and real Tauri provider cleanup. Continue B08-02 only with user-selected, explicitly authorized Harness sources; do not enumerate all existing sessions or connect approval/write APIs.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -38,7 +38,7 @@
     "B07-02": "VERIFIED",
     "B07-03": "VERIFIED",
     "B07-04": "VERIFIED",
-    "B08-01": "NOT_STARTED",
+    "B08-01": "VERIFIED",
     "B08-02": "NOT_STARTED",
     "B08-03": "NOT_STARTED",
     "B08-04": "NOT_STARTED",
@@ -144,6 +144,7 @@
     "2026-10-29: B07-03 commit 6eda1a0d5aa2492ad730e6cf44829b4f2cc62834 passed Windows GitHub Actions run 40809546638 (Prototype verification); npm run check:local succeeded. Native GUI gates remain separate.",
     "2026-10-29: B07-04 A1-A3 PASS. Seeded 96-step core interleaving preserved scope ownership and sibling data; real headless composition probe used two authorized local sources and verified staged TrafficMonitor failure did not alter the Obsidian Workspace scope. The stage copy used fresh config, excluded TrafficMonitor.sys, and was restarted after the probe.",
     "2026-10-29: B07-04 A1-A3 PASS. Seeded 96-step interleaving preserves disjoint ownership and sibling data. A real headless composition probe uses an isolated x64 TrafficMonitor 1.8.6.0 bridge stage and the active read-only Obsidian Workspace dashboard; stopping TrafficMonitor changes only its scope to stale. The provider world is destroyed and the stage is restarted.",
-    "2026-10-29: B07-04 commit 0ee13ed6442c2a5c19efe44a0c4ddf5eb592febf passed Windows Actions run 40814128343; npm run check:local succeeded in 6m03s. This is hosted source validation, not native GUI acceptance."
+    "2026-10-29: B07-04 commit 0ee13ed6442c2a5c19efe44a0c4ddf5eb592febf passed Windows Actions run 40814128343; npm run check:local succeeded in 6m03s. This is hosted source validation, not native GUI acceptance.",
+    "2026-10-29: B08-01 verified at L1-L2. The draft activity schema keeps source status, normalized status, freshness and identity separate; the synthetic Agent Board counts leaf sessions only and has no provider actions. A real Tauri release provider render passed; natural timeout and PTY Ctrl+C destroyed only its world. Real Harness adapters remain for B08-02."
   ]
 }

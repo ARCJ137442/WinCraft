@@ -54,6 +54,7 @@ def main() -> None:
     usage_schema = json.loads((ROOT / "protocol/usage-observation.schema.json").read_text(encoding="utf-8"))
     web_chat_schema = json.loads((ROOT / "protocol/web-chat-observation.schema.json").read_text(encoding="utf-8"))
     voice_schema = json.loads((ROOT / "protocol/voice-session.schema.json").read_text(encoding="utf-8"))
+    activity_schema = json.loads((ROOT / "protocol/activity.schema.json").read_text(encoding="utf-8"))
     preview_directory = ROOT / "protocol/preview-0.4"
     preview_manifest = json.loads(
         (preview_directory / "methods.json").read_text(encoding="utf-8")
@@ -70,6 +71,7 @@ def main() -> None:
     Draft202012Validator.check_schema(usage_schema)
     Draft202012Validator.check_schema(web_chat_schema)
     Draft202012Validator.check_schema(voice_schema)
+    Draft202012Validator.check_schema(activity_schema)
     Draft202012Validator.check_schema(preview_request_schema)
     pack_schema = json.loads(pack_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(pack_schema)
@@ -88,6 +90,7 @@ def main() -> None:
     usage_validator = Draft202012Validator(usage_schema, format_checker=FormatChecker())
     web_chat_validator = Draft202012Validator(web_chat_schema, format_checker=FormatChecker())
     voice_validator = Draft202012Validator(voice_schema, format_checker=FormatChecker())
+    activity_validator = Draft202012Validator(activity_schema, format_checker=FormatChecker())
     preview_validator = Draft202012Validator(
         preview_request_schema, format_checker=FormatChecker()
     )
@@ -114,12 +117,21 @@ def main() -> None:
         web_chat_validator.validate(observation)
     for session in json.loads((ROOT / "protocol/examples/voice-session.json").read_text(encoding="utf-8")):
         voice_validator.validate(session)
+    activity_fixtures = ROOT / "examples/integrations/agent-board/fixtures"
+    for record in json.loads(
+        (activity_fixtures / "synthetic_activities.json").read_text(encoding="utf-8")
+    ):
+        activity_validator.validate(record)
+    for invalid_name in ("invalid_disconnected_idle.json", "invalid_control_capability.json"):
+        invalid_record = json.loads((activity_fixtures / invalid_name).read_text(encoding="utf-8"))
+        assert not activity_validator.is_valid(invalid_record), invalid_name
     pack_validator.validate(json.loads((pack_examples / "packs/workday.pack.json").read_text(encoding="utf-8")))
     for invalid_name in ("pack-with-token.json", "pack-with-provider.json"):
         assert not pack_validator.is_valid(json.loads((pack_examples / "invalid" / invalid_name).read_text(encoding="utf-8")))
     theme_only = Draft202012Validator(theme_schema)
     theme_only.validate(theme_scene["theme"])
     checks.append("schemas_and_positive_fixtures")
+    checks.append("draft_read_only_activity_schema_and_fixtures")
     preview_examples = preview_directory / "examples"
     for request in json.loads(
         (preview_examples / "state-slot-requests.json").read_text(encoding="utf-8")
