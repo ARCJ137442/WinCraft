@@ -4,6 +4,7 @@
 
 - 增加 opt-in `0.4-preview.1` endpoint-local `provider.inventory.register/list`；来源自报 capability 不产生 grants，跨 Host 发现由调用者显式选择并鉴权。
 - Global Agent Overview 的默认总览与来源列表统一展示 Codex CLI、Claude Code、Codex App 的会话名称、状态、项目与有界 Agent 输出；Codex Desktop 本机状态 DB 按 `originator` 提供标题/项目回退，并只从 session ID 匹配的 rollout 尾部读取 Agent 消息；bridge 按 thread ID 补充实时字段，缺失状态显示未知。Codex CLI 只读最近四个线程的 `agentMessage`，Claude 只读活动会话日志尾部并忽略用户/工具/思考块。
+- Live Agent Overview 新增显式 `--sources` 选择；未选择来源不启动对应适配器、不复用其旧数据，并显示“本轮未查询”。可在 Codex App 目标停滞期间只监控 Codex CLI 与 Claude Code。
 - Popup-Ask 临时问答窗请求 `surface_opacity=0.92` 以提高阻塞提问的可读性；其他浮窗仍保持全局 0.8 默认。
 - 当前 Windows release 的合成 UIA smoke 已看到四字段；真实 Codex App connector 快照和 UUID 深链接仍为 `BLOCKED/NOT_RUN`，不宣称真实会话已经接入。
 

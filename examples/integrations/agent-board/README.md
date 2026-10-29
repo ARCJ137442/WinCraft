@@ -68,6 +68,19 @@ To open the live, read-only view on the local host:
 python examples/integrations/agent-board/live_provider.py --runtime "<actual descriptor path>" --duration-seconds 600 --refresh-seconds 15
 ```
 
+By default, the provider polls the local Codex CLI, Claude Code, and bounded Codex
+Desktop fallback. To verify only Codex CLI and Claude Code while the Codex App connector
+target is stalled, select just those sources:
+
+```powershell
+python examples/integrations/agent-board/live_provider.py --runtime "<actual descriptor path>" --sources codex claude-code --duration-seconds 60 --refresh-seconds 15
+```
+
+In this mode the provider does not open the Codex Desktop state database or read any
+rollout tail; the App tab reports “本轮未查询” rather than showing stale rows or an empty
+success. A Codex App stdin bridge requires `codex-app` to be included explicitly in
+`--sources`.
+
 Given a successful CLI snapshot, when a source refreshes, then its own session list and
 freshness update without approval, file-write, or continue-execution actions. If one
 source fails, only that source becomes disconnected/stale and the other source remains

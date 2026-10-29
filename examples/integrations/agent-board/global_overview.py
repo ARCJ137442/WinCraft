@@ -19,6 +19,7 @@ SOURCE_HEALTH_LABELS = {
     "partial": "部分可用",
     "disconnected": "断开",
     "unavailable": "不可用",
+    "not_requested": "本轮未查询",
     "synthetic": "合成",
     "local_state": "本机状态库",
     "unknown": "未知",
@@ -29,6 +30,7 @@ SOURCE_HEALTH_TONES = {
     "partial": "warning",
     "disconnected": "danger",
     "unavailable": "danger",
+    "not_requested": "muted",
     "synthetic": "muted",
     "local_state": "muted",
     "unknown": "muted",
@@ -138,6 +140,7 @@ def _source_health_label(source_id: str, health: str) -> str:
             "partial": "部分数据",
             "disconnected": "桥接断开",
             "unavailable": "等待 Agent 桥接",
+            "not_requested": "本轮未查询",
             "local_state": "本机状态库可读",
         }.get(health, SOURCE_HEALTH_LABELS.get(health, "未知"))
     if source_id in {"codex", "claude-code"}:
@@ -146,6 +149,7 @@ def _source_health_label(source_id: str, health: str) -> str:
             "partial": "CLI 部分可用",
             "disconnected": "CLI 查询失败",
             "unavailable": "CLI 未就绪",
+            "not_requested": "本轮未查询",
         }.get(health, SOURCE_HEALTH_LABELS.get(health, "未知"))
     return SOURCE_HEALTH_LABELS.get(health, "未知")
 
@@ -154,6 +158,8 @@ def _source_update_label(source_id: str, projection: Mapping[str, Any]) -> str:
     '''显示来源上次成功读取年龄，不将连接状态冒充为内容新鲜度'''
     if projection.get("data_mode_label") == "合成":
         return "合成数据"
+    if projection.get("source_health", {}).get(source_id) == "not_requested":
+        return "本轮未查询"
     freshness = projection.get("source_freshness", {}).get(source_id)
     age = projection.get("source_age_seconds", {}).get(source_id)
     if age is None:

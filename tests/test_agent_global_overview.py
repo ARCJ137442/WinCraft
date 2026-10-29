@@ -25,6 +25,7 @@ from global_overview_provider import (  # noqa: E402
     cleanup_global_overview_world,
     handle_view_interaction,
 )
+from live_provider import validate_source_options  # noqa: E402
 import global_overview_provider as overview_provider  # noqa: E402
 
 
@@ -38,6 +39,14 @@ class GlobalOverviewSceneTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 10, 29, 10, 2, tzinfo=timezone.utc)
         self.projection = load_synthetic_global_projection(now=self.now)
+
+    def test_provider_source_selection_can_skip_the_stalled_app_bridge(self):
+        self.assertEqual(
+            validate_source_options(['codex', 'claude-code'], codex_app_bridge=False),
+            ('codex', 'claude-code'),
+        )
+        with self.assertRaises(ValueError):
+            validate_source_options(['codex', 'claude-code'], codex_app_bridge=True)
 
     def test_default_scene_shows_global_counts_and_bounded_claude_status_preview(self):
         scene, detail_targets, page_count = build_global_overview_scene(
@@ -98,6 +107,19 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.assertNotIn("fixture-codex-instance", serialized)
         self.assertNotIn("turn.running", serialized)
         self.assertNotIn("source_status", serialized)
+
+    def test_not_requested_app_source_is_not_rendered_as_empty_or_offline(self):
+        projection = copy.deepcopy(self.projection)
+        projection['source_health']['codex-app'] = 'not_requested'
+        projection['source_age_seconds'] = {'codex-app': None}
+        projection['source_freshness'] = {'codex-app': 'unknown'}
+        projection['data_mode_label'] = '本机 CLI 实时只读 · Codex App 本轮未查询'
+
+        scene, _, _ = build_global_overview_scene(projection, GlobalOverviewState())
+
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '本轮未查询')
+        self.assertEqual(scene['data']['summary']['codex_app_updated'], '本轮未查询')
+        self.assertEqual(scene['data']['summary']['codex_app_sessions'], 0)
 
     def test_source_switch_and_detail_are_progressive_and_return_to_same_source(self):
         source_state = transition_view(

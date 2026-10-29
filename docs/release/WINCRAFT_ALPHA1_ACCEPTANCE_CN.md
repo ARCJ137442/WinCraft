@@ -18,9 +18,9 @@ audience: maintainer, Windows tester
 | SHA-256 | `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由 `npm run desktop:build` 构建，退出码 0；本机 `npm run check:local` 退出码 0（28 Node UI、116 Rust、154 Python tests、离线契约和 27 个 Provider Skill 引用）。独立启动当前 EXE 后，真实 Tauri host 的 `lease_probe.py` 返回 `status=PASS`、退出码 0。GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对阶段提交 `a0366e1` 的 Windows `npm run check:local` 通过，耗时 7m02s；workflow 不启动 Tauri 窗口，也不替代托盘菜单、窗口像素与 Windows 原生行为验收。
+这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由 `npm run desktop:build` 构建，退出码 0；当前 source tree 的 `npm run check:local` 退出码 0（28 Node UI、116 Rust、159 Python tests、离线契约和 27 个 Provider Skill 引用）。EXE 本身来自源码提交 `a0366e1`；后续更改仅更新外置 Python Provider/文档，不改变二进制。独立启动当前 EXE 后，真实 Tauri host 的 `lease_probe.py` 返回 `status=PASS`、退出码 0。GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对阶段提交 `a0366e1` 的 Windows `npm run check:local` 通过，耗时 7m02s；workflow 不启动 Tauri 窗口，也不替代托盘菜单、窗口像素与 Windows 原生行为验收。
 
-此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仅显示有限标题/项目，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把合成字段 smoke 计作真实 UI 或持续会话接入。
+此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。最新 live Provider smoke 以 `--sources codex claude-code` 读取这两个来源，明确不查询 Codex App；两次真实 Tauri 协议运行提交了 4/2 个只读场景并正常退出。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仍限于标题/项目和身份匹配的 Agent 输出，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把 synthetic UIA 或两来源 smoke 计作真实 Codex App UI 接入。
 
 ## 快速启动
 

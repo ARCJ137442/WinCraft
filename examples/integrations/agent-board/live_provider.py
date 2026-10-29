@@ -25,10 +25,12 @@ from global_overview import (  # noqa: E402
 )
 from global_overview_provider import cleanup_global_overview_world  # noqa: E402
 from live_sources import (  # noqa: E402
+    LIVE_SOURCE_LABELS,
     LiveSnapshot,
     SourceReadError,
     load_live_snapshot,
     merge_codex_app_snapshot,
+    normalize_live_source_selection,
     summarize_live_snapshot,
 )
 
@@ -42,6 +44,22 @@ DEFAULT_DURATION_SECONDS: int = 600
 '''📜Provider 窗口的默认运行时长'''
 CODEX_APP_SNAPSHOT_MAX_CHARS: int = 262_144
 '''📜Agent-fed Codex App 快照的最大单行字符数'''
+
+
+def validate_source_options(
+    values: list[str] | tuple[str, ...] | None,
+    *,
+    codex_app_bridge: bool,
+) -> tuple[str, ...]:
+    '''验证启动前的来源选择
+    - 🤖默认查询全部来源；显式选择可跳过停滞或未授权的来源
+    - 📌Codex App bridge 必须明确包含 codex-app 来源
+    '''
+    enabled_sources = tuple(values) if values is not None else None
+    selected = normalize_live_source_selection(enabled_sources)
+    if codex_app_bridge and 'codex-app' not in selected:
+        raise ValueError('the Codex App bridge requires codex-app in --sources')
+    return selected
 
 
 def _start_codex_app_snapshot_reader(
@@ -157,6 +175,10 @@ def _report_snapshot(snapshot: LiveSnapshot) -> None:
 
 async def run(args: argparse.Namespace) -> None:
     '''Run a read-only overview with local CLI polls and optional Agent-fed Codex App snapshots'''
+    selected_sources = validate_source_options(
+        args.sources,
+        codex_app_bridge=args.codex_app_bridge,
+    )
     world_id: str | None = None
     lease: dict[str, Any] | None = None
     world_deleted = False
@@ -193,7 +215,12 @@ async def run(args: argparse.Namespace) -> None:
             raise RuntimeError('Host did not issue the live overview writer lease')
 
         sequence = 1
-        snapshot = await asyncio.to_thread(load_live_snapshot, None, sequence=sequence)
+        snapshot = await asyncio.to_thread(
+            load_live_snapshot,
+            None,
+            sequence=sequence,
+            enabled_sources=selected_sources,
+        )
         snapshot.projection['codex_app_links_enabled'] = codex_app_links_enabled
         state = GlobalOverviewState()
         try:
@@ -201,13 +228,16 @@ async def run(args: argparse.Namespace) -> None:
             detail_targets, page_count = await _refresh_scene(
                 client, world_id, lease, snapshot, state
             )
-            print(
-                'Live Agent Overview reads Claude Code agents --json, Codex CLI thread/list '
-                'with useStateDbOnly=true, and bounded Codex Desktop local metadata. Only '
-                'the matched latest agent_message may be read from a local rollout tail; '
-                'Codex App connector snapshots are accepted from the authorized Agent stdin bridge.',
-                flush=True,
-            )
+            source_labels = ', '.join(LIVE_SOURCE_LABELS[source_id] for source_id in selected_sources)
+            print(f'Live Agent Overview selected sources: {source_labels}.', flush=True)
+            if 'codex-app' in selected_sources:
+                print(
+                    'Codex Desktop fallback is bounded and read-only; connector snapshots are accepted '
+                    'only from the authorized Agent stdin bridge.',
+                    flush=True,
+                )
+            else:
+                print('Codex App data was not queried in this run.', flush=True)
 
             loop = asyncio.get_running_loop()
             snapshot_queue: asyncio.Queue[dict[str, Any] | None] | None = None
@@ -241,6 +271,7 @@ async def run(args: argparse.Namespace) -> None:
                         load_live_snapshot,
                         snapshot,
                         sequence=sequence,
+                        enabled_sources=selected_sources,
                     )
                     snapshot.projection['codex_app_links_enabled'] = codex_app_links_enabled
                     _report_snapshot(snapshot)
@@ -330,12 +361,22 @@ def main() -> None:
         help='Window title for distinguishing the live status world',
     )
     parser.add_argument(
+        '--sources',
+        nargs='+',
+        choices=tuple(LIVE_SOURCE_LABELS),
+        help='Sources to query; default is all. Select codex and claude-code to skip Codex App.',
+    )
+    parser.add_argument(
         '--codex-app-bridge',
         action='store_true',
         help='Accept JSONL snapshots from an authorized Codex App connector Agent over stdin',
     )
     args = parser.parse_args()
     require_runtime(parser, args)
+    try:
+        validate_source_options(args.sources, codex_app_bridge=args.codex_app_bridge)
+    except ValueError as error:
+        parser.error(str(error))
     if not 1 <= args.duration_seconds <= 3600:
         parser.error('--duration-seconds must be between 1 and 3600')
     if not MIN_REFRESH_SECONDS <= args.refresh_seconds <= MAX_REFRESH_SECONDS:

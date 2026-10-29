@@ -24,12 +24,12 @@
 
 ## 当前验证与仓库状态（2026-10-29）
 
-- 当前可复现命令、环境、退出码与分层结果以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。当前工作树 `npm run check:local` 退出码 0：28 项 UI、Rust workspace 116 tests、154 项 Python tests、离线契约和 27 个 Provider Skill 引用检查通过。
+- 当前可复现命令、环境、退出码与分层结果以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。当前工作树 `npm run check:local` 退出码 0：28 项 UI、Rust workspace 116 tests、159 项 Python tests、离线契约和 27 个 Provider Skill 引用检查通过。
 - 阶段提交 [`a0366e1`](https://github.com/exomind-team/WinCraft/commit/a0366e1ecc9fb7e7eaaa1c23e14c161c400e56fd) 已推送到 `origin/dev`；对应 [Windows Actions run 40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 通过，耗时 7m02s。当前独立 release 的 Tauri-hosted `lease_probe.py` 返回 `PASS`、退出码 0；CI 和协议探针都不替代原生像素/人工验收。
 - B01-03 的 opt-in 0.4-preview endpoint-local provider inventory 已通过 loopback WebSocket/core/server/Python SDK 回归；0.3 `world.list` 不变，Host 不接受 grants、不会扫描其他 Host。
 - 当前 release EXE：`target/release/wincraft-desktop.exe`，12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`；对应中文验收指南为 [`docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md`](docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md)。
 - B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 整体为 `BLOCKED`，其中 Codex App 子目标按用户要求标记 `STALLED`：Claude Code `agents --json`、Codex CLI `thread/list`、Codex App connector 与 Codex Desktop 本机回退保持独立；本机回退只给有限标题/项目，状态未知，输出仅来自 UUID 匹配的有界 rollout 尾部。一次授权 connector 快照到达 Provider，但持续 relay、release UI 和原生 UUID 深链接仍未完成。
-- B08-03 单窗口 Global Agent Overview 的 A6/A7 有合成 release 证据；Computer Use 的窗口重新激活失败后停止进一步 UI 输入。合成卡片不计作真实 Codex App 会话呈现。
+- B08-03 单窗口 Global Agent Overview 的 A6/A7 有合成 release 证据；当前 release 的 live Provider 用 `--sources codex claude-code` 读取真实本机状态，60 秒与 30 秒两次运行分别提交 4/2 个场景后退出 0；Codex App 明确为 `not_requested`。Computer Use 窗口重新激活失败后停止进一步 UI 输入；没有像素级验收，合成卡片与协议 smoke 都不计作真实 Codex App 呈现。
 - B05-02 TeamSense：本地仓库与 Codex 用量采集器源码已审阅；它采集本机 usage 汇总，不提供 Agent 实时会话状态。WinCraft 实时投影仍需核实正式只读 API、账号/窗口口径和授权；本轮未连接 TeamSense 服务或读取密钥。
 - B09-02 `adb devices -l` 当前发现 1 台在线设备与 1 台离线设备；未枚举应用或读取通知。没有用户选定的 app/source 和通知权限，任务状态为 `BLOCKED`。
 - Python 提供者已统一按真实 wire envelope 读取顶层 `world.deleted.world_id`；Tauri-hosted `lease_probe.py` 最终 41 项通过，包含删除事件送达原成员检查。

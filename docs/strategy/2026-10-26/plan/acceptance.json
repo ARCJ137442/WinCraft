@@ -1552,7 +1552,7 @@
       "level": "L1-L5",
       "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露",
       "status": "PARTIAL",
-      "evidence": "Synthetic release UIA covered the card layout; a real authorized Codex App list/read snapshot reached the current Provider and local Desktop metadata fallback is implemented. Pixel-level release presentation, continuous freshness and native thread navigation remain NOT_RUN."
+      "evidence": "Synthetic release UIA covered the card layout. A real Tauri release Provider then read Codex CLI and Claude Code only (Codex App explicitly not requested): a 60-second smoke submitted four live snapshots and a later 30-second smoke submitted two; both exited 0 through cleanup. The summary showed Codex CLI online with zero listed rows and two blocked Claude background Agents. The actual Codex App connector/local fallback remains STALLED, and pixel-level presentation, persistent freshness, and native thread navigation remain NOT_RUN."
     },
     {
       "id": "B08-04-A1",

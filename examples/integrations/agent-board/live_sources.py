@@ -102,6 +102,22 @@ class LiveSnapshot:
     '''每个来源最近一次成功快照的来源采集时刻；缺少采集时刻时回退为本机接收时刻'''
 
 
+def normalize_live_source_selection(enabled_sources: tuple[str, ...] | None) -> tuple[str, ...]:
+    '''验证 Provider 本轮获准查询的本机来源集合
+    - 🤖未选来源既不启动适配器，也不沿用上一轮数据
+    '''
+    if enabled_sources is None:
+        return tuple(LIVE_SOURCE_LABELS)
+    selected = tuple(enabled_sources)
+    if (
+        not selected
+        or len(set(selected)) != len(selected)
+        or set(selected) - set(LIVE_SOURCE_LABELS)
+    ):
+        raise ValueError('enabled_sources must be a non-empty unique subset of known sources')
+    return selected
+
+
 class _CodexAppServer:
     '''通过本地 stdio app-server 查询 Codex 线程状态
     - ⚠️thread/list 固定启用 useStateDbOnly；不会扫描 JSONL rollouts
@@ -1177,15 +1193,20 @@ def load_live_snapshot(
     *,
     sequence: int = 0,
     now: datetime | None = None,
+    enabled_sources: tuple[str, ...] | None = None,
 ) -> LiveSnapshot:
-    '''读取本机来源并保留 Codex App 的本地 metadata 与 Agent-fed live snapshot
+    '''读取显式选择的本机来源并保留 Codex App 的本地 metadata 与 Agent-fed snapshot
     - 📌Codex Desktop state DB 只补本机可重建 metadata；connector snapshot 权威覆盖同一 thread
     - 📌单源失败只令该来源过期；本地 state fallback 不冒充实时运行状态
+    - 🤖未选择的来源不读取或复用旧记录，UI以not_requested明确呈现
     '''
     observed_at = now or datetime.now(timezone.utc)
     if observed_at.tzinfo is None or observed_at.utcoffset() is None:
         raise ValueError('now must include a timezone')
     observed_at = observed_at.astimezone(timezone.utc)
+    selected_sources = normalize_live_source_selection(enabled_sources)
+    selected_source_ids = set(selected_sources)
+    all_sources = tuple(LIVE_SOURCE_LABELS)
     readers = {
         'codex': read_codex_threads,
         'claude-code': read_claude_agents,
@@ -1195,64 +1216,79 @@ def load_live_snapshot(
         previous.projection.get('source_health', {}) if previous is not None else {}
     )
     source_observed_at = (
-        dict(previous.source_observed_at) if previous is not None else {}
+        {
+            source_id: observed
+            for source_id, observed in previous.source_observed_at.items()
+            if source_id in selected_source_ids
+        }
+        if previous is not None
+        else {}
     )
     previous_app_observed_at = (
-        previous.source_observed_at.get('codex-app') if previous is not None else None
+        source_observed_at.get('codex-app')
     )
-    try:
-        local_app_records, local_app_health = read_codex_app_local_threads(
-            observed_at=observed_at,
-            sequence=sequence,
-        )
-    except SourceReadError:
-        local_app_records, local_app_health = [], 'unavailable'
-    if local_app_health == 'unavailable' and previous is not None:
-        previous_local_records = _codex_app_local_records(
-            previous_records.get('codex-app', [])
-        )
-        if previous_local_records:
-            local_app_records = _stale_records(previous_local_records)
-            local_app_health = 'disconnected'
     records_by_source: dict[str, list[dict[str, Any]]] = {
-        'codex-app': local_app_records,
+        source_id: [] for source_id in all_sources
     }
-    health: dict[str, str] = {'codex-app': local_app_health}
-    if local_app_health in {'local_state', 'partial'}:
-        source_observed_at['codex-app'] = observed_at
-    if previous is not None:
-        app_records = previous_records.get('codex-app', [])
-        connector_records = _codex_app_connector_records(app_records)
-        app_observed_at = previous_app_observed_at
-        if (
-            connector_records
-            and app_observed_at is not None
-            and observed_at - app_observed_at <= timedelta(seconds=SOURCE_SNAPSHOT_TTL_SECONDS)
-        ):
-            records_by_source['codex-app'] = _merge_codex_app_records(
-                local_app_records,
-                connector_records,
+    health: dict[str, str] = {
+        source_id: 'not_requested' for source_id in all_sources
+    }
+    local_app_records: list[dict[str, Any]] = []
+    local_app_health = 'not_requested'
+    if 'codex-app' in selected_source_ids:
+        try:
+            local_app_records, local_app_health = read_codex_app_local_threads(
+                observed_at=observed_at,
+                sequence=sequence,
             )
-            connector_health = previous_health.get('codex-app', 'partial')
-            has_local_only_records = len(records_by_source['codex-app']) > len(connector_records)
-            health['codex-app'] = (
-                'partial' if has_local_only_records and connector_health == 'online'
-                else connector_health
+        except SourceReadError:
+            local_app_records, local_app_health = [], 'unavailable'
+        if local_app_health == 'unavailable' and previous is not None:
+            previous_local_records = _codex_app_local_records(
+                previous_records.get('codex-app', [])
             )
-            source_observed_at['codex-app'] = max(
-                value for value in (source_observed_at.get('codex-app'), app_observed_at)
-                if value is not None
-            )
-        elif connector_records:
-            stale_connector_records = _stale_records(connector_records)
-            records_by_source['codex-app'] = _merge_codex_app_records(
-                local_app_records,
-                stale_connector_records,
-            )
-            health['codex-app'] = 'local_state' if local_app_health == 'local_state' else 'disconnected'
-        elif not local_app_records and previous_health.get('codex-app') == 'disconnected':
-            health['codex-app'] = 'disconnected'
+            if previous_local_records:
+                local_app_records = _stale_records(previous_local_records)
+                local_app_health = 'disconnected'
+        records_by_source['codex-app'] = local_app_records
+        health['codex-app'] = local_app_health
+        if local_app_health in {'local_state', 'partial'}:
+            source_observed_at['codex-app'] = observed_at
+        if previous is not None:
+            app_records = previous_records.get('codex-app', [])
+            connector_records = _codex_app_connector_records(app_records)
+            app_observed_at = previous_app_observed_at
+            if (
+                connector_records
+                and app_observed_at is not None
+                and observed_at - app_observed_at <= timedelta(seconds=SOURCE_SNAPSHOT_TTL_SECONDS)
+            ):
+                records_by_source['codex-app'] = _merge_codex_app_records(
+                    local_app_records,
+                    connector_records,
+                )
+                connector_health = previous_health.get('codex-app', 'partial')
+                has_local_only_records = len(records_by_source['codex-app']) > len(connector_records)
+                health['codex-app'] = (
+                    'partial' if has_local_only_records and connector_health == 'online'
+                    else connector_health
+                )
+                source_observed_at['codex-app'] = max(
+                    value for value in (source_observed_at.get('codex-app'), app_observed_at)
+                    if value is not None
+                )
+            elif connector_records:
+                stale_connector_records = _stale_records(connector_records)
+                records_by_source['codex-app'] = _merge_codex_app_records(
+                    local_app_records,
+                    stale_connector_records,
+                )
+                health['codex-app'] = 'local_state' if local_app_health == 'local_state' else 'disconnected'
+            elif not local_app_records and previous_health.get('codex-app') == 'disconnected':
+                health['codex-app'] = 'disconnected'
     for source_id, reader in readers.items():
+        if source_id not in selected_source_ids:
+            continue
         try:
             records, source_health = reader(observed_at=observed_at, sequence=sequence)
         except SourceReadError:
@@ -1269,7 +1305,9 @@ def load_live_snapshot(
     projection['source_labels'] = LIVE_SOURCE_LABELS
     local_app_present = bool(_codex_app_local_records(records_by_source['codex-app']))
     connector_app_present = bool(_codex_app_connector_records(records_by_source['codex-app']))
-    if connector_app_present and local_app_present:
+    if 'codex-app' not in selected_source_ids:
+        projection['data_mode_label'] = '所选 CLI 来源实时只读 · Codex App 本轮未查询'
+    elif connector_app_present and local_app_present:
         projection['data_mode_label'] = 'Codex App 桥接 + 本机状态库 + CLI 实时只读'
     elif connector_app_present:
         projection['data_mode_label'] = 'Codex App + CLI 实时只读'
@@ -1278,7 +1316,9 @@ def load_live_snapshot(
     else:
         projection['data_mode_label'] = '本机 CLI 实时 · Codex App 等待 Agent 接入'
     projection['codex_app_links_enabled'] = bool(
-        previous and previous.projection.get('codex_app_links_enabled')
+        'codex-app' in selected_source_ids
+        and previous
+        and previous.projection.get('codex_app_links_enabled')
     )
     _add_source_freshness(projection, source_observed_at, now=observed_at)
     return LiveSnapshot(projection, records_by_source, sequence, source_observed_at)

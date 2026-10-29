@@ -28,6 +28,7 @@ from live_sources import (  # noqa: E402
     normalize_codex_app_snapshot,
     normalize_claude_agents,
     normalize_codex_threads,
+    normalize_live_source_selection,
     summarize_live_snapshot,
     _codex_last_agent_output,
     _read_claude_latest_outputs,
@@ -1262,6 +1263,76 @@ class LiveSourceFailureTests(unittest.TestCase):
         self.assertEqual(snapshot.projection['source_health']['claude-code'], 'disconnected')
         self.assertEqual(snapshot.projection['source_health']['codex'], 'online')
         self.assertEqual(snapshot.projection['sessions'], [])
+
+    def test_selected_sources_do_not_read_or_retain_stalled_codex_app_data(self):
+        app_records, app_health = normalize_codex_app_snapshot(
+            {
+                'snapshot_version': 1,
+                'source_health': 'online',
+                'threads': [
+                    {
+                        'thread_id': '00000000-0000-4000-8000-000000000001',
+                        'title': 'Synthetic App row',
+                        'status': 'active',
+                        'project_label': 'Synthetic project',
+                        'last_agent_output': 'Synthetic output',
+                        'last_output_kind': 'agent_message',
+                    }
+                ],
+            },
+            observed_at=NOW,
+            sequence=1,
+        )
+        self.assertEqual(app_health, 'online')
+        with (
+            patch('live_sources.read_codex_app_local_threads', return_value=(app_records, 'local_state')),
+            patch('live_sources.read_codex_threads', return_value=([], 'online')),
+            patch('live_sources.read_claude_agents', return_value=([], 'online')),
+        ):
+            previous = load_live_snapshot(sequence=1, now=NOW)
+
+        with (
+            patch('live_sources.read_codex_app_local_threads') as app_reader,
+            patch('live_sources.read_codex_threads', return_value=([], 'online')),
+            patch('live_sources.read_claude_agents', return_value=([], 'online')),
+        ):
+            selected = load_live_snapshot(
+                previous,
+                sequence=2,
+                now=NOW + timedelta(seconds=1),
+                enabled_sources=('codex', 'claude-code'),
+            )
+
+        app_reader.assert_not_called()
+        self.assertEqual(selected.records_by_source['codex-app'], [])
+        self.assertNotIn('codex-app', selected.source_observed_at)
+        self.assertEqual(selected.projection['source_health']['codex-app'], 'not_requested')
+        self.assertFalse(any(session['source_type_label'] == 'Codex App' for session in selected.projection['sessions']))
+        self.assertIn('Codex App 本轮未查询', selected.projection['data_mode_label'])
+
+    def test_live_source_selection_is_nonempty_unique_and_known(self):
+        self.assertEqual(
+            normalize_live_source_selection(('codex', 'claude-code')),
+            ('codex', 'claude-code'),
+        )
+        for selection in ((), ('codex', 'codex'), ('codex', 'unknown')):
+            with self.subTest(selection=selection):
+                with self.assertRaises(ValueError):
+                    normalize_live_source_selection(selection)
+
+    def test_selected_sources_reject_empty_duplicate_and_unknown_ids_before_reading(self):
+        for selection in ((), ('codex', 'codex'), ('codex', 'unknown')):
+            with self.subTest(selection=selection):
+                with (
+                    patch('live_sources.read_codex_app_local_threads') as app_reader,
+                    patch('live_sources.read_codex_threads') as codex_reader,
+                    patch('live_sources.read_claude_agents') as claude_reader,
+                    self.assertRaises(ValueError),
+                ):
+                    load_live_snapshot(sequence=1, now=NOW, enabled_sources=selection)
+                app_reader.assert_not_called()
+                codex_reader.assert_not_called()
+                claude_reader.assert_not_called()
 
     def test_snapshot_log_summary_contains_only_aggregate_statuses(self):
         records, _ = normalize_claude_agents(
