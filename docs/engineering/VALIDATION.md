@@ -420,10 +420,85 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 |---|---|---|
 | `python -m unittest tests.test_agent_activity_board -v` | PASS | 9 tests：freshness 条件、过期投影、稳定身份、叶节点去重、父树完整性、空控制能力、场景无交互动作和 provider cleanup cancellation。|
 | `python scripts/check_contracts.py` | PASS | 校验 draft 活动 Schema、4 条合成记录及 disconnected-as-idle / approval-capability 两种负例。|
-| `npm run check:local` | PASS | 28 Node UI、107 Rust workspace、99 Python tests；fmt/check/Clippy、离线契约和 19 个 Skill references 全部通过。|
+| `npm run check:local` | PASS | 28 Node UI、107 Rust workspace、99 Python tests；fmt/check/Clippy、离线契约和 27 个 Skill references 全部通过。|
 | Agent Board provider + Tauri release | PASS | 使用真实 release Tauri host 呈现合成快照；UIA 确认叶会话/等待/断线计数和父子顺序，scene 只有只读组件；没有连接 Harness 数据源。|
 | provider world cleanup | PASS | 自然到期与交互式 PTY Ctrl+C 都确认销毁唯一测试世界，管理器恢复 0 个世界。非 TTY 执行器的强制 Ctrl+C 会直接杀进程并留 stale 世界；该测试副本随后由管理器关闭。|
 | GitHub Actions run `40818791865` | PASS | B08-01 commit `fce1c87` 的 Windows source job 全量 `npm run check:local` 成功，用时 6m03s；不代表真实 Harness adapter 或审批 UI 已验收。 |
 | 真实 Harness adapter / approval flow | NOT_RUN | 留待 B08-02，并要求先有用户选择和授权的具体来源；当前原型不枚举既有会话。|
 
 本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-01-validation.json`。原始 Harness、Obsidian 笔记和外心业务数据均未读取；本任务 fixture 全部为仓库内合成数据。
+
+## 2026-10-29 B09-01 设备消息信封与去重边界
+
+**Given** 合成设备消息经带外 `TransportReceipt` 到达，其中包含乱序序号、重复 message ID、过期 TTL、撤销来源和 relay trace；**When** inbox 验证消息契约与接收回执；**Then** 只按 origin 身份去重，乱序按 source sequence 排序，重复不增加待办计数，过期/撤销消息从活动投影移除，relay trace 不会成为 origin identity。
+
+`protocol/device-message.schema.json` (`draft-2026-10-29`) 只描述有限摘要、origin、序号、TTL、provenance 和 redaction。认证信息由外部 transport adapter 带外提供；本例不实现认证、WSS、Android 通知监听或多跳网络，也不打开公网监听。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_device_inbox -v` | PASS | 9 tests 覆盖重复/乱序、TTL、撤销/replay、带外认证、relay 与 origin 分离、raw body 拒绝和只读场景。|
+| `python scripts/check_contracts.py` | PASS | device-message draft schema、3 条正例及 raw-body/missing-origin 负例均通过。|
+| `npm run check:local` | PASS | 28 Node UI、107 Rust workspace、108 Python tests；fmt/check/Clippy、离线契约和 27 个 Provider Skill references 全通过。|
+| Device Inbox provider + Tauri release | PASS | release 宿主显示合成摘要与 todo 计数；scene 无按钮/输入/原生动作；PTY Ctrl+C 后只销毁自己的临时 world，manager 回到 0 个世界。|
+| 真实外部 transport / Android 通知 | NOT_RUN | 没有用户选定的真机/应用/认证通道；本任务仅验证可注入的认证边界，不声称真实通知已读取。|
+
+本地脱敏证据：`evidence/local/nextgen-2026-10-29/b09-01-validation.json`。没有读取真实通知、手机数据、消息正文或认证材料。
+
+## B08-03 全局面板切换验收计划
+
+2026-10-29 新增用户决定：一个全局悬浮窗先显示 Codex 并行会话量与 Claude Code 各会话状态，用户可以按来源/实例/会话切换，详情渐进披露；切换需保留来源身份、新鲜度与撤销状态。对应 B08-03-A4/A5 当前为 `NOT_RUN`。实际会话读取仍以用户选定的具体实例/会话为界。
+
+## 2026-10-29 公开仓库脱敏预检
+
+| 检查 | 结果 | 范围与限制 |
+|---|---|---|
+| Gitleaks 8.30.1 历史扫描 | PASS（凭据规则） | 官方发布校验和已核对；扫描全部可达历史（`--all --full-history`），退出码 0，0 条凭据规则命中。 |
+| Gitleaks 当前工作目录扫描 | FAIL（仅忽略的本机证据） | 523 个文件副本中有 5 条 `generic-api-key` 命中，全部位于 `.gitignore` 排除的 `evidence/local/` 旧 `.runtime.json` 测试描述文件。匹配值未写入输出或证据；这些文件不是可分享内容。 |
+| 跟踪文件与 Git 历史个人路径 | FAIL（公开准备） | 当前跟踪文件不含本机用户目录路径；历史提交 `5d64341c9e69` 的旧验收文档曾包含一条本机绝对路径。该提交属于此前公开的历史。公开前需清理/替换历史，再验证新候选历史。 |
+| 已跟踪截图 | PASS（内容审查） | `evidence/assistant-run/manager-preview.png` 与 `world-preview.png` 只呈现明确标注的浏览器合成数据；桌面应用图标为通用图形。 |
+| 当前仓库公开状态 | BLOCKED | `exomind-team/WinCraft` 当前为私有。用户有未来公开意向，但尚未授权本轮改可见性。忽略证据中的描述文件和历史个人路径均须先处置。 |
+
+本预检只覆盖 Gitleaks 8.30.1 默认规则及上述路径审查，不是全面隐私审计、依赖审计或发布授权。扫描未输出凭据值；扫描临时副本的清理状态只记录在默认忽略的本机证据索引中，不作为产品验证通过项。
+
+## 2026-10-29 Tauri release 窗口状态复验
+
+对 `target/release/wincraft-desktop.exe` 中的管理器与临时合成空白世界执行 Computer Use。此前 2026-10-28 记录的“最新 build 未复测”只反映当日状态，以下结果更新本组 UI 场景：
+
+| 场景 | 状态 | 观察结果 |
+|---|---|---|
+| 标题栏折叠/展开尺寸（W23） | PASS | Computer Use 的窗口截图尺寸由 `412×222` 收敛到 `166×50`；展开并稳定复查后恢复 `412×222`。折叠态仅剩标题栏，宽度与高度都收紧。 |
+| 隐藏后由管理器恢复（W18） | PASS | 隐藏后管理器状态显示“窗口隐藏”并提供“显示窗口”；点击后同名世界重新可见，管理器报告“窗口显示”，尺寸 `412×222`。 |
+| 临时世界清理 | PASS | 两个合成空白世界均通过世界关闭操作清理；最终管理器显示 `0` 个开放世界。 |
+| 托盘全局隐藏/显示、置顶层级、点击穿透救援、多 DPI/多屏 | NOT_RUN | 本轮未触发这些场景，不沿用其他用例结果。 |
+
+本轮未保存截图：管理器画面包含本机 runtime 描述文件路径；验证记录只保留合成场景、状态和截图尺寸，不记录世界 ID、窗口系统 ID 或描述文件内容。尺寸是 Computer Use 的窗口截图像素，不代表跨 DPI 的物理像素。
+
+## 2026-10-29 B08-03 单窗口 Agent 活动纵览原型
+
+**Given** 仓库内合成的 Codex/Claude Code 活动投影；**When** 用户切换来源、打开一个 Claude 会话详情并返回；**Then** 同一窗口保留当前来源状态、显示新鲜度与确认时间，所有按钮只执行 `view.*` 本地导航，不批准、不写业务数据、不继续 Agent 会话。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Agent Board + Global Overview Python tests | PASS | 18 项专项测试覆盖 stale 不变 idle、父子计数、身份/来源隔离、限量预览、空态、页码边界、过期 detail action 拒绝、action.result 回执、world.deleted 顶层事件和 manager 已删除后的只读 cleanup 确认。 |
+| `npm run check:local` | PASS | 退出码 0；28 项 UI、107 项 Rust、120 项 Python 测试通过，并通过 fmt/check/Clippy、离线契约和 27 个 Provider Skill 引用检查。 |
+| `python scripts/check_contracts.py` | PASS | draft activity/schema fixtures 与仓库内 Python 语法检查通过；本项不验证真实 Harness 来源。 |
+| `python skills/wincraft-provider/scripts/verify.py` | PASS | 27 个仓库内 Provider Skill 路径可解析。 |
+| 当前 Windows Tauri release + synthetic provider | PASS（L3-L4 UI） | 本地 Rust/Tauri WebSocket 真实连接；Computer Use 看到总览 `520×421`、Claude 列表 `520×422`、Codex 列表 `520×512`、单会话详情 `520×477`。来源切换、详情、返回均出现动作确认；截图中没有可见窗口级滚动条。 |
+| 临时世界清理 | PASS（真实 release 闭环） | 关闭世界后 provider 收到顶层 `world.deleted` 并自行退出，退出码 0；管理器最后显示 `0` 个开放世界，无人工中断或重复销毁请求。 |
+| 真实 Codex/Claude 会话适配与实例身份 | NOT_RUN | 真实实例仍未唯一选定；没有读取会话日志、源标识或真实任务内容。全局面板目前只展示合成数据，A4/A5 总体验收继续 `NOT_RUN`。 |
+
+脱敏本地记录：`evidence/local/nextgen-2026-10-29/cua-window-state-20261029.json`。真实源接入前仍需确定明确实例/endpoint 与读取范围；不能将此 synthetic PASS 推广为多 Harness 适配已完成。
+
+## 2026-10-29 `world.deleted` 事件封套与 Provider 清理
+
+Rust transport 实际发送的世界删除 occurrence 将 `world_id` 放在事件顶层；`interaction` 的世界身份则位于 `data`。统一的 `client.event_world_id()` 同时读取两类封套，Provider 仍必须将身份与本进程创建的 world 精确比较。修正了教程、Popup、主题、TrafficMonitor、Obsidian Workspace、ExoMind workbench、Focus Demo 与 Global Overview 的关闭事件分支；不改变 0.3 wire 格式。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| 事件身份 helper 单测 | PASS | 顶层 `world.deleted`、嵌套 interaction、缺失/错误身份均有回归；无匹配 world 身份时 fail closed。 |
+| Provider 关闭路径专项测试 | PASS | Global Overview 测试模拟顶层删除事件后停止，不再重复调用 `world.destroy`；Popup 对规范顶层与兼容嵌套两种样例均通过。 |
+| 清理结果不确定路径 | PASS（只读复核） | manager 已删除 world 时 `world.destroy` 返回 `NOT_FOUND`，Provider 用 `world.snapshot` 确认缺失后报告清理完成；未知/其他错误仍保留不确定状态。 |
+| Tauri-hosted `lease_probe.py` | PASS | 退出码 0，共 41 项检查；`world_deleted_top_level_id_reaches_original_member` 通过，管理器最终显示 0 个开放世界。第一次重跑因 probe 自身漏传 `checks` 参数触发 `NameError`；修复探针后通过。 |
+| Global Overview manager-close lifecycle | PASS | 当前 release 关闭合成世界后，provider 收到顶层删除事件并以退出码 0 正常停止；没有再调用 destroy，manager 归零。 |
+
+脱敏本地证据：`evidence/local/nextgen-2026-10-29/b08-03-global-overview-validation.json`。这修正避免了本地 manager 已关闭窗口而 Provider 仍等到时限后误报清理不确定。

@@ -2,8 +2,8 @@
 {
   "doc_id": "INTEGRATION",
   "title": "如何合入现有仓库，而不覆盖当前工作",
-  "updated_at": "2026-10-26",
-  "last_verified_at": "2026-10-26",
+  "updated_at": "2026-10-29",
+  "last_verified_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
   "status": "execution-plan",
@@ -19,9 +19,11 @@
 
 # 如何合入现有仓库，而不覆盖当前工作
 
+> **现状覆盖（2026-10-29）**：下文 §1 的 `ARCJ137442/WinCraft` 和固定基线是 2026-10-26 的取证记录，不是当前远端。用户后来明确授权转移所有权；当前仓库为私有 `exomind-team/WinCraft`，`origin` 已更新。用户希望将来各仓库通过脱敏审查后公开；本文件不授权本轮改仓库可见性。公开前须在原位置就地扫描，不能把 runtime 描述文件复制到临时目录。当前工作应以根目录 `AGENTS.md`、`docs/governance-release-checklist.md` 与验证矩阵为准。
+
 ## 1. 只读确认
 
-确认目标确实是用户已有 `ARCJ137442/WinCraft` 检出，记录`git status --short`、`git rev-parse HEAD`和remote。不要建立新远程仓库、强制切分支、reset或清理未知文件。冻结基线为`6929056700b1ba6702288534579debc8a502c139`，若当前HEAD更新，阅读差异并把已完成任务标为待复核/已验证，不覆盖回旧实现。
+确认目标确实是当前已授权的 `exomind-team/WinCraft` 检出，记录`git status --short`、`git rev-parse HEAD`和remote。不要擅自建立新远程仓库、强制切分支、reset或清理未知文件。`ARCJ137442/WinCraft` 与提交 `6929056700b1ba6702288534579debc8a502c139` 是 2026-10-26 的冻结基线；若当前HEAD更新，阅读差异并把已完成任务标为待复核/已验证，不覆盖回旧实现。
 
 可以运行本包`python scripts/check_repo_baseline.py --repo <路径>`。输出只表示基线与路径关系，不验证代码质量；它不会联网或修改工作区。
 
@@ -45,4 +47,4 @@
 
 P-POPUP私有技能只保留必要接口摘要，不公开原文；来源里私有链接是否对公众暴露另审。公开证据去掉运行描述文件、令牌、真实标题、消息内容、机器账户路径。许可保持原文，中文品牌待定，不自动改仓库归属、包名、商标或协作者权限。
 
-本包不修改远程。用户未来授权推送时，在当前已有仓库内完成最小提交并回读远程；公开发行仍需独立release门。
+本包生成时没有修改远程。2026-10-29 用户授权将核心仓库转移到 `exomind-team`；当前 `exomind-team/WinCraft` 保持私有。后续创建 `wincraft-XXX` 子项目仓库和公开仓库可见性须分别遵循当前授权与公开前脱敏门槛；公开发行仍需独立 release 门。

@@ -2,8 +2,8 @@
 {
   "doc_id": "governance__AGENTS_APPENDIX",
   "title": "供合并进 AGENTS.md 的演进规则",
-  "updated_at": "2026-10-26",
-  "last_verified_at": "2026-10-26",
+  "updated_at": "2026-10-29",
+  "last_verified_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
   "status": "normative-plan",
@@ -33,3 +33,4 @@
 10. 保持既有许可与上游署名；不擅自定名、改仓库归属、开市场、操作他人设备或发布私有资料。提交/推送/发版按用户当轮授权。
 11. 每批更新任务状态、运行命令/退出码/证据级别/产物哈希与未测项。无环境标 NOT_RUN，不用浏览器 mock 代替 Rust/Windows 验收。
 12. 新功能失败须能回退本批次，不覆盖用户未提交改动；不使用 destructive reset。单文件单写者；需多 Agent 时分配不相交改动并集成回归。
+13. 核心与 Provider/应用独立分仓，子项目使用 `wincraft-XXX`；世界仓库只放无业务数据的蓝图。公开前扫描当前文件与全部历史、tags、附件和截图；不提交 `.runtime.json`、密钥、用户内容、机器路径或真实状态。长期公开意向不是立即改仓库可见性的授权。

@@ -2,7 +2,7 @@
 {
   "doc_id": "docs__12_HARNESS_ACTIVITY",
   "title": "多 Harness 状态聚合与人类待办",
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-29",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -29,6 +29,10 @@
 
 B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布局 authority 负责面板布局，不能替各 Harness 改业务。读者聚合可以重新投影，但不得把数据的来源/新鲜度抹掉。
 
+## 全局悬浮总览与渐进披露
+
+首屏使用一个全局悬浮世界呈现用户选定的 Harness 来源。默认摘要突出 Codex 并行会话数量和 Claude Code 各会话状态；用户可切换来源、实例或会话，进入选中范围后再展开任务/依据详情。切换视图不得另开每来源常驻窗口，也不得丢失来源身份、新鲜度、父子关系或撤销状态。完整提示词和会话日志不默认进入总览；观察本身不授予批准、写入或继续执行权限。长列表按需披露，窗口高度应适配当前视图而不过度撑高。
+
 ## 标准活动投影（提案）
 
 统一 `device_id / provider_id / source_instance_id / source_type / session_id / parent_session_id / task_id`。PID、窗口标题、项目路径都不是跨设备稳定身份。`source_status` 保留来源原值，`normalized_status` 使用 `idle / running / waiting_input / waiting_approval / completed / failed / cancelled / unknown / stale`，同时保留 `mapping_version`。连接/新鲜度单独用 `freshness` 表达 `fresh / stale / disconnected / unknown`；不把断线自动写成业务终态。
@@ -39,7 +43,7 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 `protocol/activity.schema.json` (`draft-2026-10-29`) 将原始 `source_status`、映射后的 `normalized_status` 与 `freshness` 分开；它是原始 handoff `draft-2026-10-26` 的仓库实现提案，未替换已保留的 handoff schema。身份键只由 `device_id / provider_id / source_instance_id / session_id` 组成；显示名与模型名仅作标签。若 freshness 为 `stale` 或 `disconnected`，normalized status 必须为 `stale`；未知新鲜度对应 `unknown`，不能回落到 `idle`。
 
-`examples/integrations/agent-board/` 目前只使用仓库内的 synthetic fixtures。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。该 schema 是 `draft-2026-10-26` 提案，不是 protocol 0.3 接口或真实 Harness 适配。
+`examples/integrations/agent-board/` 目前只使用仓库内的 synthetic fixtures。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。仓库 schema 是 `draft-2026-10-29` 提案；原始 handoff `draft-2026-10-26` 保持不变，二者都不是 protocol 0.3 接口或真实 Harness 适配。
 
 ## Harness 适配证据表
 

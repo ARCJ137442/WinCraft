@@ -22,17 +22,16 @@
 
 22 个 Rust 测试定义不等于 22 个通过；JSON schema 检查不等于服务实际按 schema 行为；截图不等于 Tauri 窗口通过。
 
-## 本机验证状态（2026-10-26）
+## 当前验证与仓库状态（2026-10-29）
 
-- 当前源码在 Windows/MSVC 环境通过 `npm run check`（24 项 Node 测试 + 10 项离线契约检查）、44 项 Python provider 单测、Rust fmt/check、workspace Clippy `-D warnings` 和 58 项 workspace release 测试。
-- Edge 离线 renderer 检查 27 项通过，覆盖默认文本选择与组件覆盖、标题栏不可选、标题栏点击折叠与拖动阈值、在线状态隐藏、动态组件身份、键盘/IME 状态、主题和可访问性；它不替代真实 Tauri 像素验收。
-- 协议为严格 `0.3`。`lease_probe.py` 对当前 lifecycle Tauri host 的真实 Rust WebSocket 完成 28 项，覆盖旧版本拒绝、鉴权与 Origin、world.list 隔离、动态原子 patch、窗口属性、租约过期/重连 fencing 和慢消费者；宿主 `native_windows=true`，但该探针不等于人工像素/鼠标验收。
-- lifecycle release 曾在独立进程中启动并运行管理器；历史产物哈希及逐机路径只保存在本地证据，不作为当前构建入口。
-- TrafficMonitor 桥接与 Obsidian Workspace 只读投影曾在本机联调；公共文档不记录 vault 标识、任务/提醒数量、真实标题或遥测值。
-- 用户确认先前版本托盘图标/菜单可用，悬浮窗可见且可拖动。最新 release 的托盘 Exit、UIA/键盘/IME/读屏、实际点击穿透救援、多 DPI/多屏、五课完整交互与 Popup 键盘流仍在人工验收矩阵中。`focus_demo.py` 当前可用于测试动态替换和动作回执；本代理没有代替用户点击。
-- ExoMind 曾进行用户授权的只读联调；公共文档不记录 profile、当前时间块状态、RT 连接参数或响应内容。临时宿主清理遵循只操作本项目进程和资源的边界。
-- WinCraft 原解压目录没有 `.git`，未丢失或恢复其他仓库历史。已在此目录建立 GitHub `ARCJ137442/WinCraft`，默认分支 `dev`，`origin` 指向该远端；按用户最新明确决定，仓库当前为公开。首个源码快照提交为 `c70ba44`，当前功能提交为 `73c3e20`。新历史从该提交链开始，不是外心仓库的 graft。
-- 可提交摘要和当前产物哈希见 `docs/engineering/VALIDATION.md`；逐命令日志/截图留在默认忽略的 `evidence/local/`。不写入 `.runtime.json` 内容、token、笔记标题或遥测读数。源码当前的提交/推送状态应以 `git status` 和 `git log` 实查为准，不由这份原型交接说明授权。
+- 当前可复现的命令、环境、退出码和验证分层以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。最近一次 `npm run check:local`：28 项 UI、107 项 Rust、120 项 Python 测试通过，并通过 fmt/check/Clippy、离线契约和 27 个 Provider Skill 引用检查。
+- B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证；真实 Codex/Claude Code 会话绑定、Android 通知和实际设备传输仍为 `NOT_RUN`。
+- B08-03 的单窗口 Global Agent Overview 已在当前 Tauri release 用合成数据完成 L1-L4 UI 验收（首屏/来源列表/详情/回执/清理）；A6/A7 为 `PASS`，A4/A5 的真实 Harness 实例与会话接入仍为 `NOT_RUN`。
+- Python 提供者已统一按真实 wire envelope 读取顶层 `world.deleted.world_id`；Tauri-hosted `lease_probe.py` 最终 41 项通过，包含删除事件送达原成员检查。
+- 本地 Tauri release 和用户人工验收状态按验证矩阵记录；浏览器预览、合成 provider、真实协议和原生 UI 证据不可互相替代。
+- 当前主仓库是 GitHub `exomind-team/WinCraft`，默认分支 `dev`，远端为私有仓库。之前的 `ARCJ137442/WinCraft` 公开历史已转入该仓库；可达历史扫描没有发现凭据命中，但一个旧提交曾包含本机绝对目录。重新公开前必须清理或替换该历史并再次扫描。
+- 工作树的 `evidence/local/` 被忽略且可能含过期 runtime 描述文件和机器路径；这些内容不是可提交证据。当前扫描发现 5 个旧测试描述文件命中凭据规则，不能打包或分享。原始日志继续保留在本地。
+- 核心与独立 Provider/应用按仓库边界演进，子项目名统一 `wincraft-XXX`；实际业务世界状态不入库，只能提交审查过的无业务数据蓝图与合成样例。
 
 ## 必须保留的设计不变量
 

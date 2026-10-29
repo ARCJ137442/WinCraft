@@ -12,6 +12,7 @@
 | 原生窗口能力矩阵 | [windows.md](windows.md) |
 | Windows 原生能力探索与分阶段路线 | [windows-roadmap.md](windows-roadmap.md) |
 | 安全与网络边界 | [security.md](security.md) |
+| 仓库治理、公开前脱敏与发布门槛 | [governance-release-checklist.md](governance-release-checklist.md) |
 | 自用管理器 | [self-provider.md](self-provider.md) |
 | 性能预算与测量方案 | [performance.md](performance.md) |
 | 实际验证与限制 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |

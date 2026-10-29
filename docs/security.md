@@ -37,3 +37,11 @@ Renderer 使用 textContent/DOM 原语，禁用 HTML 和脚本注入。JSON Poin
 错误 token、带恶意 Origin、过大/过深 JSON、慢消费者、并发写租约、旧租约重放、重复 action ack、过期事件、事件节点变更、接管后重连争抢、renderer 是否能越权访问其他世界、Windows descriptor ACL 的跨账户/继承边界、多实例端口冲突、退出时令牌文件清理。
 
 不记录业务 payload 和 token。native.log 仅记录世界 ID、窗口意图版本和原生错误。公开证据仍需检查路径和标题是否含个人信息。
+
+## 公开仓库前的资料审查
+
+WinCraft 核心、Provider 和应用按独立仓库维护；子项目使用 `wincraft-XXX` 命名。世界归档只能保存不含真实业务状态的声明式蓝图、schema 和合成 fixture。真实 Obsidian 笔记、Agent 会话、通知正文、外心档案、TrafficMonitor 遥测及运行中的世界状态不进入 Git、release 包或公开截图。
+
+公开前扫描暂存/未跟踪/跟踪文件和全部可达 Git 历史、tags、LFS、release 附件及截图。审查 bearer token、API key、私钥、`.runtime.json`、环境文件、机器绝对路径、账户/档案/会话标识、日志和第三方来源。`.gitignore` 只降低误提交风险，不证明内容已脱敏；`evidence/local/` 也不能直接分享。就地扫描工作树，避免把含凭据文件复制到临时目录；扫描器输出必须隐藏匹配值，只保留脱敏定位。发现历史凭据时先撤销/轮换，再清理完整历史；历史个人信息须在重新公开前移除或改用经审查的干净公开历史。
+
+本次预检使用 Gitleaks 检查了可达历史与工作目录：历史未发现凭据规则命中；本地忽略的旧证据目录中仍有测试 `.runtime.json` 命中凭据规则，未纳入 Git 跟踪。另发现一条旧提交的本机路径曾进入公开历史。当前仓库因此不能宣称已完成公开准备；详细发布门槛见 [`governance-release-checklist.md`](governance-release-checklist.md) 与 [`engineering/VALIDATION.md`](engineering/VALIDATION.md)。

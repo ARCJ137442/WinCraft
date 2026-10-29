@@ -2,7 +2,7 @@
 {
   "doc_id": "docs__14_ANDROMORPH_TRANSPORT",
   "title": "AndroMorph 通知摘要与传输边界",
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-29",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -27,7 +27,7 @@ Android 的 NotificationListenerService 是需专门授权的系统能力；可�
 
 ## 消息信封（提案）
 
-稳定 `message_id`、源设备/来源实例、source_seq、摘要版本、产生时间、有效期限、内容分类、允许的动作与路由上下文。加密/认证由选定通道保证，Host 仍验证来源与用途；经飞书转发不等于任何飞书账户都能下发批准。
+稳定 `message_id`、origin device/source/instance、source_seq、摘要版本、产生时间、TTL、内容分类、provenance、redaction 与可选 relay trace。加密/认证由选定通道保证，Host 仍验证来源与用途；经飞书转发不等于任何飞书账户都能下发批准。消息信封只描述来源内容，不把批准能力塞进通用传输对象。
 
 时钟不能假定同步：携带来源时间、接收时间及 TTL 策略；严格顺序用每源序号，不把不同手机的序号拼成全局排序。摘要可更新/撤销，同一个 message_id 不能在多条路由重复出现成多条待办。
 
@@ -36,6 +36,12 @@ Android 的 NotificationListenerService 是需专门授权的系统能力；可�
 应用 allowlist、通知内容级别、锁屏/屏幕共享策略由本机用户决定。默认转摘要而非完整消息、默认不在 WinCraft 持久化。日志只含合成 ID/状态，不记录人名、对话和 token。用户撤销后停止监听和路由，清除运行时投影；已送达外部系统的数据能否删除按各系统能力明确说明。
 
 摘要不是事实替代：保留来源、生成时间与“机器摘要”标记；重要内容可由用户返回来源查看。模型处理不改变原通知已读/已回复状态。
+
+## B09-01 仓库内提案原型边界
+
+`protocol/device-message.schema.json` 是 `draft-2026-10-29` 草案。稳定身份由 `origin.device_id / origin.source_id / origin.source_instance_id / message_id` 组成；`relay_trace` 仅记录送达路径，不证明来源身份。消费端要求外部 adapter 提供 out-of-band `TransportReceipt`：直连时 peer 必须匹配 origin device；经中继时必须由外部 transport 额外证明 origin。草案本身不实现密钥、认证、网络监听或 relay。
+
+TTL 取 origin `issued_at + ttl_seconds` 与本地接收 `received_at + ttl_seconds` 的较早者。重复 message ID 不增加待办数，重复 source sequence 拒绝；过期或被撤销的来源不再进入活动投影。只接受有 bounded summary 和 redaction 元数据的信封，不允许 raw body。`examples/integrations/device-inbox/` 只用 synthetic fixture 验证这些状态转换，不证明真实 Android 通知或任何真实 transport 已接入。
 
 ## 与 Agent 待办合并
 

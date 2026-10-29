@@ -237,6 +237,11 @@ at the original installation's configuration or put source values in evidence.
   filters each scope snapshot, and keeps window authority separate.
 - Validate protocol version, `host_id`, membership, lease ID/epoch, expected revision,
   and action result. Do not bypass checks to make a demo appear green.
+- Lifecycle deletion is `{"event":"world.deleted","world_id":"..."}` with a
+  top-level `world_id`; interaction events put the world identity in `data`. Use
+  `client.event_world_id(message)` and match only your own world before stopping. If a
+  destroy request returns `NOT_FOUND`, verify absence with a read-only snapshot before
+  reporting cleanup complete; never blindly retry a timed-out destroy.
 - Keep source freshness visible. Missing, stale, rejected, or disconnected data is not
   zero and is not a successful empty result.
 - Keep data bounded to protocol limits. Never pass HTML, CSS, JavaScript, `eval`, shell
@@ -282,6 +287,12 @@ at the original installation's configuration or put source values in evidence.
 - `examples/integrations/agent-board/README.md` — B08-01 draft activity model and a
   synthetic-only read-only aggregate provider. It does not connect to live Harness
   sessions, and the activity schema is not a protocol 0.3 host method.
+- `examples/integrations/agent-board/global_overview_provider.py` — B08-03 single-window
+  Codex/Claude Code source switcher using synthetic activity only. Local `view.*`
+  navigation does not grant access to live sessions or provide approval/write actions.
+- `examples/integrations/device-inbox/README.md` — B09-01 draft message envelope,
+  duplicate/TTL/revocation policy, and synthetic-only read-only projection. Authentication
+  evidence must come from an external transport adapter; this example opens no listener.
 - `examples/python/theme_demo.py` — synthetic theme preview, host-chrome boundary, and an explicit invalid-token rejection probe.
 - `examples/python/popup_ask_provider.py` — optional WinCraft transport for an installed
   Popup-Ask skill; it reuses that skill's validate-only parser and result serializer.
