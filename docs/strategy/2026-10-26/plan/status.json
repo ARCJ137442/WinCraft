@@ -3,7 +3,7 @@
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
   "active_batch": "B08-02 remains BLOCKED; its Codex App subgoal is STALLED per the user's 2026-10-29 stage-checkpoint instruction. One real Agent-fed snapshot reached the Provider and the read-only local-state fallback supplies bounded metadata, but persistent relay, release UI and UUID deep-link acceptance remain open. B08-03 A1 five-category entry/version/unknown matrix, A6 synthetic view and A7 prior release interaction are PASS; A8 remains PARTIAL, live CLI/Claude Tauri protocol smokes are verified, and A2-A5 plus current pixel UI are still open. B09-02 remains BLOCKED pending Android source selection/permission.",
-  "next_action": "Keep the Codex App subgoal STALLED; do not retry Computer Use after the repeated failed window activation. Resume that subgoal only when a verified authorized persistent Agent-to-Provider relay and a usable native UI/deep-link verification path are available. Continue independent handoff tasks and current-release manual gates. Keep local Desktop status unknown without an authoritative source and output unavailable without a UUID-matched Agent message. For B09-02, wait for the user-selected Android app/source and notification permission.",
+  "next_action": "Keep the Codex App subgoal STALLED; do not retry Computer Use after the repeated failed window activation. Resume that subgoal only when a verified authorized persistent Agent-to-Provider relay and a usable native UI/deep-link verification path are available. Continue independent handoff tasks and current-release manual gates. Keep local Desktop status unknown without an authoritative source and output unavailable without a UUID-matched Agent message. For B09-02, wait for the user-selected Android app/source and notification permission. B06-03 has no runtime plan preview/apply/rollback implementation and is the next independent implementation target after the draft pack/planner contract checks.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -32,7 +32,7 @@
     "B05-04": "IMPLEMENTED_UNVERIFIED",
     "B06-01": "IMPLEMENTED_UNVERIFIED",
     "B06-02": "IMPLEMENTED_UNVERIFIED",
-    "B06-03": "IMPLEMENTED_UNVERIFIED",
+    "B06-03": "NOT_STARTED",
     "B06-04": "IMPLEMENTED_UNVERIFIED",
     "B07-01": "VERIFIED",
     "B07-02": "VERIFIED",
@@ -170,6 +170,6 @@
     "2026-10-30: Commit 115cdc8e2de20b1f5749819a4cc5816542c819c7 added explicit live-source selection and was pushed to exomind-team/WinCraft/dev. GitHub Actions run 40914976329 passed on Windows in 7m59s; local HEAD and origin/dev match. The release executable was unchanged, and pixel/native UI acceptance remains NOT_RUN.",
     "2026-10-30: B08-03-A1 Harness version/source matrix recorded from local version-only checks. Codex CLI/Claude live read-only evidence retained; OpenCode, DSH and omp adapters remain NOT_RUN. DSH version unresolved because its local version command failed.",
     "2026-10-30: B02-03-A1 recheck is PARTIAL. A fresh Computer Use selection of the release manager failed to inject a click after re-enumeration with exact error 'foreground window did not report a process id'; no more UI input was sent. The synthetic tutorial provider process exited before its window was observed. A non-operator world.list showed zero visible worlds but could not verify invite-only/system-world cleanup. Full lesson flow remains unverified.",
-    "2026-10-30: B06-01-A1/A2/A3 and B06-02-A1/A2/A3 pass at draft-contract/pure-planner L0-L2 after 37 handoff tests. Added explicit pack artifact rejection and missing-provider explanation regressions. B06 task states remain IMPLEMENTED_UNVERIFIED because runtime pack export/import and Host plan application are not present; B06-03 apply/rollback remains NOT_STARTED."
+    "2026-10-30: B06-01-A1/A2/A3 and B06-02-A1/A2/A3 pass at draft-contract/pure-planner L0-L2 after 37 handoff tests. Added explicit pack artifact rejection and missing-provider explanation regressions. B06-01/02 remain IMPLEMENTED_UNVERIFIED because runtime pack export/import and Host integration are not present. Core/server/Tauri audit found no plan preview/apply/rollback entry point; B06-03 was corrected from IMPLEMENTED_UNVERIFIED to NOT_STARTED."
   ]
 }
