@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-29",
   "policy": "可查的先本地查；非阻断项用明示默认，不重复向用户问已决定事项。",
   "items": [
     {
@@ -28,14 +28,14 @@
     },
     {
       "id": "Q03",
-      "question": "本地五类Harness版本和获准会话",
-      "method": "明确安装清单/API能力查询",
+      "question": "Codex 与 Claude Code 已选；需选定各自具体活动实例/session ID/endpoint。本机发现多个后台进程，不能安全自动选取或枚举全部历史会话。",
+      "method": "仅连接用户指定的当前只读 API/event endpoint；不读取全量 session logs、不调用批准或写入接口。",
       "blocks": [
-        "对应真实adapter"
+        "B08-02 真实适配与 B08-03 两来源并发验收"
       ],
       "does_not_block": [
-        "统一模型",
-        "合成fixture"
+        "B08-01 合成聚合模型",
+        "B09-01 合成消息信封"
       ]
     },
     {

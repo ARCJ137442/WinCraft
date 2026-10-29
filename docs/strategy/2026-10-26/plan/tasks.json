@@ -2055,7 +2055,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R071"
+        "R071",
+        "R074"
       ],
       "targets": [
         "proposed: examples/integrations/agent-board/adapters/"
@@ -2106,7 +2107,7 @@
       "id": "B08-03",
       "batch": "B08",
       "title": "扩到五类并作组件级组合",
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "B08-02",
         "B07-04"
@@ -2114,17 +2115,25 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R026"
+        "R026",
+        "R074"
       ],
       "targets": [
         "proposed: examples/integrations/agent-board/adapters/",
-        "skills/wincraft-provider/"
+        "skills/wincraft-provider/",
+        "examples/integrations/agent-board/global_overview.py",
+        "examples/integrations/agent-board/global_overview_provider.py",
+        "tests/test_agent_global_overview.py",
+        "skills/wincraft-provider/SKILL.md"
       ],
       "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
       "implementation_steps": [
         "补Claude/Codex/OpenCode/DSH/omp能力与版本矩阵，缺者保留NOT_RUN",
         "两种已验证来源切为独立子树写入者",
-        "各自重连/离线不争整窗lease或删除别人的卡片"
+        "各自重连/离线不争整窗lease或删除别人的卡片",
+        "单一全局悬浮世界先呈现概要，按来源/实例/会话切换；细节按需披露，并始终保留来源身份、新鲜度与撤销状态",
+        "为合成数据实现单一悬浮窗总览：Codex 并行量、Claude Code 会话状态预览，来源列表与会话详情按需展开。",
+        "只允许 view.* 本地导航动作；保留 freshness，过滤 raw source status/instance IDs；读取真实会话仍需明确来源边界。"
       ],
       "acceptance": [
         {
@@ -2138,18 +2147,40 @@
         {
           "id": "B08-03-A3",
           "criterion": "动作路由跟随组件owner，不被后加入者截获"
+        },
+        {
+          "id": "B08-03-A4",
+          "criterion": "单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态"
+        },
+        {
+          "id": "B08-03-A5",
+          "criterion": "首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口"
+        },
+        {
+          "id": "B08-03-A6",
+          "criterion": "合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。",
+          "level": "L1-L2"
+        },
+        {
+          "id": "B08-03-A7",
+          "criterion": "Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。",
+          "level": "L3-L4"
         }
       ],
       "verification_level": "L1-L5",
       "verification_commands": [
         "npm run check",
         "python scripts/check_contracts.py",
-        "cargo test --workspace"
+        "cargo test --workspace",
+        "python -m unittest tests.test_agent_activity_board tests.test_agent_global_overview -v",
+        "python examples/integrations/agent-board/global_overview_provider.py --runtime <actual local descriptor> --duration-seconds 120"
       ],
       "verification_workdir": "current WinCraft checkout",
       "verification_instructions": [
         "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
-        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED",
+        "B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.",
+        "Keep B08-02 real instance/session selection and any approval/write capability NOT_RUN until explicitly selected and separately authorized."
       ],
       "priority": "P1",
       "evidence_required": [

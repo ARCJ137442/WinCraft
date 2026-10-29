@@ -1383,7 +1383,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R071"
+        "R071",
+        "R074"
       ],
       "level": "L2-L5",
       "criterion": "两种真实来源可同看且来源证据分开",
@@ -1395,7 +1396,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R071"
+        "R071",
+        "R074"
       ],
       "level": "L2-L5",
       "criterion": "不把全部任意既有CLI会话假定可枚举",
@@ -1407,7 +1409,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R071"
+        "R071",
+        "R074"
       ],
       "level": "L2-L5",
       "criterion": "适配失败仅对应来源stale",
@@ -1419,7 +1422,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R026"
+        "R026",
+        "R074"
       ],
       "level": "L1-L5",
       "criterion": "五类都有明确入口/未知边界，不伪造五种实测",
@@ -1431,7 +1435,8 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R026"
+        "R026",
+        "R074"
       ],
       "level": "L1-L5",
       "criterion": "至少两种真实独立writer并发验收",
@@ -1443,11 +1448,66 @@
       "requirement_ids": [
         "R023",
         "R024",
-        "R026"
+        "R026",
+        "R074"
       ],
       "level": "L1-L5",
       "criterion": "动作路由跟随组件owner，不被后加入者截获",
       "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A4",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026",
+        "R074"
+      ],
+      "level": "L1-L5",
+      "criterion": "单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A5",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026",
+        "R074"
+      ],
+      "level": "L1-L5",
+      "criterion": "首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "B08-03-A6",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026",
+        "R074"
+      ],
+      "level": "L1-L2",
+      "criterion": "合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。",
+      "status": "PASS",
+      "evidence": "PASS: 8 focused global-overview tests validate bounded Claude preview, Codex/Claude source switching, detail/back, pagination, explicit empty state, stale component rejection, view.* action allowlist, no raw source_status/instance IDs, and scene schema."
+    },
+    {
+      "id": "B08-03-A7",
+      "task_id": "B08-03",
+      "requirement_ids": [
+        "R023",
+        "R024",
+        "R026",
+        "R074"
+      ],
+      "level": "L3-L4",
+      "criterion": "Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。",
+      "status": "PASS",
+      "evidence": "PASS: current Windows Tauri release + Computer Use verifies one synthetic source switcher, Codex/Claude lists, session detail/back, 520x421 overview, 520x422 Claude list, 520x512 Codex list, 520x477 detail, and confirmed action receipts. Closing the world delivered top-level world.deleted; provider exited 0 without a manual interrupt and manager returned to 0 worlds."
     },
     {
       "id": "B08-04-A1",
@@ -1496,7 +1556,8 @@
       ],
       "level": "L1-L2",
       "criterion": "重复消息不增加待办数",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: duplicate origin/source/instance/message_id is ignored; todo_count remains unchanged. Distinct out-of-order source sequences are retained and rendered in sequence order."
     },
     {
       "id": "B09-01-A2",
@@ -1509,7 +1570,8 @@
       ],
       "level": "L1-L2",
       "criterion": "过期/撤销内容不继续可操作",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: TTL expiry removes messages from the active view; source revocation removes existing messages and rejects replay. The read-only scene has no reply/approval/write actions."
     },
     {
       "id": "B09-01-A3",
@@ -1522,7 +1584,8 @@
       ],
       "level": "L1-L2",
       "criterion": "网络中继声明不自动成为来源身份",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: identity uses origin device/source/instance/message_id, not relay_trace. Relayed ingestion requires an out-of-band origin-attested receipt; relay claim alone is rejected."
     },
     {
       "id": "B09-02-A1",

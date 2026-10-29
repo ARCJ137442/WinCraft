@@ -96,3 +96,4 @@
 | R071 | 扩展只通过明确扩展面；来源版本快速变化需复核与证据过期策略 | engineering | [03_REFERENCE_DECISIONS](../docs/03_REFERENCE_DECISIONS.md) | B00-03, B01-04, B08-02 |
 | R072 | 窗口组/场景/蓝图/业务存档分别定义，不以世界隐喻偷偷持久化业务 | accepted | [08_DISCOVERY_ADAPTIVE_PACKS](../docs/08_DISCOVERY_ADAPTIVE_PACKS.md) | B06-01, B06-03, B10-02 |
 | R073 | Popup提交销毁临时世界并复用上次人类窗口位置；单选后Tab到备注，Ctrl+Enter提交当前草稿 | accepted | [09_EPHEMERAL_POPUP_SYSTORCH](../docs/09_EPHEMERAL_POPUP_SYSTORCH.md) | B03-02 |
+| R074 | 一个全局悬浮窗纵览用户选定的Harness来源与会话；首屏突出Codex并行会话量和Claude Code会话状态，可切换来源/实例/会话并渐进披露详情 | latest | [12_HARNESS_ACTIVITY](../docs/12_HARNESS_ACTIVITY.md) | B08-02, B08-03 |

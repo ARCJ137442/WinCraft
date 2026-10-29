@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-02 after B08-01 verification",
-  "next_action": "B08-01 verified at L1-L2 with a draft normalized activity schema, synthetic-only read-only Agent Board, stale/identity/leaf-rollup regressions, and real Tauri provider cleanup. Continue B08-02 only with user-selected, explicitly authorized Harness sources; do not enumerate all existing sessions or connect approval/write APIs.",
+  "active_batch": "B08-03 synthetic overview verified at L1-L4; B08-02 real instance selection and B09-02 Android source selection remain open",
+  "next_action": "B08-03 synthetic global overview now has L1-L4 evidence: bounded Codex/Claude summary, source/session navigation, freshness and action receipts in the current Tauri release. B08-03-A4/A5 remain NOT_RUN for real Harness adapters/instance identity. B08-02 still needs exact Codex and Claude Code session identities/endpoints; B09-02 still needs a selected Android app/device and notification permission.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -40,9 +40,9 @@
     "B07-04": "VERIFIED",
     "B08-01": "VERIFIED",
     "B08-02": "NOT_STARTED",
-    "B08-03": "NOT_STARTED",
+    "B08-03": "IN_PROGRESS",
     "B08-04": "NOT_STARTED",
-    "B09-01": "NOT_STARTED",
+    "B09-01": "VERIFIED",
     "B09-02": "NOT_STARTED",
     "B09-03": "NOT_STARTED",
     "B09-04": "NOT_STARTED",
@@ -56,9 +56,9 @@
     "B11-04": "IMPLEMENTED_UNVERIFIED"
   },
   "blockers": [
-    "Current release still needs manual validation of default tray-only startup and tray-click open/exit, global hide/show, visual topmost ordering, fold/drag dimensions, click-through rescue and multi-display/DPI. The actual release manager was observed through its explicit --open-manager launch and its accessibility tree; the tray-click and normal tray-exit paths remain NOT_RUN.",
+    "Current release still needs manual validation of default tray-only startup and tray-click open/exit, tray-global hide/show, visual topmost ordering, click-through rescue and multi-display/DPI. Individual-world fold/expand sizing and hide/restore passed a synthetic release recheck; this does not verify global tray actions.",
     "B03-02 Popup needs real release success/cancel, position reuse, keyboard/IME and concurrent-window acceptance.",
-    "Windows UIA/IME/screen-reader, title-collapse sizing, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
+    "Windows UIA/IME/screen-reader, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed."
@@ -118,7 +118,9 @@
     "2026-10-29: B07-03 typed state slots verified in 0.4-preview.1: scalar schemas, owner-scope CAS, generation-specific reader grants, quotas, cleanup on child/parent revocation, Python fail-closed helpers, preview request schema/fixtures, and real headless WebSocket concurrency/slow-reader checks pass. Stable 0.3 remains unchanged; provider business truth remains external.",
     "B07-03 commit 6eda1a0 passed Windows Actions run 40809546638; hosted npm run check:local is green.",
     "2026-10-29: B07-04 verified disjoint scope ownership under deterministic interleavings, stale/out-of-scope write rejection, disconnect/rejoin fencing and parent cleanup. A real x64 TrafficMonitor bridge plus the currently open Obsidian Obsidian Workspace dashboard were projected into separate scopes; stopping the staged TrafficMonitor source made only its scope stale. Original app configuration and Obsidian notes/settings were not written.",
-    "2026-10-29: B07-04 verified deterministic multi-scope interleavings, permission fencing/rejoin, owner-slot cleanup, and real-source failure isolation between a fresh x64 TrafficMonitor bridge and the read-only Obsidian Obsidian Workspace projection."
+    "2026-10-29: B07-04 verified deterministic multi-scope interleavings, permission fencing/rejoin, owner-slot cleanup, and real-source failure isolation between a fresh x64 TrafficMonitor bridge and the read-only Obsidian Obsidian Workspace projection.",
+    "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
+    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself."
   ],
   "history": [
     null,
@@ -146,6 +148,9 @@
     "2026-10-29: B07-04 A1-A3 PASS. Seeded 96-step interleaving preserves disjoint ownership and sibling data. A real headless composition probe uses an isolated x64 TrafficMonitor 1.8.6.0 bridge stage and the active read-only Obsidian Workspace dashboard; stopping TrafficMonitor changes only its scope to stale. The provider world is destroyed and the stage is restarted.",
     "2026-10-29: B07-04 commit 0ee13ed6442c2a5c19efe44a0c4ddf5eb592febf passed Windows Actions run 40814128343; npm run check:local succeeded in 6m03s. This is hosted source validation, not native GUI acceptance.",
     "2026-10-29: B08-01 verified at L1-L2. The draft activity schema keeps source status, normalized status, freshness and identity separate; the synthetic Agent Board counts leaf sessions only and has no provider actions. A real Tauri release provider render passed; natural timeout and PTY Ctrl+C destroyed only its world. Real Harness adapters remain for B08-02.",
-    "2026-10-29: B08-01 source commit fce1c8769ebd1d41de5144e037e0ec36f3dd5284 passed Windows Actions run 40818791865; npm run check:local succeeded in 6m03s. This verifies hosted source checks only."
+    "2026-10-29: B08-01 source commit fce1c8769ebd1d41de5144e037e0ec36f3dd5284 passed Windows Actions run 40818791865; npm run check:local succeeded in 6m03s. This verifies hosted source checks only.",
+    "2026-10-29: B09-01 verified at L1-L2 with a draft message envelope and synthetic Device Inbox. Duplicate IDs do not increment todo count; out-of-order sequences sort by origin sequence; expired and revoked messages disappear; relay metadata is not source identity. The provider accepts only an out-of-band transport receipt contract, opens no listener, and its real Tauri test world was cleaned.",
+    "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
+    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself."
   ]
 }

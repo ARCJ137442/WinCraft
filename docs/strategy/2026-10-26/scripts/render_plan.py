@@ -43,7 +43,7 @@ def main():
             req_map[rid]["task_ids"].append(t["id"])
             req_map[rid]["acceptance_ids"].extend(a["id"] for a in t["acceptance"])
         for a in t["acceptance"]:
-            c={"id":a["id"],"task_id":t["id"],"requirement_ids":t["requirement_ids"],"level":t["verification_level"],"criterion":a["criterion"],"status":"NOT_RUN"}
+            c={"id":a["id"],"task_id":t["id"],"requirement_ids":t["requirement_ids"],"level":a.get("level",t["verification_level"]),"criterion":a["criterion"],"status":"NOT_RUN"}
             prev=old.get(a["id"])
             keys=["task_id","requirement_ids","level","criterion"]
             if prev and not args.reset_results and all(prev.get(k)==c[k] for k in keys):

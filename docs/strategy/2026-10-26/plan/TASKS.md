@@ -1142,7 +1142,7 @@ cargo test --workspace
 
 ## B08-02 · 两类真实Harness先行适配
 
-**前置：** B08-01, B00-03；**需求：** R023, R024, R071
+**前置：** B08-01, B00-03；**需求：** R023, R024, R071, R074
 
 **输入：** 本地已安装Harness及用户选定会话/端点；不能自动读取所有session日志。
 
@@ -1174,21 +1174,28 @@ cargo test --workspace
 
 ## B08-03 · 扩到五类并作组件级组合
 
-**前置：** B08-02, B07-04；**需求：** R023, R024, R026
+**前置：** B08-02, B07-04；**需求：** R023, R024, R026, R074
 
 **输入：** 当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。
 
-**定位：** `proposed: examples/integrations/agent-board/adapters/`；`skills/wincraft-provider/`
+**定位：** `proposed: examples/integrations/agent-board/adapters/`；`skills/wincraft-provider/`；`examples/integrations/agent-board/global_overview.py`；`examples/integrations/agent-board/global_overview_provider.py`；`tests/test_agent_global_overview.py`；`skills/wincraft-provider/SKILL.md`
 
 ### 实施
 1. 补Claude/Codex/OpenCode/DSH/omp能力与版本矩阵，缺者保留NOT_RUN
 2. 两种已验证来源切为独立子树写入者
 3. 各自重连/离线不争整窗lease或删除别人的卡片
+4. 单一全局悬浮世界先呈现概要，按来源/实例/会话切换；细节按需披露，并始终保留来源身份、新鲜度与撤销状态
+5. 为合成数据实现单一悬浮窗总览：Codex 并行量、Claude Code 会话状态预览，来源列表与会话详情按需展开。
+6. 只允许 view.* 本地导航动作；保留 freshness，过滤 raw source status/instance IDs；读取真实会话仍需明确来源边界。
 
 ### 验收
 - **B08-03-A1** 五类都有明确入口/未知边界，不伪造五种实测
 - **B08-03-A2** 至少两种真实独立writer并发验收
 - **B08-03-A3** 动作路由跟随组件owner，不被后加入者截获
+- **B08-03-A4** 单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态
+- **B08-03-A5** 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口
+- **B08-03-A6** 合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。
+- **B08-03-A7** Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。
 
 **验证层/目录：** L1-L5 / current WinCraft checkout
 
@@ -1196,9 +1203,11 @@ cargo test --workspace
 npm run check
 python scripts/check_contracts.py
 cargo test --workspace
+python -m unittest tests.test_agent_activity_board tests.test_agent_global_overview -v
+python examples/integrations/agent-board/global_overview_provider.py --runtime <actual local descriptor> --duration-seconds 120
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED
+**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Keep B08-02 real instance/session selection and any approval/write capability NOT_RUN until explicitly selected and separately authorized.
 
 **回滚：** 回到只读聚合器单writer模式；不更改来源任务。
 
