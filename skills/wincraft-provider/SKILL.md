@@ -216,9 +216,12 @@ atomic insert/remove/replace/move/props patches only inside their fixed subtree;
 root authority edits only unowned layout through `scope.structure.patch`. Parent
 revocation fences descendant generations, and scope readers receive filtered live
 `scope.snapshot` events plus `scope.revoked` notices. Cross-scope moves and
-component action routing remain unsupported. Follow the
-[scope preview guide](references/component-scopes-preview.md) exactly; use the
-capability-aware SDK helpers and never treat preview methods as stable 0.3.
+component action routing remain unsupported. B07-03 also exposes explicitly shared,
+typed state slots with owner-scope CAS. Values are bounded scalars, reader grants are
+scope-generation specific, and slots never become provider business truth or arbitrary
+JSON references. Call `client.require_state_slots(version=1)` before using slot helpers.
+Follow the [scope preview guide](references/component-scopes-preview.md) exactly; use
+the capability-aware SDK helpers and never treat preview methods as stable 0.3.
 
 ## Provider invariants
 

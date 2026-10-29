@@ -1,0 +1,84 @@
+[
+  {
+    "id": "slot-create",
+    "method": "state.slot.create",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "scope_id": "22222222-2222-4222-8222-222222222222",
+        "lease_id": "33333333-3333-4333-8333-333333333333",
+        "epoch": 1,
+        "generation": 1
+      },
+      "name": "focus.progress",
+      "schema": {"type": "integer", "min": 0, "max": 100},
+      "initial_value": 25,
+      "reader_scopes": [
+        {"scope_id": "44444444-4444-4444-8444-444444444444", "generation": 1}
+      ]
+    }
+  },
+  {
+    "id": "slot-set-readers",
+    "method": "state.slot.set_readers",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "scope_id": "22222222-2222-4222-8222-222222222222",
+        "lease_id": "33333333-3333-4333-8333-333333333333",
+        "epoch": 1,
+        "generation": 1
+      },
+      "slot_id": "55555555-5555-4555-8555-555555555555",
+      "generation": 1,
+      "expected_revision": 1,
+      "reader_scopes": [
+        {"scope_id": "44444444-4444-4444-8444-444444444444", "generation": 1}
+      ]
+    }
+  },
+  {
+    "id": "slot-read",
+    "method": "state.slot.read",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "slot_id": "55555555-5555-4555-8555-555555555555",
+      "generation": 1,
+      "reader_scope_id": "44444444-4444-4444-8444-444444444444",
+      "reader_scope_generation": 1
+    }
+  },
+  {
+    "id": "slot-cas",
+    "method": "state.slot.compare_and_set",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "scope_id": "22222222-2222-4222-8222-222222222222",
+        "lease_id": "33333333-3333-4333-8333-333333333333",
+        "epoch": 1,
+        "generation": 1
+      },
+      "slot_id": "55555555-5555-4555-8555-555555555555",
+      "generation": 1,
+      "expected_revision": 2,
+      "value": 40
+    }
+  },
+  {
+    "id": "slot-delete",
+    "method": "state.slot.delete",
+    "params": {
+      "world_id": "11111111-1111-4111-8111-111111111111",
+      "lease": {
+        "scope_id": "22222222-2222-4222-8222-222222222222",
+        "lease_id": "33333333-3333-4333-8333-333333333333",
+        "epoch": 1,
+        "generation": 1
+      },
+      "slot_id": "55555555-5555-4555-8555-555555555555",
+      "generation": 1,
+      "expected_revision": 3
+    }
+  }
+]

@@ -2684,3 +2684,530 @@ fn scope_partition_rejects_parent_layout_binding_into_private_scope_data() {
     );
     assert!(engine.worlds[&created.world.id].writer.is_some());
 }
+
+#[test]
+fn typed_state_slots_use_owner_cas_and_explicit_reader_grants() {
+    let mut state = setup_scoped_world();
+    let owner_join = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let reader_writer_join = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    state
+        .engine
+        .join_scope(
+            state.observer,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Read),
+            3,
+        )
+        .unwrap();
+    let owner_lease = owner_join.lease.unwrap();
+    let other_scope_lease = reader_writer_join.lease.unwrap();
+    let initial_revision = state.engine.worlds[&state.world_id].revision;
+
+    assert_eq!(
+        state
+            .engine
+            .create_state_slot(
+                state.observer,
+                StateSlotCreateRequest {
+                    world_id: state.world_id,
+                    lease: owner_lease.clone(),
+                    name: "focus.progress".into(),
+                    schema: StateSlotSchema::Integer {
+                        min: Some(0),
+                        max: Some(100),
+                    },
+                    initial_value: json!({"value": 10}),
+                    reader_scopes: vec![],
+                },
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE_LEASE",
+        "the host must authenticate the scope lease before validating slot details"
+    );
+
+    let invalid_initial = state
+        .engine
+        .create_state_slot(
+            state.writer_a,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                name: "focus.progress".into(),
+                schema: StateSlotSchema::Integer {
+                    min: Some(0),
+                    max: Some(100),
+                },
+                initial_value: json!({"value": 10}),
+                reader_scopes: vec![],
+            },
+            4,
+        )
+        .unwrap_err();
+    assert_eq!(invalid_initial.code, "INVALID_STATE_SLOT_VALUE");
+    assert!(state.engine.worlds[&state.world_id].state_slots.is_empty());
+    assert_eq!(
+        state.engine.worlds[&state.world_id].revision,
+        initial_revision
+    );
+
+    let slot = state
+        .engine
+        .create_state_slot(
+            state.writer_a,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                name: "focus.progress".into(),
+                schema: StateSlotSchema::Integer {
+                    min: Some(0),
+                    max: Some(100),
+                },
+                initial_value: json!(10),
+                reader_scopes: vec![],
+            },
+            4,
+        )
+        .unwrap();
+    let reader_request = StateSlotReadRequest {
+        world_id: state.world_id,
+        slot_id: slot.slot_id,
+        generation: slot.generation,
+        reader_scope_id: state.scope_b.scope_id,
+        reader_scope_generation: state.scope_b.generation,
+    };
+    assert_eq!(
+        state
+            .engine
+            .read_state_slot(state.observer, reader_request.clone())
+            .unwrap_err()
+            .code,
+        "STATE_SLOT_FORBIDDEN",
+        "scope membership alone must not grant slot access"
+    );
+
+    let committed = state
+        .engine
+        .compare_and_set_state_slot(
+            state.writer_a,
+            StateSlotCompareAndSetRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: slot.revision,
+                value: json!(25),
+            },
+            5,
+        )
+        .unwrap();
+    assert_eq!(committed.value, json!(25));
+    assert_eq!(committed.revision, slot.revision + 1);
+
+    let competing_write = state
+        .engine
+        .compare_and_set_state_slot(
+            state.writer_a,
+            StateSlotCompareAndSetRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: slot.revision,
+                value: json!(40),
+            },
+            5,
+        )
+        .unwrap_err();
+    assert_eq!(competing_write.code, "STATE_REVISION_CONFLICT");
+
+    let wrong_type = state
+        .engine
+        .compare_and_set_state_slot(
+            state.writer_a,
+            StateSlotCompareAndSetRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: committed.revision,
+                value: json!("not an integer"),
+            },
+            5,
+        )
+        .unwrap_err();
+    assert_eq!(wrong_type.code, "INVALID_STATE_SLOT_VALUE");
+
+    let unauthorized_writer = state
+        .engine
+        .compare_and_set_state_slot(
+            state.writer_b,
+            StateSlotCompareAndSetRequest {
+                world_id: state.world_id,
+                lease: other_scope_lease,
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: committed.revision,
+                value: json!(50),
+            },
+            5,
+        )
+        .unwrap_err();
+    assert_eq!(unauthorized_writer.code, "STATE_SLOT_FORBIDDEN");
+
+    let shared = state
+        .engine
+        .set_state_slot_readers(
+            state.writer_a,
+            StateSlotSetReadersRequest {
+                world_id: state.world_id,
+                lease: owner_lease.clone(),
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: committed.revision,
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: state.scope_b.scope_id,
+                    generation: state.scope_b.generation,
+                }],
+            },
+            6,
+        )
+        .unwrap();
+    let reader_snapshot = state
+        .engine
+        .read_state_slot(state.observer, reader_request.clone())
+        .unwrap();
+    assert_eq!(reader_snapshot.value, json!(25));
+    assert_eq!(reader_snapshot.revision, shared.revision);
+
+    let operator_snapshot = state.engine.read(state.operator, state.world_id).unwrap();
+    let serialized_world = serde_json::to_string(&operator_snapshot).unwrap();
+    assert!(
+        !serialized_world.contains("focus.progress")
+            && !serialized_world.contains(&slot.slot_id.to_string()),
+        "state slots must not leak through aggregate world snapshots"
+    );
+
+    let revoked = state
+        .engine
+        .set_state_slot_readers(
+            state.writer_a,
+            StateSlotSetReadersRequest {
+                world_id: state.world_id,
+                lease: owner_lease,
+                slot_id: slot.slot_id,
+                generation: slot.generation,
+                expected_revision: shared.revision,
+                reader_scopes: vec![],
+            },
+            7,
+        )
+        .unwrap();
+    assert!(revoked.revision > shared.revision);
+    assert_eq!(
+        state
+            .engine
+            .read_state_slot(state.observer, reader_request)
+            .unwrap_err()
+            .code,
+        "STATE_SLOT_FORBIDDEN"
+    );
+}
+
+#[test]
+fn state_slot_grants_and_owned_values_follow_scope_and_parent_revocation() {
+    let mut state = setup_scoped_world();
+    let owner_join = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let other_join = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    state
+        .engine
+        .join_scope(
+            state.observer,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Read),
+            3,
+        )
+        .unwrap();
+    let owner_lease = owner_join.lease.unwrap();
+    let other_lease = other_join.lease.unwrap();
+    let owner_slot = state
+        .engine
+        .create_state_slot(
+            state.writer_a,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: owner_lease,
+                name: "focus.value".into(),
+                schema: StateSlotSchema::String { max_chars: 64 },
+                initial_value: json!("focus value"),
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: state.scope_b.scope_id,
+                    generation: state.scope_b.generation,
+                }],
+            },
+            4,
+        )
+        .unwrap();
+    let other_slot = state
+        .engine
+        .create_state_slot(
+            state.writer_b,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: other_lease,
+                name: "tasks.value".into(),
+                schema: StateSlotSchema::Boolean,
+                initial_value: json!(true),
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: state.scope_a.scope_id,
+                    generation: state.scope_a.generation,
+                }],
+            },
+            4,
+        )
+        .unwrap();
+    let before_revision = state.engine.worlds[&state.world_id].revision;
+    let result = state
+        .engine
+        .patch_scope_structure(
+            state.owner,
+            state.world_id,
+            &state.authority_lease,
+            before_revision,
+            &[SceneOp::Remove {
+                node_id: "focus-panel".into(),
+            }],
+            5,
+        )
+        .unwrap();
+    assert!(result
+        .revoked_scopes
+        .iter()
+        .any(|scope| scope.scope_id == state.scope_a.scope_id));
+    let world = &state.engine.worlds[&state.world_id];
+    assert!(!world.state_slots.contains_key(&owner_slot.slot_id));
+    let retained_slot = &world.state_slots[&other_slot.slot_id];
+    assert!(!retained_slot
+        .reader_scopes
+        .contains_key(&state.scope_a.scope_id));
+
+    assert_eq!(
+        state
+            .engine
+            .read_state_slot(
+                state.observer,
+                StateSlotReadRequest {
+                    world_id: state.world_id,
+                    slot_id: other_slot.slot_id,
+                    generation: other_slot.generation,
+                    reader_scope_id: state.scope_a.scope_id,
+                    reader_scope_generation: state.scope_a.generation,
+                },
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE"
+    );
+
+    let mut expired = setup_scoped_world();
+    let owner_join = expired
+        .engine
+        .join_scope(
+            expired.writer_a,
+            ScopeJoinRequest::from_grant(expired.world_id, &expired.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let expiring_slot = expired
+        .engine
+        .create_state_slot(
+            expired.writer_a,
+            StateSlotCreateRequest {
+                world_id: expired.world_id,
+                lease: owner_join.lease.unwrap(),
+                name: "focus.expiring".into(),
+                schema: StateSlotSchema::Boolean,
+                initial_value: json!(true),
+                reader_scopes: vec![StateSlotScopeRef {
+                    scope_id: expired.scope_b.scope_id,
+                    generation: expired.scope_b.generation,
+                }],
+            },
+            4,
+        )
+        .unwrap();
+    let old_scope_generation = expired.scope_a.generation;
+    let old_scope_join_key = expired.scope_a.join_key.clone();
+    expired.engine.expire(u64::MAX / 2);
+    assert!(expired.engine.worlds[&expired.world_id]
+        .state_slots
+        .is_empty());
+    let fenced_scope = &expired.engine.worlds[&expired.world_id].scopes[&expired.scope_a.scope_id];
+    assert_eq!(fenced_scope.generation, old_scope_generation + 1);
+    assert_ne!(fenced_scope.join_key, old_scope_join_key);
+    assert!(fenced_scope.writer.is_none());
+    assert_eq!(
+        expired
+            .engine
+            .join_scope(
+                expired.writer_a,
+                ScopeJoinRequest::from_grant(expired.world_id, &expired.scope_a, JoinMode::Write,),
+                u64::MAX / 2,
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE"
+    );
+    assert_eq!(
+        expired
+            .engine
+            .read_state_slot(
+                expired.observer,
+                StateSlotReadRequest {
+                    world_id: expired.world_id,
+                    slot_id: expiring_slot.slot_id,
+                    generation: expiring_slot.generation,
+                    reader_scope_id: expired.scope_b.scope_id,
+                    reader_scope_generation: expired.scope_b.generation,
+                },
+            )
+            .unwrap_err()
+            .code,
+        "STALE_SCOPE"
+    );
+}
+
+#[test]
+fn state_slot_scope_and_reader_quotas_are_enforced_without_global_name_collisions() {
+    let mut state = setup_scoped_world();
+    let owner_join = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+    let reader_join = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            3,
+        )
+        .unwrap();
+
+    for index in 0..MAX_STATE_SLOTS_PER_SCOPE {
+        state
+            .engine
+            .create_state_slot(
+                state.writer_a,
+                StateSlotCreateRequest {
+                    world_id: state.world_id,
+                    lease: owner_join.lease.clone().unwrap(),
+                    name: format!("value.{index}"),
+                    schema: StateSlotSchema::Boolean,
+                    initial_value: json!(true),
+                    reader_scopes: vec![],
+                },
+                4,
+            )
+            .unwrap();
+    }
+    assert_eq!(
+        state.engine.worlds[&state.world_id].state_slots.len(),
+        MAX_STATE_SLOTS_PER_SCOPE
+    );
+    assert_eq!(
+        state
+            .engine
+            .create_state_slot(
+                state.writer_a,
+                StateSlotCreateRequest {
+                    world_id: state.world_id,
+                    lease: owner_join.lease.unwrap(),
+                    name: "value.overflow".into(),
+                    schema: StateSlotSchema::Boolean,
+                    initial_value: json!(true),
+                    reader_scopes: vec![],
+                },
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "LIMIT"
+    );
+
+    let oversized_grants = (0..=MAX_STATE_SLOT_READERS)
+        .map(|_| StateSlotScopeRef {
+            scope_id: state.scope_a.scope_id,
+            generation: state.scope_a.generation,
+        })
+        .collect();
+    assert_eq!(
+        state
+            .engine
+            .create_state_slot(
+                state.writer_b,
+                StateSlotCreateRequest {
+                    world_id: state.world_id,
+                    lease: reader_join.lease.clone().unwrap(),
+                    name: "value.0".into(),
+                    schema: StateSlotSchema::Boolean,
+                    initial_value: json!(true),
+                    reader_scopes: oversized_grants,
+                },
+                4,
+            )
+            .unwrap_err()
+            .code,
+        "LIMIT"
+    );
+    let distinct_scope_name = state
+        .engine
+        .create_state_slot(
+            state.writer_b,
+            StateSlotCreateRequest {
+                world_id: state.world_id,
+                lease: reader_join.lease.unwrap(),
+                name: "value.0".into(),
+                schema: StateSlotSchema::Boolean,
+                initial_value: json!(true),
+                reader_scopes: vec![],
+            },
+            4,
+        )
+        .unwrap();
+    assert_eq!(distinct_scope_name.name, "value.0");
+    assert_eq!(
+        state.engine.worlds[&state.world_id].state_slots.len(),
+        MAX_STATE_SLOTS_PER_SCOPE + 1
+    );
+}

@@ -196,6 +196,91 @@ class CapabilityTests(unittest.TestCase):
             client = Client(path, "fixture", protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL)
             self.assertEqual(client.protocol_version, COMPONENT_LEASES_PREVIEW_PROTOCOL)
 
+    def test_state_slots_require_preview_capability_schema_and_access_rules(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        with self.assertRaisesRegex(RuntimeError, "component_leases:preview-v1"):
+            client.require_state_slots()
+
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        with self.assertRaisesRegex(RuntimeError, "state_slots:preview-v1"):
+            client.require_state_slots()
+
+        client.ready["capabilities"]["component_leases"]["state_slots"] = {
+            "status": "preview",
+            "version": 1,
+            "schema_types": ["boolean", "integer", "number", "string", "enum"],
+            "reads": "explicit_scope_grants",
+            "writes": "owner_scope_cas",
+        }
+        client.require_state_slots()
+
+        client.ready["capabilities"]["component_leases"]["state_slots"]["schema_types"].remove("enum")
+        with self.assertRaisesRegex(RuntimeError, "state_slot_schema:enum"):
+            client.require_state_slots()
+
+    def test_state_slot_helpers_fail_closed_and_use_named_preview_methods(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+
+        async def unexpected_send(*_args, **_kwargs):
+            raise AssertionError("unadvertised state slot operation reached the transport")
+
+        client.call = unexpected_send
+        with self.assertRaisesRegex(RuntimeError, "state_slots:preview-v1"):
+            asyncio.run(client.read_state_slot("world", "slot", 1, "scope", 1))
+
+        client.ready["capabilities"]["component_leases"]["state_slots"] = {
+            "status": "preview",
+            "version": 1,
+            "schema_types": ["boolean", "integer", "number", "string", "enum"],
+            "reads": "explicit_scope_grants",
+            "writes": "owner_scope_cas",
+        }
+        calls = []
+
+        async def capture(method, params):
+            calls.append((method, params))
+            return {"method": method, "params": params}
+
+        client.call = capture
+        lease = {"scope_id": "owner", "lease_id": "lease", "epoch": 2, "generation": 1}
+        reader_scope = {
+            "scope_id": "reader",
+            "generation": 3,
+            "join_key": "secret-not-sent",
+        }
+
+        async def invoke_all():
+            await client.create_state_slot(
+                "world", lease, "shared.value", {"type": "integer", "min": 0, "max": 10},
+                2, [reader_scope],
+            )
+            await client.set_state_slot_readers("world", lease, "slot", 1, 1, [reader_scope])
+            await client.read_state_slot("world", "slot", 1, "reader", 3)
+            await client.compare_and_set_state_slot("world", lease, "slot", 1, 2, 4)
+            await client.delete_state_slot("world", lease, "slot", 1, 3)
+
+        asyncio.run(invoke_all())
+        self.assertEqual(
+            [method for method, _params in calls],
+            [
+                "state.slot.create",
+                "state.slot.set_readers",
+                "state.slot.read",
+                "state.slot.compare_and_set",
+                "state.slot.delete",
+            ],
+        )
+        self.assertEqual(
+            calls[0][1]["reader_scopes"],
+            [{"scope_id": "reader", "generation": 3}],
+        )
+        self.assertEqual(calls[2][1]["reader_scope_generation"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()

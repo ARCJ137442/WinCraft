@@ -365,3 +365,25 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 2026-10-28 本机以用户授权的本地连接信息完成一次 live GET 与 projection smoke；未调用 ExoMind 写 API，也未保存 profile、RT 地址、时间块字段或响应内容。随后以 Ctrl+C 停止 provider；其 `finally` 尝试销毁本地 WinCraft 世界，但本次重新授权的 Computer Use 无法激活管理器窗口，因此没有复核清理结果。本轮未通过 UI automation 操作其档位。
 
 脱敏记录：`evidence/local/nextgen-2026-10-28/ui-titlebar-collapse-width-20261028.json`。本次 Computer Use 刷新选择后仍报 `failed to activate captured window`；读取到的 accessibility 文本不等于视觉或交互验收。托盘管理器打开、全局隐藏/显示、当前 build 折叠尺寸、标题栏拖动、置顶层级和剩余 W23 原生门保持 NOT_RUN。
+
+## 2026-10-29 B07-03 类型状态槽
+
+**Given** 两个互不重叠的 scope，scope A 创建一个有 schema 的共享槽并显式授权 scope B 读取；**When** 两个 owner CAS 使用同一 expected revision、reader 尝试跨范围读写，或父 scope/authority 被撤销；**Then** 只有一个 CAS 提交，其他 CAS 返回可诊断冲突，未授权写与撤销后的读取失败，子树撤销会清理或收回相关槽位权限。
+
+`0.4-preview.1` 新增 `state.slot.create`、`set_readers`、`read`、`compare_and_set`、`delete`。槽位只接受 boolean、整数、有限 number、有界 string 和 enum，不接受对象/任意 JSON/指针/表达式。每槽 owner scope 单写；读者必须同时属于显式授权的 scope 且匹配 generation。槽位 revision 与 scope revision 分离。Host 对单次操作做同步内存仲裁，不跨网络等待持锁。0.3 descriptor 与稳定接口保持不变；Python SDK 在 capability 缺失、版本不符或访问语义不匹配时失败关闭。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `npm run check:local` | PASS | exit 0；28 Node UI tests、offline schema/contracts、Rust fmt/check/test/Clippy、88 Python tests、19 Provider Skill 引用。Rust workspace test 106 PASS：core unit 10、core invariants 59、desktop 18、server 19。|
+| `cargo test -p wincraft-core --test invariants state_slot -- --nocapture` | PASS | 3 个专用回归覆盖竞争 CAS、读/写隔离、类型拒绝、scope 删除/父 authority 过期、每 scope 槽位与 reader 配额。|
+| `python scripts/check_contracts.py` | PASS | exit 0；preview 请求 schema、五个正向方法 fixture、三个拒绝 fixture 均通过离线验证；方法仍只在 `0.4-preview.1` manifest 中。|
+| `cargo build -p wincraft-server --bin wincraft-headless` | PASS | exit 0，构建当前 source 的 debug headless host。|
+| `python examples/python/scope_probe.py --runtime "<isolated temporary descriptor>"` | PASS | exit 0；真实 Rust loopback WebSocket 验证显式 capability、并发 CAS 单胜单败、授权读取、错误类型原子拒绝、reader 撤销、槽位删除、父 scope 清理，以及 stable 0.3 拒绝 preview。慢消费者子用例停止一个 reader 的 WebSocket 接收、缩小接收缓冲区；owner 在此期间完成 64 次 scope 更新和后续 CAS。探针遵守 host 每连接 120 req/s 限额。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 当前索引新鲜：70 files、1,682 nodes、5,499 edges。|
+| Tauri 原生 UI、release EXE 和像素验收 | NOT_RUN | 状态槽不直接渲染；本任务验证范围为 core/server、preview SDK/schema 与真实 headless WebSocket。完整工作区 Cargo 检查已编译 Tauri target。|
+
+撤销行为：删除 owner scope 会删除其槽位；删除 reader scope 会移除该 grant 并使槽 revision 前进；父 authority release/disconnect/expiry/rescue 会轮换所有 child generation/join key 并清空槽位。已有 provider 已读取的快照无法被追溯擦除，撤销保证之后的 host read 被拒绝。
+
+CI 回顾：GitHub Actions 在 2026-10-28 连续 9 次于 `npm run check:local` 失败，日志共同显示 Windows 默认 `cp1252` 读取 UTF-8 夹具，以及 LF/CRLF checkout 使翻译源哈希误报；提交 `5e5f7e9` 显式固定 UTF-8 并按文本规范化换行，随后 Actions 更新到 Node 24 运行时。最新已推送运行 `40801981651`、`40726526250` 均成功。B07-03 当前工作区改动尚未进入远端 CI；推送后必须记录对应运行结论。
+
+脱敏本地证据见 `evidence/local/nextgen-2026-10-29/b07-03-validation.json`。Headless 探针使用合成标识与临时 world；descriptor 仅由 Python client 为连接读取，临时文件在探针后删除，没有被复制或写入证据。回滚边界：移除 preview state slot 方法、capability、SDK helper 和 fixture 即可关闭高级共享；稳定 0.3 与已有 scope 结构能力不变。

@@ -726,14 +726,17 @@ impl Hub {
             json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true,
                 "scope_patch_operations":["props","insert","remove","replace","move"],
                 "root_structure_patch":"scope.structure.patch","filtered_scope_events":true,
-                "parent_revocation":"generation_fence"})
+                "parent_revocation":"generation_fence",
+                "state_slots":{"status":"preview","version":1,"schema_types":["boolean","integer","number","string","enum"],
+                    "max_slots_per_world":MAX_STATE_SLOTS_PER_WORLD,"max_slots_per_scope":MAX_STATE_SLOTS_PER_SCOPE,
+                    "max_readers_per_slot":MAX_STATE_SLOT_READERS,"value_bytes":MAX_STATE_SLOT_VALUE_BYTES,
+                    "writes":"owner_scope_cas","reads":"explicit_scope_grants"}})
         } else {
             json!(false)
         };
         let not_implemented = if protocol.supports_component_leases() {
             json!([
                 "cross_scope_structure",
-                "state_slots",
                 "follow_cursor",
                 "attach_to_foreign_window",
                 "native_opacity",
@@ -1025,6 +1028,38 @@ impl Hub {
                 e.leave_scope(sid, p.world_id, p.scope_id)?;
                 changed = Some(p.world_id);
                 json!({})
+            }
+            "state.slot.create" => {
+                let p: StateSlotCreateRequest = decode(params)?;
+                let world_id = p.world_id;
+                let result = e.create_state_slot(sid, p, now)?;
+                changed = Some(world_id);
+                encode(result)?
+            }
+            "state.slot.set_readers" => {
+                let p: StateSlotSetReadersRequest = decode(params)?;
+                let world_id = p.world_id;
+                let result = e.set_state_slot_readers(sid, p, now)?;
+                changed = Some(world_id);
+                encode(result)?
+            }
+            "state.slot.read" => {
+                let p: StateSlotReadRequest = decode(params)?;
+                encode(e.read_state_slot(sid, p)?)?
+            }
+            "state.slot.compare_and_set" => {
+                let p: StateSlotCompareAndSetRequest = decode(params)?;
+                let world_id = p.world_id;
+                let result = e.compare_and_set_state_slot(sid, p, now)?;
+                changed = Some(world_id);
+                encode(result)?
+            }
+            "state.slot.delete" => {
+                let p: StateSlotDeleteRequest = decode(params)?;
+                let world_id = p.world_id;
+                e.delete_state_slot(sid, p, now)?;
+                changed = Some(world_id);
+                json!({"deleted":true})
             }
             _ => return Err(Fault::new("METHOD_NOT_FOUND", method)),
         };

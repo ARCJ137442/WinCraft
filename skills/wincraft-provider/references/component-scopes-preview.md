@@ -1,6 +1,6 @@
 # Component scope leases: 0.4 preview
 
-**Status:** experimental preview, not part of stable protocol 0.3. B07-01/02 implement disjoint scope writers, scoped structural transactions, parent revocation, and filtered live snapshots. Component action routing and typed shared state remain future work.
+**Status:** experimental preview, not part of stable protocol 0.3. B07-01/02 provide disjoint scope writers, scoped structural transactions, parent revocation, and filtered live snapshots. B07-03 adds typed, explicitly shared state slots. Component action routing remains unavailable.
 
 ## Opt in explicitly
 
@@ -68,6 +68,44 @@ Each scope admits one writer and any number of readers. A scoped lease contains 
 
 `scope.patch` supports atomic `props`, `insert`, `remove`, `replace`, and `move` batches inside the caller's subtree. The scope root itself cannot be removed or moved by its child writer. Inserted/replaced nodes must remain display-only until component action routing is implemented. Data bindings are localized on snapshots and written back under the scope's own namespace.
 
+## Share typed state deliberately
+
+State slots are a preview coordination channel attached to an owning scope. They do not store provider business truth, expose pointers, or make arbitrary JSON globally writable. Values must match one of the advertised scalar schemas: boolean, bounded integer, finite bounded number, bounded string, or enum. The host enforces a per-value byte cap and per-world/per-scope slot quotas.
+
+The owning scope writer creates a slot and names any reader scopes explicitly. A reader must both join one of those scopes and match the granted scope generation. Only the writer of the owning scope may update, change readers, or delete the slot; updates use the slot's own revision and compare-and-set:
+
+```python
+client.require_state_slots(version=1)
+slot = await client.create_state_slot(
+    world_id,
+    focus_scope_lease,
+    "focus.progress",
+    {"type": "integer", "min": 0, "max": 100},
+    25,
+    [{"scope_id": tasks_scope_id, "generation": tasks_scope_generation}],
+)
+
+value = await client.read_state_slot(
+    world_id,
+    slot["slot_id"],
+    slot["generation"],
+    tasks_scope_id,
+    tasks_scope_generation,
+)
+updated = await client.compare_and_set_state_slot(
+    world_id,
+    focus_scope_lease,
+    slot["slot_id"],
+    slot["generation"],
+    value["revision"],
+    30,
+)
+```
+
+The SDK checks the nested `state_slots` capability and its schema/access rules before sending a request. A stale concurrent write returns `STATE_REVISION_CONFLICT`; read the latest slot and make a new decision instead of blindly replaying a timed-out write. Removing a reader grant blocks later reads. Removing the owner scope deletes its slots; removing a reader scope removes that grant; parent authority revocation clears all child scopes and slots. A provider that already received a snapshot may retain that copy, so revocation controls future host reads rather than erasing data already observed.
+
+Slot operations are short, synchronous host mutations. They do not wait for reader providers or hold a lock across network or human interaction. Use them only for deliberately shared coordination values; keep durable or business-authoritative state in its provider.
+
 The root authority may configure window properties and use `scope.structure.patch` on unowned layout. It may move an intact child root/group between unowned layout parents. It cannot patch inside a child scope or move a scope into another scope. Removing a child root or an unowned ancestor containing it atomically removes that scope and its data namespace, fences its grant, and sends `scope.revoked` to joined readers/writers. Replacing a parent that still contains child scopes is rejected; remove it explicitly so the scopes are revoked.
 
 Releasing, disconnecting, expiring, or rescuing the root authority increments child generations/epochs, rotates grants, and fences active child writers. Existing readers receive a final filtered `scope.snapshot` with stale status. Old grants cannot reacquire access; recreate the temporary composition world to issue new grants. The root authority snapshot is redacted to remove child content and scoped data. The trusted local operator can still render and inspect the aggregate window.
@@ -103,3 +141,5 @@ python examples/python/scope_probe.py --runtime "<actual runtime descriptor path
 ```
 
 It verifies preview negotiation, independent writers, scope-local insert/move, filtered live reader updates, stable 0.3 refusal, root-authority scope deletion/revocation, stale-lease rejection, and destruction of only its own temporary world. It does not prove Tauri pixels or native window presentation.
+
+The probe also exercises typed state-slot creation, a pair of competing CAS writes, filtered reader authorization, wrong-type rejection, reader-grant revocation, and explicit slot deletion over the real Rust WebSocket host.

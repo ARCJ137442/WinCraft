@@ -16,7 +16,12 @@
     "scope.structure.patch",
     "scope.data.replace",
     "scope.renew",
-    "scope.leave"
+    "scope.leave",
+    "state.slot.create",
+    "state.slot.set_readers",
+    "state.slot.read",
+    "state.slot.compare_and_set",
+    "state.slot.delete"
   ],
   "constraints": {
     "max_scopes_per_world": 32,
@@ -26,6 +31,17 @@
     "root_structure_patch": "scope.structure.patch",
     "parent_revocation": "generation_fence",
     "scope_snapshot_events": "filtered_per_reader",
+    "state_slots": {
+      "status": "preview",
+      "version": 1,
+      "schema_types": ["boolean", "integer", "number", "string", "enum"],
+      "max_slots_per_world": 64,
+      "max_slots_per_scope": 16,
+      "max_readers_per_slot": 31,
+      "value_bytes": 8192,
+      "writes": "owner_scope_cas",
+      "reads": "explicit_scope_grants"
+    },
     "interactive_scope_components": false,
     "stable_0_3_world_writer_and_scope_writers_may_not_coexist": true
   }

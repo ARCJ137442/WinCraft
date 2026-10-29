@@ -54,6 +54,13 @@ def main() -> None:
     usage_schema = json.loads((ROOT / "protocol/usage-observation.schema.json").read_text(encoding="utf-8"))
     web_chat_schema = json.loads((ROOT / "protocol/web-chat-observation.schema.json").read_text(encoding="utf-8"))
     voice_schema = json.loads((ROOT / "protocol/voice-session.schema.json").read_text(encoding="utf-8"))
+    preview_directory = ROOT / "protocol/preview-0.4"
+    preview_manifest = json.loads(
+        (preview_directory / "methods.json").read_text(encoding="utf-8")
+    )
+    preview_request_schema = json.loads(
+        (preview_directory / preview_manifest["request_schema"]).read_text(encoding="utf-8")
+    )
     pack_schema_path = ROOT / "docs/strategy/2026-10-26/contracts/pack.schema.json"
     pack_examples = ROOT / "docs/strategy/2026-10-26/examples"
     Draft202012Validator.check_schema(request_schema)
@@ -63,6 +70,7 @@ def main() -> None:
     Draft202012Validator.check_schema(usage_schema)
     Draft202012Validator.check_schema(web_chat_schema)
     Draft202012Validator.check_schema(voice_schema)
+    Draft202012Validator.check_schema(preview_request_schema)
     pack_schema = json.loads(pack_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(pack_schema)
     scene_registry = (
@@ -80,6 +88,9 @@ def main() -> None:
     usage_validator = Draft202012Validator(usage_schema, format_checker=FormatChecker())
     web_chat_validator = Draft202012Validator(web_chat_schema, format_checker=FormatChecker())
     voice_validator = Draft202012Validator(voice_schema, format_checker=FormatChecker())
+    preview_validator = Draft202012Validator(
+        preview_request_schema, format_checker=FormatChecker()
+    )
     pack_validator = Draft202012Validator(pack_schema)
     requests = json.loads((ROOT / "protocol/examples/requests.json").read_text(encoding="utf-8"))
     for request in requests:
@@ -109,6 +120,16 @@ def main() -> None:
     theme_only = Draft202012Validator(theme_schema)
     theme_only.validate(theme_scene["theme"])
     checks.append("schemas_and_positive_fixtures")
+    preview_examples = preview_directory / "examples"
+    for request in json.loads(
+        (preview_examples / "state-slot-requests.json").read_text(encoding="utf-8")
+    ):
+        preview_validator.validate(request)
+    for request in json.loads(
+        (preview_examples / "state-slot-invalid-requests.json").read_text(encoding="utf-8")
+    ):
+        assert not preview_validator.is_valid(request), request
+    checks.append("preview_0_4_state_slot_request_schema_and_fixtures")
     for bad in [
         {"id":"x","method":"world.create","params":{"window":{"width":-1}}},
         {"id":"x","method":"scene.execute_javascript","params":{}},
@@ -168,9 +189,10 @@ def main() -> None:
     assert not validator.is_valid(invalid_theme_request)
     checks.append("negative_schema_fixtures")
     methods = json.loads((ROOT / "protocol/methods.json").read_text(encoding="utf-8"))["methods"]
+    preview_methods = preview_manifest["methods"]
     source = (ROOT / "crates/wincraft-server/src/hub.rs").read_text(encoding="utf-8")
     transport = (ROOT / "crates/wincraft-server/src/transport.rs").read_text(encoding="utf-8")
-    for name in methods:
+    for name in (*methods, *preview_methods):
         assert f'"{name}"' in source + transport, name
     checks.append("declared_methods_present_in_rust_source_not_execution")
     for pattern in ("eval(", "new Function(", "innerHTML", "document.write("):

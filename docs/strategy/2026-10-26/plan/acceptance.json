@@ -1264,7 +1264,8 @@
       ],
       "level": "L1-L2",
       "criterion": "竞争CAS一方失败可诊断且无丢失更新",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: core invariant and real WebSocket scope_probe issue competing compare_and_set calls with the same expected slot revision; exactly one commits and the stale call returns STATE_REVISION_CONFLICT, with the winning value retained."
     },
     {
       "id": "B07-03-A2",
@@ -1276,7 +1277,8 @@
       ],
       "level": "L1-L2",
       "criterion": "Arc式共享不绕过权限与可变规则",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: schemas accept only bounded boolean/integer/finite-number/string/enum scalars; core and WebSocket tests reject arbitrary object values, wrong types, ungranted reads, foreign-scope writes, stale generations and aggregate snapshot leakage. Owner-scope removal deletes its slots; reader-scope removal revokes its grant; parent authority expiry clears slots and rotates generations/join keys."
     },
     {
       "id": "B07-03-A3",
@@ -1288,7 +1290,8 @@
       ],
       "level": "L1-L2",
       "criterion": "慢或崩溃参与者不会锁住整个UI",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: real headless Rust WebSocket probe pauses a reader client network receive loop with a small socket receive buffer while its owner completes 64 scope updates and a subsequent slot CAS. Engine mutations are synchronous and do not await participants while holding host state."
     },
     {
       "id": "B07-04-A1",

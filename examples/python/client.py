@@ -211,7 +211,9 @@ class Client:
                              event_types: tuple[str, ...] = (),
                              component_leases_version: int | None = None,
                              component_scope_operations: tuple[str, ...] = (),
-                             root_structure_patch: bool = False) -> None:
+                             root_structure_patch: bool = False,
+                             state_slots_version: int | None = None,
+                             state_slot_schema_types: tuple[str, ...] = ()) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -224,6 +226,8 @@ class Client:
         event_subscriptions = capabilities.get("event_subscriptions")
         advertised_events = event_subscriptions.get("events") if isinstance(event_subscriptions, dict) else None
         component_leases = capabilities.get("component_leases")
+        state_slots = component_leases.get("state_slots") \
+            if isinstance(component_leases, dict) else None
         component_set = {value for value in advertised_components if isinstance(value, str)} \
             if isinstance(advertised_components, list) else set()
         shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
@@ -267,12 +271,41 @@ class Client:
             or component_leases.get("root_structure_patch") != "scope.structure.patch"
         ):
             missing.append("root_structure_patch:scope.structure.patch")
+        if state_slots_version is not None and (
+            not isinstance(state_slots, dict)
+            or state_slots.get("status") != "preview"
+            or state_slots.get("version") != state_slots_version
+        ):
+            missing.append(f"state_slots:preview-v{state_slots_version}")
+        advertised_slot_types = state_slots.get("schema_types") \
+            if isinstance(state_slots, dict) else None
+        slot_type_set = {
+            value for value in advertised_slot_types if isinstance(value, str)
+        } if isinstance(advertised_slot_types, list) else set()
+        missing.extend(
+            f"state_slot_schema:{value}"
+            for value in state_slot_schema_types
+            if value not in slot_type_set
+        )
+        if state_slots_version is not None and isinstance(state_slots, dict):
+            if state_slots.get("reads") != "explicit_scope_grants":
+                missing.append("state_slot_reads:explicit_scope_grants")
+            if state_slots.get("writes") != "owner_scope_cas":
+                missing.append("state_slot_writes:owner_scope_cas")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
 
     def require_component_leases(self, version: int = 1) -> None:
         """Fail closed unless this connection negotiated the matching scope-lease preview."""
         self.require_capabilities(component_leases_version=version)
+
+    def require_state_slots(self, version: int = 1) -> None:
+        """Fail closed unless typed state slots and their access rules are advertised."""
+        self.require_capabilities(
+            component_leases_version=1,
+            state_slots_version=version,
+            state_slot_schema_types=("boolean", "integer", "number", "string", "enum"),
+        )
 
     async def subscribe_events(self, world_id: str, types: tuple[str, ...]) -> dict[str, Any]:
         """Subscribe to connection-scoped window state events for an already joined world."""
@@ -386,6 +419,104 @@ class Client:
     async def leave_scope(self, world_id: str, scope_id: str) -> dict[str, Any]:
         self.require_component_leases()
         return await self.call("scope.leave", {"world_id": world_id, "scope_id": scope_id})
+
+    @staticmethod
+    def _state_slot_scope_refs(scopes: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
+        return [
+            {"scope_id": scope["scope_id"], "generation": scope["generation"]}
+            for scope in scopes
+        ]
+
+    async def create_state_slot(
+        self,
+        world_id: str,
+        lease: Mapping[str, Any],
+        name: str,
+        schema: Mapping[str, Any],
+        initial_value: Any,
+        reader_scopes: list[Mapping[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        self.require_state_slots()
+        return await self.call("state.slot.create", {
+            "world_id": world_id,
+            "lease": dict(lease),
+            "name": name,
+            "schema": dict(schema),
+            "initial_value": initial_value,
+            "reader_scopes": self._state_slot_scope_refs(reader_scopes or []),
+        })
+
+    async def set_state_slot_readers(
+        self,
+        world_id: str,
+        lease: Mapping[str, Any],
+        slot_id: str,
+        generation: int,
+        expected_revision: int,
+        reader_scopes: list[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        self.require_state_slots()
+        return await self.call("state.slot.set_readers", {
+            "world_id": world_id,
+            "lease": dict(lease),
+            "slot_id": slot_id,
+            "generation": generation,
+            "expected_revision": expected_revision,
+            "reader_scopes": self._state_slot_scope_refs(reader_scopes),
+        })
+
+    async def read_state_slot(
+        self,
+        world_id: str,
+        slot_id: str,
+        generation: int,
+        reader_scope_id: str,
+        reader_scope_generation: int,
+    ) -> dict[str, Any]:
+        self.require_state_slots()
+        return await self.call("state.slot.read", {
+            "world_id": world_id,
+            "slot_id": slot_id,
+            "generation": generation,
+            "reader_scope_id": reader_scope_id,
+            "reader_scope_generation": reader_scope_generation,
+        })
+
+    async def compare_and_set_state_slot(
+        self,
+        world_id: str,
+        lease: Mapping[str, Any],
+        slot_id: str,
+        generation: int,
+        expected_revision: int,
+        value: Any,
+    ) -> dict[str, Any]:
+        self.require_state_slots()
+        return await self.call("state.slot.compare_and_set", {
+            "world_id": world_id,
+            "lease": dict(lease),
+            "slot_id": slot_id,
+            "generation": generation,
+            "expected_revision": expected_revision,
+            "value": value,
+        })
+
+    async def delete_state_slot(
+        self,
+        world_id: str,
+        lease: Mapping[str, Any],
+        slot_id: str,
+        generation: int,
+        expected_revision: int,
+    ) -> None:
+        self.require_state_slots()
+        await self.call("state.slot.delete", {
+            "world_id": world_id,
+            "lease": dict(lease),
+            "slot_id": slot_id,
+            "generation": generation,
+            "expected_revision": expected_revision,
+        })
 
     async def mutate(self, method: str, world_id: str, lease: dict[str, Any], **payload: Any) -> dict[str, Any]:
         """Only retry explicit revision rejection, never a timeout or native failure."""

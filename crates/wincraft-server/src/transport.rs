@@ -1083,6 +1083,27 @@ mod tests {
             capabilities["result"]["component_leases"]["filtered_scope_events"],
             true
         );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["state_slots"]["status"],
+            "preview"
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["state_slots"]["writes"],
+            "owner_scope_cas"
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["state_slots"]["reads"],
+            "explicit_scope_grants"
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["state_slots"]["max_readers_per_slot"],
+            wincraft_core::MAX_STATE_SLOT_READERS
+        );
+        assert!(!capabilities["result"]["not_implemented"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|feature| feature == "state_slots"));
 
         let created = rpc(
             &mut owner,
@@ -1204,6 +1225,229 @@ mod tests {
         assert!(scope_projection.contains("focus-secret"));
         assert!(!scope_projection.contains("tasks-secret"));
         assert!(!scope_projection.contains("tasks-panel"));
+
+        let focus_slot = rpc(
+            &mut owner,
+            "focus-slot-create",
+            "state.slot.create",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "name":"focus.progress",
+                "schema":{"type":"integer","min":0,"max":100},
+                "initial_value":10,
+                "reader_scopes":[{"scope_id":tasks["scope_id"],"generation":tasks["generation"]}]
+            }),
+        )
+        .await;
+        assert_eq!(focus_slot["ok"], true);
+        let focus_slot_id = focus_slot["result"]["slot_id"].as_str().unwrap();
+        let focus_slot_generation = focus_slot["result"]["generation"].as_u64().unwrap();
+        let focus_slot_revision = focus_slot["result"]["revision"].as_u64().unwrap();
+
+        let unjoined_slot_read = rpc(
+            &mut observer,
+            "slot-read-before-scope-join",
+            "state.slot.read",
+            json!({
+                "world_id":world_id,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "reader_scope_id":tasks["scope_id"],
+                "reader_scope_generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(unjoined_slot_read["ok"], false);
+        assert_eq!(unjoined_slot_read["error"]["code"], "FORBIDDEN");
+
+        let observer_tasks_join = rpc(
+            &mut observer,
+            "observer-tasks-join",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"],
+                "join_key":tasks["join_key"],
+                "mode":"read"
+            }),
+        )
+        .await;
+        assert_eq!(observer_tasks_join["ok"], true);
+        let slot_read = rpc(
+            &mut observer,
+            "slot-read-authorized",
+            "state.slot.read",
+            json!({
+                "world_id":world_id,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "reader_scope_id":tasks["scope_id"],
+                "reader_scope_generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(slot_read["ok"], true);
+        assert_eq!(slot_read["result"]["value"], 10);
+
+        let winning_cas = rpc(
+            &mut owner,
+            "focus-slot-cas",
+            "state.slot.compare_and_set",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "expected_revision":focus_slot_revision,
+                "value":20
+            }),
+        )
+        .await;
+        assert_eq!(winning_cas["ok"], true);
+        let stale_cas = rpc(
+            &mut owner,
+            "focus-slot-stale-cas",
+            "state.slot.compare_and_set",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "expected_revision":focus_slot_revision,
+                "value":30
+            }),
+        )
+        .await;
+        assert_eq!(stale_cas["ok"], false);
+        assert_eq!(stale_cas["error"]["code"], "STATE_REVISION_CONFLICT");
+        let foreign_cas = rpc(
+            &mut tasks_provider,
+            "foreign-slot-cas",
+            "state.slot.compare_and_set",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_lease,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "expected_revision":winning_cas["result"]["revision"],
+                "value":30
+            }),
+        )
+        .await;
+        assert_eq!(foreign_cas["ok"], false);
+        assert_eq!(foreign_cas["error"]["code"], "STATE_SLOT_FORBIDDEN");
+        let invalid_slot_value = rpc(
+            &mut owner,
+            "focus-slot-invalid-value",
+            "state.slot.compare_and_set",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "expected_revision":winning_cas["result"]["revision"],
+                "value":"not an integer"
+            }),
+        )
+        .await;
+        assert_eq!(invalid_slot_value["ok"], false);
+        assert_eq!(
+            invalid_slot_value["error"]["code"],
+            "INVALID_STATE_SLOT_VALUE"
+        );
+
+        let tasks_slot = rpc(
+            &mut tasks_provider,
+            "tasks-slot-create",
+            "state.slot.create",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_lease,
+                "name":"tasks.available",
+                "schema":{"type":"boolean"},
+                "initial_value":true,
+                "reader_scopes":[{"scope_id":focus["scope_id"],"generation":focus["generation"]}]
+            }),
+        )
+        .await;
+        assert_eq!(tasks_slot["ok"], true);
+        let tasks_slot_read = rpc(
+            &mut observer,
+            "tasks-slot-read",
+            "state.slot.read",
+            json!({
+                "world_id":world_id,
+                "slot_id":tasks_slot["result"]["slot_id"],
+                "generation":tasks_slot["result"]["generation"],
+                "reader_scope_id":focus["scope_id"],
+                "reader_scope_generation":focus["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(tasks_slot_read["ok"], true);
+
+        let temporary_slot = rpc(
+            &mut owner,
+            "temporary-slot-create",
+            "state.slot.create",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "name":"focus.temporary",
+                "schema":{"type":"boolean"},
+                "initial_value":false
+            }),
+        )
+        .await;
+        assert_eq!(temporary_slot["ok"], true);
+        let temporary_slot_delete = rpc(
+            &mut owner,
+            "temporary-slot-delete",
+            "state.slot.delete",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "slot_id":temporary_slot["result"]["slot_id"],
+                "generation":temporary_slot["result"]["generation"],
+                "expected_revision":temporary_slot["result"]["revision"]
+            }),
+        )
+        .await;
+        assert_eq!(temporary_slot_delete["ok"], true);
+
+        let revoke_slot_reader = rpc(
+            &mut owner,
+            "focus-slot-revoke-reader",
+            "state.slot.set_readers",
+            json!({
+                "world_id":world_id,
+                "lease":focus_lease,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "expected_revision":winning_cas["result"]["revision"],
+                "reader_scopes":[]
+            }),
+        )
+        .await;
+        assert_eq!(revoke_slot_reader["ok"], true);
+        let revoked_slot_read = rpc(
+            &mut observer,
+            "slot-read-after-grant-revocation",
+            "state.slot.read",
+            json!({
+                "world_id":world_id,
+                "slot_id":focus_slot_id,
+                "generation":focus_slot_generation,
+                "reader_scope_id":tasks["scope_id"],
+                "reader_scope_generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(revoked_slot_read["ok"], false);
+        assert_eq!(revoked_slot_read["error"]["code"], "STATE_SLOT_FORBIDDEN");
+
         let observer_scope_revision = observer_join["result"]["snapshot"]["revision"]
             .as_u64()
             .unwrap();
@@ -1279,6 +1523,25 @@ mod tests {
         )
         .await;
         assert_eq!(removed_parent["ok"], true);
+        {
+            let core = hub.lock();
+            let world = &core.worlds[&world_id.parse().unwrap()];
+            let tasks_slot_id = tasks_slot["result"]["slot_id"].as_str().unwrap();
+            assert!(!world
+                .state_slots
+                .values()
+                .any(|slot| slot.id.to_string() == tasks_slot_id));
+            let retained_focus_slot = world
+                .state_slots
+                .values()
+                .find(|slot| slot.name == "focus.progress")
+                .unwrap();
+            let tasks_scope_id =
+                uuid::Uuid::parse_str(tasks["scope_id"].as_str().unwrap()).unwrap();
+            assert!(!retained_focus_slot
+                .reader_scopes
+                .contains_key(&tasks_scope_id));
+        }
         assert!(removed_parent["result"]["scene"]["data"]
             .get("tasks")
             .is_none());

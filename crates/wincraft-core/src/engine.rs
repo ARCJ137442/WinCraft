@@ -32,6 +32,66 @@ fn valid_data_namespace(value: &str) -> bool {
             .all(|character| character.is_ascii_alphanumeric() || "_-".contains(character))
 }
 
+fn valid_state_slot_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.chars().count() <= 64
+        && value
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || "_.:-".contains(character))
+}
+
+fn validate_state_slot_readers(
+    world: &World,
+    owner_scope_id: Uuid,
+    readers: &[StateSlotScopeRef],
+) -> Result<BTreeMap<Uuid, u64>> {
+    if readers.len() > MAX_STATE_SLOT_READERS {
+        return Err(Fault::new(
+            "LIMIT",
+            "state slot reader grant exceeds the host quota",
+        ));
+    }
+    let mut grants = BTreeMap::new();
+    for grant in readers {
+        if grant.scope_id == owner_scope_id || grants.contains_key(&grant.scope_id) {
+            return Err(Fault::new(
+                "INVALID_STATE_SLOT_GRANT",
+                "reader scopes must be unique and different from the owner scope",
+            ));
+        }
+        let scope = world
+            .scopes
+            .get(&grant.scope_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "reader scope missing"))?;
+        if scope.generation != grant.generation {
+            return Err(Fault::new(
+                "STALE_SCOPE",
+                "reader scope generation no longer matches",
+            ));
+        }
+        grants.insert(grant.scope_id, grant.generation);
+    }
+    Ok(grants)
+}
+
+fn state_slot_snapshot(
+    world_id: Uuid,
+    slot: &StateSlot,
+    access_scope_id: Uuid,
+) -> StateSlotSnapshot {
+    StateSlotSnapshot {
+        world_id,
+        slot_id: slot.id,
+        name: slot.name.clone(),
+        generation: slot.generation,
+        revision: slot.revision,
+        owner_scope_id: slot.owner_scope_id,
+        access_scope_id,
+        schema: slot.schema.clone(),
+        value: slot.value.clone(),
+    }
+}
+
 fn rewrite_scope_binding_value(
     value: &mut Value,
     namespace: &str,
@@ -330,6 +390,7 @@ impl Engine {
             ownership_mode: OwnershipMode::ExclusiveWorld,
             authority: None,
             scopes: BTreeMap::new(),
+            state_slots: BTreeMap::new(),
             readers: BTreeMap::new(),
             ever_claimed: false,
             window,
@@ -766,6 +827,297 @@ impl Engine {
             .map(|scope| Self::build_scope_snapshot(world, scope))
             .collect()
     }
+    pub fn create_state_slot(
+        &mut self,
+        session: Uuid,
+        request: StateSlotCreateRequest,
+        now: u64,
+    ) -> Result<StateSlotSnapshot> {
+        let StateSlotCreateRequest {
+            world_id,
+            lease,
+            name,
+            schema,
+            initial_value,
+            reader_scopes,
+        } = request;
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, &lease, now)?;
+        if !valid_state_slot_name(&name) {
+            return Err(Fault::new(
+                "INVALID_STATE_SLOT_NAME",
+                "state slot names must be bounded ASCII identifiers",
+            ));
+        }
+        schema.validate_value(&initial_value)?;
+        let reader_scopes = validate_state_slot_readers(world, lease.scope_id, &reader_scopes)?;
+        if world.state_slots.len() >= MAX_STATE_SLOTS_PER_WORLD
+            || world
+                .state_slots
+                .values()
+                .filter(|slot| slot.owner_scope_id == lease.scope_id)
+                .count()
+                >= MAX_STATE_SLOTS_PER_SCOPE
+        {
+            return Err(Fault::new("LIMIT", "state slot quota exceeded"));
+        }
+        if world
+            .state_slots
+            .values()
+            .any(|slot| slot.owner_scope_id == lease.scope_id && slot.name == name)
+        {
+            return Err(Fault::new(
+                "STATE_SLOT_NAME_CONFLICT",
+                "this scope already owns a slot with that name",
+            ));
+        }
+        let id = Uuid::new_v4();
+        let slot = StateSlot {
+            id,
+            name,
+            generation: 1,
+            revision: 1,
+            owner_scope_id: lease.scope_id,
+            owner_scope_generation: lease.generation,
+            schema,
+            value: initial_value,
+            reader_scopes,
+        };
+        let snapshot = state_slot_snapshot(world_id, &slot, lease.scope_id);
+        world.state_slots.insert(id, slot);
+        world.touch();
+        Ok(snapshot)
+    }
+
+    pub fn set_state_slot_readers(
+        &mut self,
+        session: Uuid,
+        request: StateSlotSetReadersRequest,
+        now: u64,
+    ) -> Result<StateSlotSnapshot> {
+        let StateSlotSetReadersRequest {
+            world_id,
+            lease,
+            slot_id,
+            generation,
+            expected_revision,
+            reader_scopes,
+        } = request;
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, &lease, now)?;
+        {
+            let slot = world
+                .state_slots
+                .get(&slot_id)
+                .ok_or_else(|| Fault::new("NOT_FOUND", "state slot missing"))?;
+            if slot.generation != generation {
+                return Err(Fault::new(
+                    "STALE_STATE_SLOT",
+                    "state slot generation no longer matches",
+                ));
+            }
+            if slot.owner_scope_id != lease.scope_id
+                || slot.owner_scope_generation != lease.generation
+            {
+                return Err(Fault::new(
+                    "STATE_SLOT_FORBIDDEN",
+                    "only the owning scope writer can change slot readers",
+                ));
+            }
+            if slot.revision != expected_revision {
+                return Err(Fault::new(
+                    "STATE_REVISION_CONFLICT",
+                    format!("expected {expected_revision}, actual {}", slot.revision),
+                ));
+            }
+        }
+        let reader_scopes = validate_state_slot_readers(world, lease.scope_id, &reader_scopes)?;
+        let mut changed = false;
+        let snapshot = {
+            let slot = world
+                .state_slots
+                .get_mut(&slot_id)
+                .ok_or_else(|| Fault::new("NOT_FOUND", "state slot missing"))?;
+            if slot.reader_scopes != reader_scopes {
+                slot.reader_scopes = reader_scopes;
+                slot.revision += 1;
+                changed = true;
+            }
+            state_slot_snapshot(world_id, slot, lease.scope_id)
+        };
+        if changed {
+            world.touch();
+        }
+        Ok(snapshot)
+    }
+
+    pub fn read_state_slot(
+        &self,
+        session: Uuid,
+        request: StateSlotReadRequest,
+    ) -> Result<StateSlotSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get(&request.world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        let access_scope = world
+            .scopes
+            .get(&request.reader_scope_id)
+            .ok_or_else(|| Fault::new("STALE_SCOPE", "reader scope no longer exists"))?;
+        if access_scope.generation != request.reader_scope_generation {
+            return Err(Fault::new(
+                "STALE_SCOPE",
+                "reader scope generation no longer matches",
+            ));
+        }
+        if !access_scope.readers.contains_key(&session) {
+            return Err(Fault::new(
+                "FORBIDDEN",
+                "join the authorized reader scope before reading this state slot",
+            ));
+        }
+        let slot = world
+            .state_slots
+            .get(&request.slot_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "state slot missing"))?;
+        if slot.generation != request.generation {
+            return Err(Fault::new(
+                "STALE_STATE_SLOT",
+                "state slot generation no longer matches",
+            ));
+        }
+        let owner_scope = world
+            .scopes
+            .get(&slot.owner_scope_id)
+            .ok_or_else(|| Fault::new("STALE_STATE_SLOT", "state slot owner was revoked"))?;
+        if owner_scope.generation != slot.owner_scope_generation {
+            return Err(Fault::new(
+                "STALE_STATE_SLOT",
+                "state slot owner generation was revoked",
+            ));
+        }
+        let owner_access = request.reader_scope_id == slot.owner_scope_id
+            && request.reader_scope_generation == slot.owner_scope_generation;
+        let explicitly_shared = slot.reader_scopes.get(&request.reader_scope_id)
+            == Some(&request.reader_scope_generation);
+        if !owner_access && !explicitly_shared {
+            return Err(Fault::new(
+                "STATE_SLOT_FORBIDDEN",
+                "this scope has no read grant for the state slot",
+            ));
+        }
+        Ok(state_slot_snapshot(
+            request.world_id,
+            slot,
+            request.reader_scope_id,
+        ))
+    }
+
+    pub fn compare_and_set_state_slot(
+        &mut self,
+        session: Uuid,
+        request: StateSlotCompareAndSetRequest,
+        now: u64,
+    ) -> Result<StateSlotSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&request.world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, &request.lease, now)?;
+        let snapshot = {
+            let slot = world
+                .state_slots
+                .get_mut(&request.slot_id)
+                .ok_or_else(|| Fault::new("NOT_FOUND", "state slot missing"))?;
+            if slot.generation != request.generation {
+                return Err(Fault::new(
+                    "STALE_STATE_SLOT",
+                    "state slot generation no longer matches",
+                ));
+            }
+            if slot.owner_scope_id != request.lease.scope_id
+                || slot.owner_scope_generation != request.lease.generation
+            {
+                return Err(Fault::new(
+                    "STATE_SLOT_FORBIDDEN",
+                    "only the owning scope writer can update the slot",
+                ));
+            }
+            if slot.revision != request.expected_revision {
+                return Err(Fault::new(
+                    "STATE_REVISION_CONFLICT",
+                    format!(
+                        "expected {}, actual {}",
+                        request.expected_revision, slot.revision
+                    ),
+                ));
+            }
+            slot.schema.validate_value(&request.value)?;
+            slot.value = request.value;
+            slot.revision += 1;
+            state_slot_snapshot(request.world_id, slot, request.lease.scope_id)
+        };
+        world.touch();
+        Ok(snapshot)
+    }
+
+    pub fn delete_state_slot(
+        &mut self,
+        session: Uuid,
+        request: StateSlotDeleteRequest,
+        now: u64,
+    ) -> Result<()> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&request.world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, &request.lease, now)?;
+        let slot = world
+            .state_slots
+            .get(&request.slot_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "state slot missing"))?;
+        if slot.generation != request.generation {
+            return Err(Fault::new(
+                "STALE_STATE_SLOT",
+                "state slot generation no longer matches",
+            ));
+        }
+        if slot.owner_scope_id != request.lease.scope_id
+            || slot.owner_scope_generation != request.lease.generation
+        {
+            return Err(Fault::new(
+                "STATE_SLOT_FORBIDDEN",
+                "only the owning scope writer can delete the slot",
+            ));
+        }
+        if slot.revision != request.expected_revision {
+            return Err(Fault::new(
+                "STATE_REVISION_CONFLICT",
+                format!(
+                    "expected {}, actual {}",
+                    request.expected_revision, slot.revision
+                ),
+            ));
+        }
+        world.state_slots.remove(&request.slot_id);
+        world.touch();
+        Ok(())
+    }
+
     pub fn patch_scope(
         &mut self,
         session: Uuid,
@@ -1136,6 +1488,22 @@ impl Engine {
         for scope_id in &revoked_ids {
             world.scopes.remove(scope_id);
         }
+        let revoked_scope_ids = revoked_ids
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+        world.state_slots.retain(|_, slot| {
+            if revoked_scope_ids.contains(&slot.owner_scope_id) {
+                return false;
+            }
+            let previous_readers = slot.reader_scopes.len();
+            slot.reader_scopes
+                .retain(|scope_id, _| !revoked_scope_ids.contains(scope_id));
+            if slot.reader_scopes.len() != previous_readers {
+                slot.revision += 1;
+            }
+            true
+        });
         for revocation in &revoked_scopes {
             for session in &revocation.sessions {
                 let still_joined = world
@@ -2061,6 +2429,7 @@ impl Engine {
             scope.revision += 1;
             scope.join_key = scope_join_key();
         }
+        world.state_slots.clear();
     }
     pub fn observe_geometry(
         &mut self,

@@ -498,6 +498,7 @@ pub struct World {
     pub ownership_mode: OwnershipMode,
     pub authority: Option<WorldAuthorityLease>,
     pub scopes: BTreeMap<Uuid, ComponentScope>,
+    pub state_slots: BTreeMap<Uuid, crate::state_slots::StateSlot>,
     pub readers: BTreeMap<Uuid, JoinMode>,
     pub ever_claimed: bool,
     pub window: WindowSpec,

@@ -134,6 +134,8 @@ FORBIDDEN、WRITE_CONFLICT、STALE_LEASE、LEASE_EXPIRED、OPERATOR_HOLD、REVIS
 
 预览方法、字段与正反 fixture 见 [`protocol/preview-0.4/`](../protocol/preview-0.4/methods.json)。`scope.partition` 需要当前完整 writer、expected revision，且世界只有 partitioning provider 一个读成员；Host 校验子树根和数据命名空间不相交，原 writer 随后被 fencing。它返回单独的 world authority 和每个 scope 的邀请凭证。
 
-`scope.join` 取得指定 scope 的读快照或唯一写租约。`scope.snapshot` 对读者只返回本子树和本数据 namespace；scope-only member 无法读取完整 `world.snapshot`。Scope 写入使用独立 `scope_revision`，不会因另一个 scope 更新而冲突。B07-02 允许 scope 内原子 `props/insert/remove/replace/move`，并由 root authority 用 `scope.structure.patch` 改未归属布局、完整移动或删除子 scope 边界。跨 scope 搬移仍拒绝；删除会清理 namespace、撤销旧 grant，并以 `scope.revoked` 通知旧成员。读者的实时更新由服务端过滤为 `scope.snapshot` 事件。父 authority 释放、断线、过期或 rescue 会提升子 generation/epoch；旧子 lease 与旧 grant 都不能恢复写权。交互路由和 CAS 状态槽仍未实现。
+`scope.join` 取得指定 scope 的读快照或唯一写租约。`scope.snapshot` 对读者只返回本子树和本数据 namespace；scope-only member 无法读取完整 `world.snapshot`。Scope 写入使用独立 `scope_revision`，不会因另一个 scope 更新而冲突。B07-02 允许 scope 内原子 `props/insert/remove/replace/move`，并由 root authority 用 `scope.structure.patch` 改未归属布局、完整移动或删除子 scope 边界。跨 scope 搬移仍拒绝；删除会清理 namespace、撤销旧 grant，并以 `scope.revoked` 通知旧成员。读者的实时更新由服务端过滤为 `scope.snapshot` 事件。父 authority 释放、断线、过期或 rescue 会提升子 generation/epoch；旧子 lease 与旧 grant 都不能恢复写权。
 
-新方法不等于稳定兼容承诺。未选择 preview 的 0.3 SDK 不应调用 `scope.*`；即使 descriptor 列出 preview，仍需在 SDK 使用前验证 capability。
+B07-03 在同一 preview 中提供 `state.slot.create/set_readers/read/compare_and_set/delete`。状态槽归属一个 owner scope，值只能是已声明 schema 的 boolean、integer、有限 number、bounded string 或 enum；不接受对象、指针、表达式或任意 JSON。写操作要求 owner scope 的有效写 lease，并以槽位 `generation + expected_revision` 做同步 CAS；冲突返回 `STATE_REVISION_CONFLICT`，不会静默覆盖。读者必须先加入获授权 scope，读权限还需精确匹配 scope generation。删除 owner scope 会删除其槽位，删除 reader scope 会撤销对应 grant；根 authority 生命周期结束会清空 child scopes 与状态槽。客户端已取得的快照无法被追溯擦除，撤销控制的是之后由 host 执行的读取。所有值仅是可重建的 host 会话状态，业务真相仍归 provider。交互路由仍未实现。
+
+新方法不等于稳定兼容承诺。未选择 preview 的 0.3 SDK 不应调用 `scope.*` 或 `state.slot.*`；即使 descriptor 列出 preview，仍需在 SDK 使用前验证嵌套 `component_leases.state_slots` capability。`methods.json` 与 request schema 描述传输形状，lease、owner scope、读者成员、generation、schema/value 匹配及 CAS 条件最终都由 Rust host 再验证。

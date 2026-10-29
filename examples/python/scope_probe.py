@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import socket
 from typing import Any
 
 from client import (
@@ -77,6 +78,7 @@ async def run(runtime: str) -> None:
         protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL,
     ) as owner:
         owner.require_component_leases()
+        owner.require_state_slots()
         created = await owner.call(
             "world.create",
             {"window": {"title": "Synthetic scope probe"}, "claim": True},
@@ -114,10 +116,204 @@ async def run(runtime: str) -> None:
                 tasks_join = await tasks.join_scope(world_id, grants["tasks-panel"], "write")
                 reader_join = await reader.join_scope(world_id, grants["focus-panel"], "read")
                 reader_scope_id = str(grants["focus-panel"]["scope_id"])
+                slot = await focus.create_state_slot(
+                    world_id,
+                    focus_join["lease"],
+                    "focus.progress",
+                    {"type": "integer", "min": 0, "max": 100},
+                    1,
+                    [grants["tasks-panel"]],
+                )
+                tasks_scope_id = str(grants["tasks-panel"]["scope_id"])
+                try:
+                    await reader.read_state_slot(
+                        world_id,
+                        slot["slot_id"],
+                        slot["generation"],
+                        tasks_scope_id,
+                        grants["tasks-panel"]["generation"],
+                    )
+                except RpcError as error:
+                    if error.code != "FORBIDDEN":
+                        raise
+                else:
+                    raise AssertionError("joining another scope must be required before reading")
+                await reader.join_scope(world_id, grants["tasks-panel"], "read")
+
+                async def compare_and_set(value: int) -> dict[str, Any] | RpcError:
+                    try:
+                        return await focus.compare_and_set_state_slot(
+                            world_id,
+                            focus_join["lease"],
+                            slot["slot_id"],
+                            slot["generation"],
+                            slot["revision"],
+                            value,
+                        )
+                    except RpcError as error:
+                        return error
+
+                outcomes = await asyncio.gather(
+                    compare_and_set(2),
+                    compare_and_set(3),
+                )
+                commits = [result for result in outcomes if isinstance(result, dict)]
+                conflicts = [
+                    result for result in outcomes
+                    if isinstance(result, RpcError) and result.code == "STATE_REVISION_CONFLICT"
+                ]
+                if len(commits) != 1 or len(conflicts) != 1:
+                    raise AssertionError("competing CAS writes must produce one commit and one revision conflict")
+                committed_slot = commits[0]
+                if committed_slot["revision"] != slot["revision"] + 1:
+                    raise AssertionError("state slot revision did not advance after compare-and-set")
+                observed_slot = await reader.read_state_slot(
+                    world_id,
+                    slot["slot_id"],
+                    slot["generation"],
+                    tasks_scope_id,
+                    grants["tasks-panel"]["generation"],
+                )
+                if observed_slot["value"] != committed_slot["value"]:
+                    raise AssertionError("authorized reader did not observe the winning CAS value")
+
+                try:
+                    await tasks.compare_and_set_state_slot(
+                        world_id,
+                        tasks_join["lease"],
+                        slot["slot_id"],
+                        slot["generation"],
+                        committed_slot["revision"],
+                        4,
+                    )
+                except RpcError as error:
+                    if error.code != "STATE_SLOT_FORBIDDEN":
+                        raise
+                else:
+                    raise AssertionError("a reader scope writer must not write a foreign slot")
+
+                try:
+                    await focus.compare_and_set_state_slot(
+                        world_id,
+                        focus_join["lease"],
+                        slot["slot_id"],
+                        slot["generation"],
+                        committed_slot["revision"],
+                        "wrong type",
+                    )
+                except RpcError as error:
+                    if error.code != "INVALID_STATE_SLOT_VALUE":
+                        raise
+                else:
+                    raise AssertionError("typed slot accepted a value outside its integer schema")
+
+                slot_after_rejection = await focus.read_state_slot(
+                    world_id,
+                    slot["slot_id"],
+                    slot["generation"],
+                    reader_scope_id,
+                    grants["focus-panel"]["generation"],
+                )
+                if slot_after_rejection["value"] != committed_slot["value"]:
+                    raise AssertionError("rejected wrong-type value changed the state slot")
+                temporary_slot = await tasks.create_state_slot(
+                    world_id,
+                    tasks_join["lease"],
+                    "tasks.probe_cleanup",
+                    {"type": "boolean"},
+                    True,
+                )
+                await tasks.delete_state_slot(
+                    world_id,
+                    tasks_join["lease"],
+                    temporary_slot["slot_id"],
+                    temporary_slot["generation"],
+                    temporary_slot["revision"],
+                )
+                revoked_slot = await focus.set_state_slot_readers(
+                    world_id,
+                    focus_join["lease"],
+                    slot["slot_id"],
+                    slot["generation"],
+                    committed_slot["revision"],
+                    [],
+                )
+                try:
+                    await reader.read_state_slot(
+                        world_id,
+                        slot["slot_id"],
+                        slot["generation"],
+                        tasks_scope_id,
+                        grants["tasks-panel"]["generation"],
+                    )
+                except RpcError as error:
+                    if error.code != "STATE_SLOT_FORBIDDEN":
+                        raise
+                else:
+                    raise AssertionError("revoked reader grant still allowed a slot read")
+
+                async with Client(
+                    runtime,
+                    "scope-probe-slow-reader",
+                    protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL,
+                ) as slow_reader:
+                    await slow_reader.join_scope(world_id, grants["focus-panel"], "read")
+                    if slow_reader.reader is None:
+                        raise AssertionError("slow-reader fixture did not start its network reader")
+                    slow_socket = slow_reader.socket.transport.get_extra_info("socket")
+                    if slow_socket is not None:
+                        slow_socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
+                    slow_reader.reader.cancel()
+                    await asyncio.gather(slow_reader.reader, return_exceptions=True)
+                    slow_reader.reader = None
+
+                    current_scope_revision = focus_join["snapshot"]["revision"]
+                    starting_scope_revision = current_scope_revision
+                    # Let setup calls clear the host's per-session request-rate window.
+                    await asyncio.sleep(1.1)
+                    for update_index in range(64):
+                        try:
+                            update = await asyncio.wait_for(
+                                focus.patch_scope(
+                                    world_id,
+                                    focus_join["lease"],
+                                    current_scope_revision,
+                                    [{
+                                        "op": "props",
+                                        "node_id": "focus-value",
+                                        "props": {"text": f"slow consumer update {update_index}"},
+                                    }],
+                                ),
+                                timeout=5,
+                            )
+                        except Exception as error:
+                            raise RuntimeError(
+                                f"writer stopped at slow-consumer update {update_index}; "
+                                f"reader_task_done={focus.reader.done() if focus.reader else True}"
+                            ) from error
+                        current_scope_revision = update["revision"]
+                        await asyncio.sleep(0.05)
+                    if current_scope_revision < starting_scope_revision + 64:
+                        raise AssertionError("writer did not finish updates while a reader stopped consuming")
+
+                    after_slow_reader = await asyncio.wait_for(
+                        focus.compare_and_set_state_slot(
+                            world_id,
+                            focus_join["lease"],
+                            slot["slot_id"],
+                            slot["generation"],
+                            revoked_slot["revision"],
+                            33,
+                        ),
+                        timeout=5,
+                    )
+                    if after_slow_reader["value"] != 33:
+                        raise AssertionError("idle reader blocked or corrupted the owner CAS write")
+
                 focus_result = await focus.patch_scope(
                     world_id,
                     focus_join["lease"],
-                    focus_join["snapshot"]["revision"],
+                    current_scope_revision,
                     [{"op": "props", "node_id": "focus-value", "props": {"text": "focus updated"}}],
                 )
                 focus_structure = await focus.patch_scope(
@@ -167,7 +363,7 @@ async def run(runtime: str) -> None:
                     raise AssertionError("reader projection did not keep its scoped data namespace")
                 if "tasks-panel" in serialized or "synthetic tasks" in serialized:
                     raise AssertionError("reader projection leaked a sibling scope")
-                if focus_data["revision"] != focus_join["snapshot"]["revision"] + 3:
+                if focus_data["revision"] != focus_join["snapshot"]["revision"] + 64 + 3:
                     raise AssertionError("focus scope revision did not advance independently")
                 if tasks_data["revision"] != tasks_join["snapshot"]["revision"] + 2:
                     raise AssertionError("tasks scope revision did not advance independently")
@@ -196,6 +392,18 @@ async def run(runtime: str) -> None:
                             raise
                     else:
                         raise AssertionError("stable whole-world writer joined a scoped world")
+                    try:
+                        await legacy.read_state_slot(
+                            world_id,
+                            slot["slot_id"],
+                            slot["generation"],
+                            reader_scope_id,
+                            grants["focus-panel"]["generation"],
+                        )
+                    except RuntimeError:
+                        pass
+                    else:
+                        raise AssertionError("stable 0.3 provider reached preview-only state slots")
 
                 authority_snapshot = await owner.call("world.snapshot", {"world_id": world_id})
                 await owner.patch_structure(
@@ -226,7 +434,8 @@ async def run(runtime: str) -> None:
                 print(
                     "PASS: real Rust WebSocket scope preview; "
                     f"focus_revision={focus_data['revision']}, tasks_revision={tasks_data['revision']}, "
-                    "scope-local structure, filtered live snapshots, parent revocation, and stable 0.3 refusal"
+                    "scope-local structure, filtered live snapshots, typed slot grants/CAS/revocation, "
+                    "parent revocation, and stable 0.3 refusal"
                 )
         finally:
             try:
