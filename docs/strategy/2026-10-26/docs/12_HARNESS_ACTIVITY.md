@@ -65,6 +65,21 @@ Codex App connector 快照若带 `captured_at`，Provider 用它计算来源年�
 
 [X-CODEX][X-CLAUDE][X-OPENCODE][X-DSH][X-OMP]
 
+## 本机 Harness 版本与适配状态（2026-10-30）
+
+以下是本机只读 `--version` 检查和已记录的来源 smoke。版本检查只证明命令可报告版本，不证明 Harness 会话可枚举或 Adapter 已接入。五类按 Codex、Claude Code、OpenCode、DeepSeek Harness、omp 组织；Codex CLI 与 Codex App 拆成独立来源行。
+
+| Harness / source ID | 本机版本检查 | 已有适配证据 | 未完成边界 |
+|---|---|---|---|
+| Codex CLI / `codex` | `codex-cli 0.138.0-alpha.7` | `thread/list` 只读 adapter 与当前 release smoke：source `online`，本次 0 条可列会话 | 此次没有可呈现的会话行；不能把空列表推成无任务或把 CLI 状态套到 Codex App。|
+| Codex App / `codex-app` | NOT_RUN | 一次授权 connector 快照曾到达 Provider；本轮明确 `not_requested` | 持续 relay、真实 release 列表、Agent 输出和 UUID 深链接仍 STALLED / NOT_RUN。|
+| Claude Code / `claude-code` | `2.1.302` | `agents --json` 只读 adapter 与当前 release smoke：source `online`，2 条后台 Agent 状态为 `blocked` | CLI 返回的后台 Agent 集合不等于全部交互会话；此证据没有验证最近 Agent 输出。|
+| OpenCode / source ID 未分配 | `1.1.14` | 本地版本命令可用；设计入口是指定服务事件流/插件事件 | 本仓库没有 OpenCode adapter 实测；session、permission 事件和授权边界均 NOT_RUN。|
+| DeepSeek Harness (`dsh`) / source ID 未分配 | `dsh --version` 失败，版本未知 | 本地命令存在；设计入口是插件服务与可撤销注册 | 当前安装无法报告版本；插件事件与只读 adapter 均 NOT_RUN。|
+| omp / source ID 未分配 | `omp/15.5.7` | 本地版本命令可用；设计入口来自项目 README 的 SDK/RPC/ACP | 本仓库没有 omp adapter 实测；固定模式的事件映射与权限边界均 NOT_RUN。|
+
+本轮真实来源读取只包含明确选择的 Codex CLI 与 Claude Code；OpenCode、DSH、omp 的会话和服务均未探测。此表证明 B08-03-A1 的入口和未知边界已明确，不计作五种 Harness 均已实测。
+
 每个 adapter 记录精确版本与运行模式；未知上游枚举映射 unknown 并保留原值。SDK/日志格式变化不应要求修改 WinCraft Core，只更新 provider adapter 与兼容 fixture。
 
 ## 决策与观察严格分开

@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-29",
+  "updated_at": "2026-10-30",
   "cases": [
     {
       "id": "B00-01-A1",
@@ -1458,7 +1458,8 @@
       ],
       "level": "L1-L5",
       "criterion": "五类都有明确入口/未知边界，不伪造五种实测",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: docs/12_HARNESS_ACTIVITY.md records the five planned Harness categories and keeps Codex CLI/App separate, with local version checks and explicit unknown/NOT_RUN boundaries. Codex CLI and Claude Code have scoped read-only smoke evidence; OpenCode, DSH and omp adapters remain NOT_RUN, so no five-Harness runtime coverage is claimed."
     },
     {
       "id": "B08-03-A2",
