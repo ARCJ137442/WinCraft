@@ -1,0 +1,31 @@
+{
+  "kind": "wincraft.inventory.registration",
+  "schema_version": "draft-2026-10-29",
+  "generation": 1,
+  "observed_at": "2026-10-29T12:00:00Z",
+  "valid_for_seconds": 60,
+  "providers": [
+    {
+      "source_id": "fixture.codex-app",
+      "source_instance_id": "codex-instance-a",
+      "provider_type": "codex-app",
+      "display_name": "合成 Agent 面板",
+      "adapter_contract": 1,
+      "state": "online",
+      "capabilities": ["activity.read"],
+      "source_updated_at": "2026-10-29T11:59:59Z",
+      "fresh_for_seconds": 60
+    },
+    {
+      "source_id": "fixture.claude-code",
+      "source_instance_id": "claude-instance-b",
+      "provider_type": "claude-code",
+      "display_name": "合成 Agent 面板",
+      "adapter_contract": 1,
+      "state": "degraded",
+      "capabilities": ["activity.read"],
+      "source_updated_at": "2026-10-29T11:58:00Z",
+      "fresh_for_seconds": 30
+    }
+  ]
+}

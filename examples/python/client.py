@@ -225,7 +225,8 @@ class Client:
                              component_scope_operations: tuple[str, ...] = (),
                              root_structure_patch: bool = False,
                              state_slots_version: int | None = None,
-                             state_slot_schema_types: tuple[str, ...] = ()) -> None:
+                             state_slot_schema_types: tuple[str, ...] = (),
+                             provider_inventory_version: int | None = None) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -240,6 +241,7 @@ class Client:
         component_leases = capabilities.get("component_leases")
         state_slots = component_leases.get("state_slots") \
             if isinstance(component_leases, dict) else None
+        provider_inventory = capabilities.get("provider_inventory")
         component_set = {value for value in advertised_components if isinstance(value, str)} \
             if isinstance(advertised_components, list) else set()
         shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
@@ -304,6 +306,13 @@ class Client:
                 missing.append("state_slot_reads:explicit_scope_grants")
             if state_slots.get("writes") != "owner_scope_cas":
                 missing.append("state_slot_writes:owner_scope_cas")
+        if provider_inventory_version is not None and (
+            self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+            or not isinstance(provider_inventory, dict)
+            or provider_inventory.get("status") != "preview"
+            or provider_inventory.get("version") != provider_inventory_version
+        ):
+            missing.append(f"provider_inventory:preview-v{provider_inventory_version}")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
 
@@ -318,6 +327,33 @@ class Client:
             state_slots_version=version,
             state_slot_schema_types=("boolean", "integer", "number", "string", "enum"),
         )
+
+    def require_provider_inventory(self, version: int = 1) -> None:
+        """Fail closed unless the draft provider inventory capability is advertised."""
+        self.require_capabilities(provider_inventory_version=version)
+
+    def _validate_provider_inventory_endpoint(self, result: Any) -> dict[str, Any]:
+        """Bind an inventory snapshot to the endpoint selected by the hello handshake."""
+        expected_endpoint_id = self.ready.get("host_id")
+        if (
+            not isinstance(result, dict)
+            or not isinstance(expected_endpoint_id, str)
+            or result.get("endpoint_id") != expected_endpoint_id
+        ):
+            raise RuntimeError("Host returned provider inventory for a different endpoint")
+        return result
+
+    async def register_provider_inventory(self, registration: Mapping[str, Any]) -> dict[str, Any]:
+        """Register bounded source metadata; registration never grants source capabilities."""
+        self.require_provider_inventory()
+        result = await self.call("provider.inventory.register", dict(registration))
+        return self._validate_provider_inventory_endpoint(result)
+
+    async def list_provider_inventory(self) -> dict[str, Any]:
+        """Read the host's registered source metadata without acquiring operation rights."""
+        self.require_provider_inventory()
+        result = await self.call("provider.inventory.list", {})
+        return self._validate_provider_inventory_endpoint(result)
 
     async def subscribe_events(self, world_id: str, types: tuple[str, ...]) -> dict[str, Any]:
         """Subscribe to connection-scoped window state events for an already joined world."""

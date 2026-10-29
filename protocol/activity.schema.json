@@ -43,7 +43,9 @@
     "display_name": { "type": "string", "maxLength": 96 },
     "project_label": { "type": "string", "maxLength": 96 },
     "codex_app_thread_id": { "type": "string", "format": "uuid" },
-    "last_output_kind": { "enum": ["agent_message", "connector_summary", "unavailable"] },
+    "last_output_kind": {
+      "enum": ["agent_message", "connector_summary", "source_preview", "unavailable"]
+    },
     "model_name": { "type": "string", "maxLength": 96 },
     "source_status": { "type": "string", "minLength": 1, "maxLength": 128 },
     "normalized_status": {

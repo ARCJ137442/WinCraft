@@ -112,6 +112,17 @@ into a stale/disconnected source if updates stop. It is not written to repositor
 or evidence. The current local host still needs end-to-end visual acceptance of the
 Codex App deep link.
 
+## Shared session card fields
+
+The source tabs use one session-card shape: name, status, project label and the latest
+source text that can be represented truthfully. Codex App connector snapshots can
+provide an exact bounded `agent_message`. Codex CLI `thread/list` can provide a
+bounded `preview`, but does not identify its speaker; the UI labels it as an
+unattributed conversation preview. Claude Code `agents --json` provides name/state/
+cwd but no latest-output field, so the UI says the source does not provide one instead
+of reading session logs. CLI project labels use only the last working-directory
+segment; absolute paths and source session IDs are not rendered.
+
 ## Validate the model
 
 From the repository root:

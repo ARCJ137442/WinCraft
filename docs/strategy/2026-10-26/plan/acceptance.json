@@ -250,7 +250,7 @@
       "level": "L1-L2",
       "criterion": "发现结果不包含token/lease/完整业务数据",
       "status": "PASS",
-      "evidence": "Core and real Rust headless probes serialize only WorldSummary metadata; tests assert no join_key, lease, scene, or data fields. Unjoined invite-only worlds are filtered before metadata leaves the host."
+      "evidence": "Core/world.list and authenticated 0.4-preview WebSocket tests serialize bounded metadata only; inventory registration rejects unknown grant fields, the host returns grants=[], and invite-only worlds still require world.join."
     },
     {
       "id": "B01-03-A2",
@@ -264,7 +264,7 @@
       "level": "L1-L2",
       "criterion": "相同显示名的两个实例不会合并",
       "status": "PASS",
-      "evidence": "Core and real headless probes created two open worlds with the same title and observed two distinct world IDs in world.list."
+      "evidence": "Core/world.list keeps equal world titles under distinct IDs; 0.4-preview inventory returns same-label source instances with distinct instance_id values in the loopback WebSocket test."
     },
     {
       "id": "B01-03-A3",
@@ -278,7 +278,7 @@
       "level": "L1-L2",
       "criterion": "offline/stale/unauthorized可区分",
       "status": "PASS",
-      "evidence": "Core regressions distinguish stale and vacant open worlds, keep unjoined invite-only worlds hidden, and verify an unauthorized join returns FORBIDDEN."
+      "evidence": "Core regressions distinguish stale/vacant/invite-unauthorized worlds; inventory WebSocket tests distinguish offline/degraded source state and empty grants, while source_updated_at/fresh_for_seconds preserve independent freshness."
     },
     {
       "id": "B01-04-A1",
@@ -1388,8 +1388,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲",
-      "status": "NOT_RUN",
-      "evidence": "The CLI sources were observed together; the three-source criterion remains incomplete because the real Codex App snapshot did not reach the release Provider."
+      "status": "BLOCKED",
+      "evidence": "Claude Code and Codex CLI are independently read; a synthetic Codex App row renders, but the actual Codex App connector snapshot did not reach the release Provider."
     },
     {
       "id": "B08-02-A2",
@@ -1431,7 +1431,7 @@
       "level": "L2-L5",
       "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开",
       "status": "BLOCKED",
-      "evidence": "Codex App connector metadata was read and the row projection passed synthetic tests. Actual connector data did not reach the release Provider through the available PTY/stdin relay; native codex:// click remains NOT_RUN."
+      "evidence": "Current release UIA displayed title, status, project and output from a synthetic snapshot. Actual connector data was not visible; UUID-only native click/load remains NOT_RUN."
     },
     {
       "id": "B08-02-A5",
@@ -1444,8 +1444,8 @@
       ],
       "level": "L2-L5",
       "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界",
-      "status": "NOT_RUN",
-      "evidence": "Reachability/session-state and source-age projections pass tests; native UI was not rechecked after the final status-label correction because Computer Use was stopped by physical Escape."
+      "status": "BLOCKED",
+      "evidence": "Source health/age and stale TTL render in tests and synthetic UIA. Real Codex App connector freshness is unavailable because the snapshot did not reach the release Provider."
     },
     {
       "id": "B08-03-A1",
@@ -1552,7 +1552,7 @@
       "level": "L1-L5",
       "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露",
       "status": "BLOCKED",
-      "evidence": "A synthetic bridge smoke rendered title, status, project and recent output in a Tauri release window. Real Codex App data remains unavailable pending the Agent relay."
+      "evidence": "Current release UIA showed the four card fields from synthetic Codex App data. Real connector data remains blocked; no real session display is claimed."
     },
     {
       "id": "B08-04-A1",

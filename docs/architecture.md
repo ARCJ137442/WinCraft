@@ -22,6 +22,8 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 `wincraft-server` 给核心增加连接身份、JSON 消息、鉴权、限额、事件和提供者通道。headless 使用同一个核心，而不是 Python/JS 重写模型。
 
+`0.4-preview.1` 的可选 `provider_inventory` capability 在 `Hub` 内登记每个已认证 Provider 显式提交的有限来源元数据；它只维护内存快照，不持久化业务内容或凭据。登记的 capability 是来源声明，Host 输出的 `grants` 始终为空；读取 inventory 不改变 world membership、read 权限或 lease。每份快照带 `endpoint_id`，调用者必须单独选择/连接其他 Host；Host 不扫描本机进程、浏览器或网络。稳定协议 0.3 的 `world.list` 保持原有 world-only 语义。
+
 稳定协议 0.3 中 `Engine` 对每个 world 持有一个独占 writer。实验性 `0.4-preview.1` 在单独的 ownership mode 中把 world authority、非重叠 component scopes 与各自的数据 namespace 分开；其他 0.3 world 写入入口在该 mode 失败关闭。Tauri 的可信 operator 仍取得合并快照用于 renderer；外部 session 只读到授权 scope 投影。
 
 状态变更通过 per-world latest-value watch 推送完整快照，几何/逻辑显隐的类型订阅从相邻快照计算并允许合并；交互和删除等 occurrence 走独立有界广播，队列滞后时显式重同步并断开。订阅只对本连接已加入的世界有效，不授予写租约，断线即清理。

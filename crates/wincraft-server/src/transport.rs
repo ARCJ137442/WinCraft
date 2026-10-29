@@ -1049,6 +1049,140 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn preview_provider_inventory_registers_metadata_without_world_authority() {
+        let runtime_dir =
+            std::env::temp_dir().join(format!("wincraft-provider-inventory-{}", Uuid::new_v4()));
+        let _cleanup = TestRuntimeDirectory(runtime_dir.clone());
+        let hub = Hub::new(false);
+        let server = start(hub.clone(), "127.0.0.1:0".parse().unwrap(), &runtime_dir)
+            .await
+            .expect("loopback server starts");
+        let (mut source, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "inventory.source",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let (mut observer, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "inventory.observer",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let (mut stable, _) = connect_test_provider(&server.descriptor, "inventory.stable").await;
+
+        let preview_capabilities = rpc(&mut source, "caps", "host.capabilities", json!({})).await;
+        assert_eq!(
+            preview_capabilities["result"]["provider_inventory"]["version"],
+            1
+        );
+        let stable_capabilities =
+            rpc(&mut stable, "stable-caps", "host.capabilities", json!({})).await;
+        assert!(stable_capabilities["result"]
+            .get("provider_inventory")
+            .is_none());
+
+        let created = rpc(
+            &mut source,
+            "invite",
+            "world.create",
+            json!({"window":{"title":"inventory invite"},"join_policy":"invite","claim":false}),
+        )
+        .await;
+        assert_eq!(created["ok"], true);
+        let invite_world_id = created["result"]["world"]["id"].as_str().unwrap();
+
+        let observed_at = time::OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap();
+        let registration = json!({
+            "kind":"wincraft.inventory.registration",
+            "schema_version":"draft-2026-10-29",
+            "generation":1,
+            "observed_at":observed_at,
+            "valid_for_seconds":60,
+            "providers":[
+                {
+                    "source_id":"source.codex-app",
+                    "source_instance_id":"instance-a",
+                    "provider_type":"codex-app",
+                    "display_name":"Same label",
+                    "adapter_contract":1,
+                    "state":"online",
+                    "capabilities":["activity.read"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":60
+                },
+                {
+                    "source_id":"source.codex-app",
+                    "source_instance_id":"instance-b",
+                    "provider_type":"codex-app",
+                    "display_name":"Same label",
+                    "adapter_contract":1,
+                    "state":"degraded",
+                    "capabilities":["activity.read"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":30
+                }
+            ]
+        });
+        let registered = rpc(
+            &mut source,
+            "inventory-register",
+            "provider.inventory.register",
+            registration,
+        )
+        .await;
+        assert_eq!(registered["ok"], true);
+        let listed = rpc(
+            &mut observer,
+            "inventory-list",
+            "provider.inventory.list",
+            json!({}),
+        )
+        .await;
+        assert_eq!(listed["ok"], true);
+        assert_eq!(
+            listed["result"]["endpoint_id"],
+            server.descriptor.host_id.to_string()
+        );
+        let providers = listed["result"]["providers"].as_array().unwrap();
+        assert_eq!(providers.len(), 2);
+        assert_eq!(providers[0]["display_name"], providers[1]["display_name"]);
+        assert_eq!(providers[0]["id"], providers[1]["id"]);
+        assert_ne!(providers[0]["instance_id"], providers[1]["instance_id"]);
+        assert!(providers
+            .iter()
+            .all(|provider| provider["grants"] == json!([])));
+        let serialized = listed.to_string();
+        for private_field in ["token", "lease", "scene", "data"] {
+            assert!(!serialized.contains(private_field));
+        }
+
+        let join = rpc(
+            &mut observer,
+            "join-invite-without-key",
+            "world.join",
+            json!({"world_id":invite_world_id,"mode":"read"}),
+        )
+        .await;
+        assert_eq!(join["error"]["code"], "FORBIDDEN");
+        let stable_list = rpc(
+            &mut stable,
+            "stable-inventory-list",
+            "provider.inventory.list",
+            json!({}),
+        )
+        .await;
+        assert_eq!(stable_list["error"]["code"], "UNSUPPORTED_CAPABILITY");
+
+        source.close(None).await.expect("source closes");
+        observer.close(None).await.expect("observer closes");
+        stable.close(None).await.expect("stable client closes");
+        server.shutdown().await;
+    }
+
+    #[tokio::test]
     async fn preview_websocket_scopes_allow_disjoint_writers_and_filter_readers() {
         let runtime_dir =
             std::env::temp_dir().join(format!("wincraft-scope-preview-{}", Uuid::new_v4()));

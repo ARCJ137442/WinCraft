@@ -1,7 +1,7 @@
 ---
 title: WinCraft release gate and claims boundary
-updated_at: 2026-10-28
-last_verified_at: 2026-10-28
+updated_at: 2026-10-29
+last_verified_at: 2026-10-29
 protocol_baseline: 0.3
 status: pre-release-gate
 audience: maintainer, release-validator
@@ -13,18 +13,20 @@ This is a pre-release audit for the current working tree. It is not a release ap
 
 ## Claims allowed from current evidence
 
-- Rust core/server/Tauri code compiles on the current Windows toolchain.
-- The latest hosted Windows GitHub Actions run passed `npm run check:local`; this validates the automated pipeline, not native desktop acceptance.
+- The current Windows worktree passed `npm run check:local`: 28 Node UI tests, 116 Rust workspace tests, 145 Python tests, offline contracts and 27 Provider Skill references; this does not replace native acceptance.
+- Windows Actions run `40855749607` passed for pushed commit `283c1b8`; it does not include the current uncommitted inventory/session-card changes.
+- `npm run desktop:build` built `target/release/wincraft-desktop.exe` from the current working tree; a separately launched `--open-manager` release produced a real manager window.
 - Protocol, lease, revocation, reader/writer isolation, dynamic scene, theme, event subscription and anchor behavior have automated tests.
-- A real isolated Rust headless host passed a 38-check `lease_probe.py` run, including anchor configuration and anchor-aware geometry events; the latest Tauri release host passed 40 real-WebSocket checks.
+- A real isolated Rust headless host passed a 41-check `lease_probe.py` run; the current workspace also passes its Rust core/server/Tauri automated suite.
 - The latest Tauri release host reported native application of `always_on_top=false/true`; actual z-order against ordinary and other topmost windows is still NOT_RUN.
+- Current release UIA showed the four session-card fields with a synthetic Codex App snapshot; the real connector snapshot is still BLOCKED, and Codex App deep-link click/load remains NOT_RUN.
 - TrafficMonitor and Obsidian Obsidian Workspace providers have documented read-only/source boundaries and prior current-release evidence.
 - Native external actions are allowlisted and fail closed in service tests; real Windows click success/failure remains unverified.
 
 ## Claims forbidden until manual gates pass
 
-- tray-only startup, tray manager focus/open, global hide/show and graceful tray Exit;
-- pixel-perfect content fitting, no window-level scrollbar, title collapse sizing, click-through rescue;
+- default tray-only startup, tray-menu focus/open, global hide/show and graceful tray Exit on the current build;
+- pixel-perfect content fitting/no window-level scrollbar across changing content, current-build collapse sizing recheck, click-through rescue;
 - multi-monitor/DPI behavior, monitor detach migration and virtual-desktop behavior;
 - real Popup UI success/cancel, keyboard/IME/UIA/reader and position reuse;
 - real Obsidian Workspace Obsidian activation or TrafficMonitor window actions;

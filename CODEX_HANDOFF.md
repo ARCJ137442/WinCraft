@@ -24,11 +24,11 @@
 
 ## 当前验证与仓库状态（2026-10-29）
 
-- 当前可复现的命令、环境、退出码和验证分层以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。最近一次 `npm run check:local`：28 项 UI、138 项 Python 测试通过，Rust fmt/check/test/Clippy、离线契约和 27 个 Provider Skill 引用检查通过。
-- GitHub Actions Windows run `40852232278`（commit `6a44c00`）的 `npm run check:local` 通过，用时 11m26s；它不证明 Tauri 窗口的像素/人工验收。
-- 文档同步提交的 Windows run `40853925244`（commit `d5987b3`）也通过 `npm run check:local`；自动检查不替代原生 UI 验收。
-- B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 现有 Claude Code `agents --json`、Codex CLI 本机状态库和 Codex App connector 三种独立来源；Codex App 的真实快照进入 release Provider 与原生深链接仍未验收。
-- B08-03 的单窗口 Global Agent Overview 已在当前 Tauri release 用合成数据完成 L1-L4 UI 验收（首屏/来源列表/详情/回执/清理）；A6/A7 为 `PASS`。Codex App 列表的四字段投影与来源新鲜度已有定向测试和合成 release smoke；真实 connector bridge 仍为 `BLOCKED`，不计作真实会话显示。
+- 当前可复现命令、环境、退出码与分层结果以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。当前工作树 `npm run check:local` 退出码 0：28 项 UI、Rust workspace 116 tests、145 项 Python tests、离线契约和 27 个 Provider Skill 引用检查通过。
+- 最近 GitHub Actions Windows run `40855749607`（commit `283c1b8`）通过；它验证推送提交，不覆盖当前尚未推送的 inventory 与 Agent Activity 改动，也不证明原生 UI。
+- B01-03 的 opt-in 0.4-preview endpoint-local provider inventory 已通过 loopback WebSocket/core/server/Python SDK 回归；0.3 `world.list` 不变，Host 不接受 grants、不会扫描其他 Host。
+- B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 保持 `BLOCKED`：Claude Code `agents --json`、Codex CLI `thread/list` 与 Codex App connector 分源；Codex App 真实 connector 快照尚未稳定进入 release Provider，原生 UUID 深链接也未确认。
+- B08-03 单窗口 Global Agent Overview 的 A6/A7 有合成 release 证据；本地 release UIA 还确认会话卡片能展示名称、状态、项目和最近文本。Codex App 真实 snapshot 仍未呈现，不能把本地合成卡片计作真实会话接入。
 - B09-02 `adb devices -l` 当前发现 1 台在线设备与 1 台离线设备；未枚举应用或读取通知。没有用户选定的 app/source 和通知权限，任务状态为 `BLOCKED`。
 - Python 提供者已统一按真实 wire envelope 读取顶层 `world.deleted.world_id`；Tauri-hosted `lease_probe.py` 最终 41 项通过，包含删除事件送达原成员检查。
 - 本地 Tauri release 和用户人工验收状态按验证矩阵记录；浏览器预览、合成 provider、真实协议和原生 UI 证据不可互相替代。

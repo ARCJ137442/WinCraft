@@ -73,7 +73,7 @@ B07-01 代码提交 `be7a50c` 的 Windows hosted run `40707844155` 随后完整�
 | 最终宿主 descriptor ACL | NOT_RUN | 通过 `client.py` 在内存中读取当前 descriptor 以连接，未输出或保存其内容；当前 descriptor ACL 未检查。此前 locale-enabled build 的 ACL 证据不能外推 |
 | 真实协议 | PASS | `lease_probe.py` 分别对独立 headless Rust host 和当前 Tauri 启动的真实 Rust host 各完成 28 项；当前 Tauri host 额外报告 `native_windows=true`，窗口修订等待 native adapter 应用。未覆盖实际点击穿透救援、像素布局、托盘退出 |
 | B01-02 撤销生命周期 | PASS | Rust core release 回归覆盖重复断线/离开幂等、其他 session/world 不受影响、pending action 撤销和旧 lease fencing；transport shutdown 测试确认活跃 WebSocket 断开、session/lease 清理、listener/housekeeping 停止及 descriptor 删除 |
-| B01-03 世界发现 | IMPLEMENTED_UNVERIFIED | 当前 0.3 `world.list` 仅列当前成员及非系统 open_authenticated worlds；invite-only 未加入项隐藏，open-world listing 仍需 `world.join` 才能读取。provider type/version/capability/freshness registry 仍为 proposal |
+| B01-03 授权 inventory / 世界发现 | VERIFIED（L1-L2，0.4 preview） | 0.3 `world.list` 保持 world-only 语义；0.4 preview 的 `provider.inventory.register/list` 处理已认证连接显式注册的来源元数据并返回 `endpoint_id`。注册的 capabilities 只是声明，Host 始终清空 grants；多 Host 汇总必须由调用者逐个选择和鉴权 endpoint。|
 | B01-04 公共 SDK 与诊断 | PASS（L1-L2） | Schema/SDK/shared fixtures 与真实 Rust headless 一致；renderer 保留节点身份和草稿；Popup action-ack 断线时的合成敏感正文 sentinel 不回显 |
 | 教程 provider | PASS（启动/清理），原生交互 PARTIAL | `provider_tutorial.py` 在真实 headless 与先前 B02 Tauri host 创建 ordinary invited world 并接受首个 scene；UIA 树显示五课首页。Ctrl+C 清理确认，随后 `world.list` 匹配数为 0；动态课/主题/隐藏恢复的 UIA 输入未完成 |
 | TrafficMonitor | PASS（此前本机 smoke） | 临时 x64 provider 与本地桥接曾报告来源在线且采样更新；本公开记录不含本机进程标识或遥测数据 |
@@ -168,9 +168,17 @@ python scripts/browser_smoke.py
 | B01-02 跨 session 句柄隔离 | PASS | 断开 A 后注册新 session，取得更高 epoch；用旧 lease 写入返回 `STALE_LEASE`，scene data 不变。|
 | B01-03 `world.list` 可见性边界 | PASS（协议增量） | 仅返回当前 session 已加入的世界和非系统 `open_authenticated` 世界；未加入 invite 世界不暴露 ID/title/writer。operator 仍可供管理器列出全部世界。|
 | B01-03 实例/权限/状态 | PASS（core + headless） | 两个同名开放 world 保持不同 ID；列表 metadata 不含 join_key/lease/scene/data；online/stale/vacant 与 FORBIDDEN join 可区分；真实 `lease_probe.py` 28 checks 通过。|
-| B01-03 多来源 inventory | IMPLEMENTED_UNVERIFIED | Provider 类型、版本、能力 grants、新鲜度 TTL 与多 endpoint registry 仍是策略包 draft；未伪称现有 `world.list` 已完成该独立 inventory。|
+| B01-03 多来源 inventory | PASS（0.4 preview L2） | 真实 loopback WebSocket 测试注册/读取来源 inventory；相同 `id` 的实例由不同 `instance_id` 区分，Host 拒绝自授 grants并返回 endpoint ID，断连来源变为 offline，快照过期变为 degraded、TTL 到期后清理。0.3 `world.list` 未改变。|
+| `cargo test -p wincraft-server -p wincraft-core --no-fail-fast` | PASS | Core 10 unit + 61 invariants、Server 26 tests 全部通过，退出码 0；含 authenticated loopback inventory register/list、endpoint identity、no-grant 与 invitation join refusal。|
+| `python -m unittest discover -s tests -p test_client_capabilities.py -v` | PASS | Python 3.11.4；20 项通过，退出码 0；SDK 在 capability 未声明时 fail closed，且校验 inventory endpoint ID 匹配 hello host ID。|
+| `python scripts/check_contracts.py` | PASS | Provider inventory 注册/输出 schema、正反 fixtures、preview manifest 和 handoff planner 检查通过，退出码 0。|
+| `cargo test -p wincraft-server -p wincraft-core --no-fail-fast` | PASS | Core 10 unit + 61 invariants、server 26 tests 全部通过，退出码 0；含 authenticated loopback inventory registration/list、endpoint identity、no-grant 与 invitation join rejection。|
+| `python -m unittest discover -s tests -p test_client_capabilities.py -v` | PASS | Python 3.11.4；20 项通过，退出码 0；SDK 对未宣告 capability fail-closed，并验证 inventory `endpoint_id` 匹配 hello `host_id`。|
+| `python scripts/check_contracts.py` | PASS | Provider inventory 注册/输出 Schema、正反 fixture、preview manifest 与 handoff planner 检查通过，退出码 0。|
 | 原生 manager language toggle | PASS（UIA tree） | 单实例 Tauri manager 从中文切换为英文并在 UIA 中观察到标题/动作文本更新，之后观察到中文已恢复。|
 | 教程隐藏恢复/Popup键盘/IME/读屏 | NOT_RUN | Computer Use 对唯一教程窗口执行首次点击与一次重新激活仍失败；没有再尝试其它 UI 输入通道。manager、tutorial UIA 树的控件名已读取，截图回传错窗后丢弃且未保存。|
+
+2026-10-29 B01-03 验收范围：inventory 是每个 Host endpoint 的内存 registry；多 Host 汇总由调用者对明确选择的 descriptor 分别鉴权后处理，Host 不自动扫描。能力声明不是授权，注册不接受 grants，列表不改变 world membership 或 lease。
 
 此前的 manager/provider 进程已按所属项目范围清理。Computer Use 恢复失败后没有再发送键鼠输入。UIA/IME/屏幕阅读器和五课完整交互仍待人工验收。
 
@@ -414,7 +422,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 
 **Given** 两个合成 Harness 实例，其中一个实例有父会话和两个子会话，另一个实例使用与前者相同的显示名/模型名；**When** 聚合器校验身份、新鲜度和父子结构并生成 Agent Board；**Then** 断线保持为 stale、未知保持为 unknown，父容器不与子任务重复计数，标签变化不合并实例，界面没有批准/写文件/继续执行动作。
 
-`protocol/activity.schema.json` 是 `draft-2026-10-29` 提案，不是 protocol 0.3 host API。身份键为 `device_id / provider_id / source_instance_id / session_id`；freshness 单独表达来源时效；完整父子树要求缺父项、循环和重复身份失败关闭。场景只写显示摘要和聚合数字，不把 source/session/task ID、模型名或原始来源状态复制进宿主数据。
+`protocol/activity.schema.json` 是 `draft-2026-10-29` 提案，不是 protocol 0.3 host API。身份键为 `device_id / provider_id / source_instance_id / session_id`；freshness 单独表达来源时效；完整父子树要求缺父项、循环和重复身份失败关闭。场景只携带供本地 renderer 使用的有限名称、项目标签和短摘要，不把 source/session/task ID、完整路径、模型名或原始来源状态复制进宿主数据。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
@@ -490,6 +498,16 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 
 脱敏本地记录：`evidence/local/nextgen-2026-10-29/cua-window-state-20261029.json`。该记录验证的是 synthetic PASS；实时 CLI 来源另见 B08-02 记录，不能把两种证据合并成 Codex App 连接已完成。
 
+### 2026-10-29 Codex App 会话行可见性补充
+
+**Given** 合成 Codex App 会话快照及来源读取年龄；**When** 生成 Codex App 来源页；**Then** 会话标题、状态、项目和最近输出对应独立 renderer 组件，输出使用正文尺寸，页面总显示来源新鲜度及成功读取年龄。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest discover -s tests -p test_agent_live_sources.py -v`、`python -m unittest discover -s tests -p test_agent_global_overview.py -v`、`python -m unittest discover -s tests -p test_agent_activity_board.py -v` | PASS | Python 3.11.4；18 + 9 + 9 项合成定向测试全部通过，退出码均为 0。覆盖四项会话字段、新鲜度秒数、输出字号和分页/来源行为。工作树基于 `283c1b8` 且含未提交改动。|
+| 当前改动的 release 窗口像素检查 | BLOCKED | Computer Use 两次按重新枚举对象获取管理器窗口都返回 `window id was not found`；未重用旧句柄或坐标，因此本次没有截图级证据。|
+| 实际 Codex App 快照进入 Tauri release Provider | BLOCKED | 这次改动只验证合成快照的 renderer 组件树；真实 connector-to-Provider stdin relay 仍未打通，不能据此声称真实会话已呈现。|
+
 ## 2026-10-29 `world.deleted` 事件封套与 Provider 清理
 
 Rust transport 实际发送的世界删除 occurrence 将 `world_id` 放在事件顶层；`interaction` 的世界身份则位于 `data`。统一的 `client.event_world_id()` 同时读取两类封套，Provider 仍必须将身份与本进程创建的 world 精确比较。修正了教程、Popup、主题、TrafficMonitor、Obsidian Workspace、ExoMind workbench、Focus Demo 与 Global Overview 的关闭事件分支；不改变 0.3 wire 格式。
@@ -504,7 +522,7 @@ Rust transport 实际发送的世界删除 occurrence 将 `world_id` 放在事�
 
 脱敏本地证据：`evidence/local/nextgen-2026-10-29/b08-03-global-overview-validation.json`。这修正避免了本地 manager 已关闭窗口而 Provider 仍等到时限后误报清理不确定。
 
-## 2026-10-29 B08-02 Claude Code、Codex CLI 与 Codex App 三来源适配（进行中）
+## 2026-10-29 B08-02 Claude Code、Codex CLI 与 Codex App 三来源适配（真实 App 桥接阻塞）
 
 **Given** 三种独立来源：Claude Code `agents --json`、Codex CLI app-server `thread/list`、以及授权 Agent 经 Codex App connector 提供的快照；**When** Live Provider 汇总；**Then** 每个来源有独立身份、状态和最近成功读取时间，Codex App 页面逐项提供标题、状态、项目和最近输出，缺少桥接数据时明确等待，不把 Codex CLI 查询成功等同于 APP 会话在线。
 
@@ -515,16 +533,56 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | Claude Code `agents --json` / Codex CLI `thread/list` | PASS（L1-L2） | Claude CLI 查询成功，当前返回 2 个 blocked 后台 Agent；Codex CLI `useStateDbOnly=true` 返回 0 条。本地状态没有扫描 JSONL 或完整会话日志。|
 | Codex App connector 只读枚举 | PASS（来源读取） | `list_threads` 与 `list_projects` 返回独立于 Codex CLI state DB 的 Codex App 数据；active Agent 消息只读限长，不读取完整 turn/tool history。|
 | 三来源规范化、独立健康、新鲜度与 Codex App 四字段行 | PASS（L1-L2） | `tests.test_agent_live_sources` / `tests.test_agent_global_overview` 共 27 项定向测试通过；覆盖 App 标题/状态/项目/最近输出、受限链接、来源失败隔离、上次成功时间与 CLI/App 状态映射。|
-| `npm run check:local` | PASS | 28 Node UI tests、138 Python tests、Rust workspace fmt/check/test/Clippy、离线契约与 Provider Skill 引用校验均通过。|
-| `npm run desktop:build` | PASS | 当前 release 产物为 `target/release/wincraft-desktop.exe`。Python provider 场景无需重新编译宿主，但本次仍重建了 release。|
+| `npm run check:local` | PASS | 28 Node UI tests、116 Rust workspace tests、145 Python tests、fmt/check/Clippy、离线契约与 27 个 Provider Skill 引用均通过，退出码 0。|
+| `npm run desktop:build` | PASS | Windows release `target/release/wincraft-desktop.exe` 构建成功；文件大小 12,429,312 bytes，SHA-256 `18D7288DE1D1C08AE2BD231692546679AB2E5924CA1DC5FD0EE364ED8EB732A0`。产物从 HEAD `283c1b8` 加当前未提交源码改动构建。|
 | GitHub Actions run `40852232278` / commit `6a44c00` | PASS | Windows hosted `npm run check:local` 通过，用时 11m26s；workflow 不启动 Tauri 窗口，也不替代本机原生/人工验收。|
 | GitHub Actions run `40853925244` / commit `d5987b3` | PASS | 后续文档同步提交的 Windows hosted `npm run check:local` 通过，用时 11m12s；不增加原生 UI 验收证据。|
 | Tauri release + 合成 ASCII bridge smoke | PASS（L3 可访问性） | Computer Use accessibility tree 在真实 release 窗口中看到会话名、状态、项目和输出四项，以及来源健康与相对更新时间。样例内容为合成 Smoke/Demo，不代表真实 Codex App 会话。|
-| Codex App 实际快照进入 release Provider | BLOCKED | 当前本地执行器的 PTY/stdin 不能稳定将真实 connector JSONL 行送入持续 Provider；实际窗口仍正确显示“等待 Agent 桥接”。Codex App 打开本身不会自动向 Provider 推送快照。需要验证一个持久 Agent→Provider stdin relay。|
+| 当前 release `--open-manager` 独立启动 | PASS（L3） | 本机启动 `target/release/wincraft-desktop.exe --open-manager` 后，Computer Use 枚举到真实管理器窗口；未运行 Vite 代理。默认不带参数的 tray-only 启动与托盘菜单未在本轮复验。|
+| 当前 release + PTY JSONL 合成快照 | PASS（L3 UIA） | `live_provider.py --codex-app-bridge` 接入真实 Rust/Tauri WebSocket；通过保持 stdin 的 PTY 注入合成 Codex App snapshot，UIA 树显示会话名称、状态、项目和最近 Agent 输出。超过 TTL 后显示断线/陈旧；未把合成字段记作真实 Codex App 数据。|
+| Codex App connector 实际快照进入 release Provider | BLOCKED | 经 Codex App connector 读取当前会话元数据/最近输出后，尝试送入持续 Provider；当前 release UI 仍显示等待桥接，未证明真实 connector payload 到达。合成 PTY 快照只验证接收与渲染路径，不能替代真实 Agent relay。|
 | Codex App 原生深链接点击与目标加载 | NOT_RUN | 只通过单元测试验证 UUID-only `codex://threads/<UUID>` allowlist；本轮没有确认实际点击和目标会话加载。|
-| Pixel screenshot / 最新来源列表的人工观感 | NOT_RUN | Computer Use 后续被物理 Escape 停止；只保留其前 accessibility tree 证据，不把它作为像素级验收。|
+| Pixel screenshot / 最新来源列表的人工观感 | NOT_RUN | Computer Use 可读到当前 release 的 accessibility tree；其 native screenshot capture 返回黑帧，本轮没有可审阅的像素截图。|
 
-本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-02-three-source-ui-validation.json`。不保存 runtime descriptor、来源标题、项目名、工作目录、提示词、输出片段或原始 thread ID。B08-02 整体保持 `IN_PROGRESS`；真实 Codex App bridge 与原生深链接验收仍待完成。
+本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-02-three-source-ui-validation.json`。不保存 runtime descriptor、来源标题、项目名、工作目录、提示词、输出片段或原始 thread ID。B08-02 整体标为 `BLOCKED`：来源卡片与 synthetic release 渲染已验证，真实 connector relay 和原生深链接仍待完成。
+
+### 2026-10-29 三来源会话卡片字段统一
+
+**Given** Codex CLI、Claude Code 与 Codex App 的不同只读快照；**When** 打开任一来源会话页；**Then** 每张卡片都显示名称、状态、项目与来源能确认的最新文本，并持续区分 Agent 输出、未标注发言方的会话预览和来源未提供的输出。
+
+| 来源字段 | UI 呈现 | 边界 |
+|---|---|---|
+| Codex App `title/status/project_label/last_agent_output` | 名称、状态、项目、`最近 Agent 输出` | exact connector excerpt；仅短预览进入卡片，完整摘要不入 evidence。|
+| Codex CLI `name/cwd/preview` | 名称、状态、工作目录末级项目名、`会话预览（发言方未标注）` | `thread/list` preview 不能确认发言角色，因此不叫 Agent 输出；不读 turns 或 rollout 文件。|
+| Claude Code `name/state/cwd` | 名称、状态、工作目录末级项目名、`来源未提供最近 Agent 输出` | `agents --json` 没有输出字段；不从日志或其它会话推断。|
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_agent_live_sources -v` | PASS | Python 3.11.4；21 项通过，退出码 0。覆盖三来源卡片字段、角色标签、身份/路径脱敏与新鲜度。|
+| `python -m unittest tests.test_agent_global_overview -v` | PASS | 9 项通过，退出码 0；来源切换、详情、分页和 cleanup 回归通过。|
+| `python scripts/check_contracts.py` | PASS | 退出码 0；活动 draft schema 接受来源预览类型，离线契约及 fixtures 通过。|
+| `npm run check:python` | PASS | Python 3.11.4；145 tests 通过，27 个 Provider Skill 引用通过，退出码 0。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 最后同步 1 个后续变更文件；85 files、2,136 nodes；索引 current。Node.js v22.23.4。|
+| 当前 Windows release + PTY synthetic snapshot | PASS（L3 UIA） | `npm run desktop:build` 后独立 EXE 启动；真实 Rust/Tauri WebSocket provider 注入合成 Codex App snapshot，Computer Use accessibility tree 看到会话名称、状态、项目、Agent 输出和 TTL stale 状态。输入/输出值只用合成数据；像素截图不可用，因此不作截图级结论。|
+| 当前 release manager | PASS（启动/可访问性） | `target/release/wincraft-desktop.exe --open-manager` 启动后 Computer Use 读取到管理器窗口；该参数是显式自动化入口，不证明默认 tray-only 启动或托盘退出。|
+| 当前 `npm run check:local` | PASS | 28 Node UI、116 Rust workspace、145 Python tests；fmt/check/test/Clippy、离线契约、27 Provider Skill references 均通过，退出码 0。|
+| 当前 `npm run desktop:build` | PASS | `target/release/wincraft-desktop.exe`，12,429,312 bytes，SHA-256 `18D7288DE1D1C08AE2BD231692546679AB2E5924CA1DC5FD0EE364ED8EB732A0`。构建时 HEAD 为 `283c1b8`，且工作树包含未提交源码改动。|
+| Codex App connector 当前会话进入 release Provider | BLOCKED | Agent 读取了当前 Codex App 会话字段并尝试经 PTY 发送受限快照，但 release UI 仍显示“等待 Agent 桥接”；不声称真实会话已显示。真实 UUID 深链接仍 `NOT_RUN`。|
+| 当前 release pixel screenshot | NOT_RUN | Computer Use accessibility tree 可读；Tauri screenshot API 返回黑帧，没有可审阅的像素证据。|
+| 临时 Provider/Host 清理 | PARTIAL | PTY Provider 收到 Ctrl+C 并确认销毁自己的 world；一次 stdin 已关闭的早期测试留下同标题 stale world，随后 WinCraft host 停止。一个匹配该已停止 Host PID 的本机 runtime descriptor 仍待清理；路径与内容未写入证据。|
+
+本地实现测试使用合成字段；本机 CLI 只读 shape 检查只返回字段名/类型及非文本计数，不保存会话值。Codex App 真实快照桥接仍 `BLOCKED`，因此合成测试不代表真实 APP 会话已经进入悬浮窗。
+
+### 2026-10-29 Codex App 快照采集时刻与 TTL 边界
+
+**Given** 授权 Agent 送来带 `captured_at` 的 Codex App 快照；**When** 快照到达时距采集正好 30 秒；**Then** 来源健康仍表明已桥接，但会话和来源新鲜度都为 stale、年龄为 30 秒。未来时间戳失败关闭；旧格式缺少时间时回退为本机接收时刻。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest discover -s tests -p test_agent_live_sources.py -v` | PASS | Python 3.11.4；20 项定向测试全部通过，退出码 0。新增测试确认迟到快照不被当作刚更新、TTL 边界一致、格式错误/无时区/未来时间戳产生来源限定错误；数据全为合成样例。|
+| `npm run check:python` | PASS | 140 项 Python 测试及 27 个 Provider Skill 引用检查通过，退出码 0。|
+| `python scripts/check_contracts.py` | PASS | 离线 JSON/TOML、schema/fixture、Python 语法和 handoff 资产一致性检查通过，退出码 0。|
+| 真实 Codex App 快照进入当前 release Provider | BLOCKED | 本轮管理器窗口句柄在两次重新枚举后仍无法稳定绑定；未取得 runtime descriptor，也未尝试猜端口或路径。既有 stdin relay 阻塞仍未解除。|
 
 ## 2026-10-29 B09-02 Android 设备可用性探查
 

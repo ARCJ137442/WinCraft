@@ -2,8 +2,8 @@
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-02 Codex App bridge BLOCKED; B09-02 Android source selection BLOCKED; B08-03 synthetic overview verified",
-  "next_action": "Resolve the persistent local Agent-to-Provider bridge for Codex App, then verify actual release rows and UUID-only codex:// navigation. For B09-02, wait for the user to select an Android app/source and notification permission; do not enumerate apps or read notifications before that choice. Continue independent release/native acceptance tasks.",
+  "active_batch": "B08-02 BLOCKED on the real Codex App connector relay; B09-02 BLOCKED pending Android source selection/permission; B08-03 synthetic session-card rendering verified, five-Harness/component-owner criteria still open.",
+  "next_action": "Keep B08-02 BLOCKED until an authorized current Codex App connector snapshot is confirmed in the persistent release Provider and UUID-only navigation is tested. Synthetic PTY snapshot delivery is verified in the current Windows release, but it is not the live connector. Continue independent release/manual gates and B03/B04 work. For B09-02, wait for the user-selected Android app/source and notification permission.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -12,7 +12,7 @@
     "B00-04": "VERIFIED",
     "B01-01": "VERIFIED",
     "B01-02": "VERIFIED",
-    "B01-03": "IMPLEMENTED_UNVERIFIED",
+    "B01-03": "VERIFIED",
     "B01-04": "VERIFIED",
     "B02-01": "VERIFIED",
     "B02-02": "IMPLEMENTED_UNVERIFIED",
@@ -39,7 +39,7 @@
     "B07-03": "VERIFIED",
     "B07-04": "VERIFIED",
     "B08-01": "VERIFIED",
-    "B08-02": "IN_PROGRESS",
+    "B08-02": "BLOCKED",
     "B08-03": "IN_PROGRESS",
     "B08-04": "NOT_STARTED",
     "B09-01": "VERIFIED",
@@ -62,8 +62,7 @@
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense source/API is not located; other Harness, TouchAI and cross-device adapters remain unimplemented rather than represented by mock integrations.",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
-    "B08-02-A4 Codex App live bridge is blocked in the current local runner: real connector snapshots were not accepted by the persistent Provider stdin path. Opening Codex App alone does not populate the Provider; a verified Agent relay is required.",
-    "B08-02-A4 Codex App live bridge and native link are stalled: actual connector metadata was read, but the local PTY/stdin path did not deliver its snapshot to the running release Provider. Opening Codex App alone does not populate the Provider; a verified persistent Agent relay is required.",
+    "B08-02-A4 real Codex App relay remains BLOCKED: a synthetic PTY snapshot rendered in the release UIA, but the current thread snapshot read through the Codex App connector did not appear in the release Provider. A persistent Agent-to-Provider relay and real UUID-only click/load are still required.",
     "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization."
   ],
   "completed_this_delivery": [
@@ -125,7 +124,11 @@
     "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
     "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself.",
     "2026-10-29: B08-02 expanded to three independent sources. Claude agents --json returned two blocked background-agent records while no Claude-named process was running; UI labels CLI reachability separately. Codex App fields and freshness projection pass focused/full tests; actual connector snapshot transport is blocked in the local runner. No real titles, projects, outputs or IDs were written to evidence.",
-    "2026-10-29: B09-02 availability recheck found one online and one offline ADB device; no app list, notification permission or notification content was accessed. Task remains BLOCKED pending the user-selected app/source and permission."
+    "2026-10-29: B08-02 freshness regression fixed: Codex App captured_at now governs source/session age; delayed snapshots expire at the 30-second boundary, and malformed, timezone-free or future timestamps fail closed. 20 synthetic live-source tests pass. Real Agent-to-Provider delivery remains BLOCKED.",
+    "2026-10-29: Interim B01-03 audit confirmed world.list and draft inventory fixture coverage but found no runtime registry; this was completed and re-verified as an opt-in 0.4-preview API in the subsequent B01-03 entry.",
+    "2026-10-29: B01-03 runtime inventory verified at L1-L2: 0.4-preview provider.inventory.register/list is capability-gated, endpoint-scoped, bounded and metadata-only; grants are never accepted from providers; duplicate names remain separate by instance_id; disconnect/expiry and world-membership isolation pass through loopback WebSocket tests. Stable 0.3 world.list is unchanged.",
+    "2026-10-29: B09-02 availability recheck found one online and one offline ADB device; no app list, notification permission or notification content was accessed. Task remains BLOCKED pending the user-selected app/source and permission.",
+    "2026-10-29: Global Overview cards now show name/status/project/source text with truthful source labels. The current Windows release UIA rendered four Codex App fields from a synthetic PTY snapshot; real Codex App connector delivery did not appear, so B08-02 is BLOCKED and no real session is claimed."
   ],
   "history": [
     null,
@@ -156,6 +159,7 @@
     "2026-10-29: B08-01 source commit fce1c8769ebd1d41de5144e037e0ec36f3dd5284 passed Windows Actions run 40818791865; npm run check:local succeeded in 6m03s. This verifies hosted source checks only.",
     "2026-10-29: B09-01 verified at L1-L2 with a draft message envelope and synthetic Device Inbox. Duplicate IDs do not increment todo count; out-of-order sequences sort by origin sequence; expired and revoked messages disappear; relay metadata is not source identity. The provider accepts only an out-of-band transport receipt contract, opens no listener, and its real Tauri test world was cleaned.",
     "2026-10-29: B08-03 synthetic Global Agent Overview implements bounded source/session navigation and detail; 9 focused overview tests and current Tauri release Computer Use checks pass at L1-L4. Closing the world emits top-level world.deleted and the provider exits 0; real Codex/Claude adapters remain NOT_RUN.",
-    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself."
+    "2026-10-29: Fixed Python provider lifecycle handling for top-level world.deleted.world_id; event_world_id also supports nested data.world_id. The probe now covers delivery to the original member and passes 41 checks; the first probe attempt exposed and fixed a missing checks accumulator in the probe itself.",
+    "2026-10-29: Current release rebuilt and independently launched. Synthetic PTY snapshot confirmed the four-field Codex App card in the native release accessibility tree. One current Codex App connector snapshot attempt remained unavailable in the UI; B08-02 is BLOCKED pending a persistent Agent relay and UUID deep-link acceptance."
   ]
 }

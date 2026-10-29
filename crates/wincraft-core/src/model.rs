@@ -58,6 +58,10 @@ impl ProtocolVersion {
     pub fn supports_component_leases(self) -> bool {
         matches!(self, Self::ComponentLeasesPreview01)
     }
+
+    pub fn supports_provider_inventory(self) -> bool {
+        matches!(self, Self::ComponentLeasesPreview01)
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]

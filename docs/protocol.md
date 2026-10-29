@@ -143,3 +143,9 @@ FORBIDDEN、WRITE_CONFLICT、STALE_LEASE、LEASE_EXPIRED、OPERATOR_HOLD、REVIS
 B07-03 在同一 preview 中提供 `state.slot.create/set_readers/read/compare_and_set/delete`。状态槽归属一个 owner scope，值只能是已声明 schema 的 boolean、integer、有限 number、bounded string 或 enum；不接受对象、指针、表达式或任意 JSON。写操作要求 owner scope 的有效写 lease，并以槽位 `generation + expected_revision` 做同步 CAS；冲突返回 `STATE_REVISION_CONFLICT`，不会静默覆盖。读者必须先加入获授权 scope，读权限还需精确匹配 scope generation。删除 owner scope 会删除其槽位，删除 reader scope 会撤销对应 grant；根 authority 生命周期结束会清空 child scopes 与状态槽。客户端已取得的快照无法被追溯擦除，撤销控制的是之后由 host 执行的读取。所有值仅是可重建的 host 会话状态，业务真相仍归 provider。交互路由仍未实现。
 
 新方法不等于稳定兼容承诺。未选择 preview 的 0.3 SDK 不应调用 `scope.*` 或 `state.slot.*`；即使 descriptor 列出 preview，仍需在 SDK 使用前验证嵌套 `component_leases.state_slots` capability。`methods.json` 与 request schema 描述传输形状，lease、owner scope、读者成员、generation、schema/value 匹配及 CAS 条件最终都由 Rust host 再验证。
+
+## 0.4-preview.1 Provider inventory（可选草案）
+
+同一 preview 连接可检查 `provider_inventory` capability，再调用 `provider.inventory.register` 和 `provider.inventory.list`。注册只接受有界的来源 ID/实例 ID、显示名、类型、适配器契约版本、状态、能力声明与来源更新时间；未知字段（包括 Provider 自带的 `grants`）失败关闭。Host 返回的 `grants` 固定为空，因此发现不会授予 `world.join`、快照读取、租约或任何来源操作权。
+
+inventory 是 Host 内存中的可重建元数据：列表仅包含经现有 bearer 鉴权连接并显式注册的来源，不枚举进程、浏览器账号、Vault 或 LAN。`endpoint_id` 绑定当前 Host；跨 endpoint 使用必须由调用者逐个选择并分别鉴权。相同显示名由 `id + instance_id` 区分；连接断开时来源变为 offline 并按注册 TTL 清除，来源新鲜度由 `source_updated_at` 与 `fresh_for_seconds` 独立表达。该 API 只在 `0.4-preview.1` capability table 中出现，稳定 `0.3` 的 `world.list` 和加入/写租约语义不变。注册与输出 Schema 见 [`provider-inventory-registration.schema.json`](../protocol/provider-inventory-registration.schema.json) 和 [`provider-inventory.schema.json`](../protocol/provider-inventory.schema.json)。

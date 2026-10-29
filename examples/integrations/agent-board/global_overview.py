@@ -150,17 +150,35 @@ def _source_update_label(source_id: str, projection: Mapping[str, Any]) -> str:
     if freshness == "stale":
         return f"已过期 · 上次成功 {age} 秒前"
     if freshness == "fresh":
-        return "刚刚更新" if age < 5 else f"更新于 {age} 秒前"
+        return f"刚刚更新（{age} 秒前）" if age < 5 else f"更新于 {age} 秒前"
     return "采样时间未知"
 
 
-def _codex_app_output_label(session: Mapping[str, Any]) -> str:
-    '''Disclose whether Codex App output is an exact turn excerpt or connector summary'''
+def _session_output_label(session: Mapping[str, Any]) -> str:
+    '''按来源契约说明最近文本的性质，不把通用预览冒充 Agent 发言'''
+    output_kind = str(session.get("last_output_kind", "unavailable"))
+    if output_kind == "unavailable":
+        return (
+            "暂无最近 Agent 输出"
+            if session.get("source_type_label") == "Codex App"
+            else "来源未提供最近 Agent 输出"
+        )
     return {
         "agent_message": "最近 Agent 输出",
         "connector_summary": "最近活动摘要",
-        "unavailable": "暂无最近输出",
-    }.get(str(session.get("last_output_kind", "unavailable")), "最近活动摘要")
+        "source_preview": "会话预览（发言方未标注）",
+    }.get(output_kind, "最近活动摘要")
+
+
+def _session_output_value(session: Mapping[str, Any]) -> str:
+    label = _session_output_label(session)
+    output = _summary_preview(session.get("summary", ""))
+    return f"{label}：{output}" if output else label
+
+
+def _session_project_value(session: Mapping[str, Any]) -> str:
+    project = str(session.get("project_label") or "").strip()
+    return f"项目：{project}" if project else "项目：来源未提供"
 
 
 def _text(node_id: str, value: str | dict[str, str], size: str | None = None) -> dict[str, Any]:
@@ -448,11 +466,7 @@ def build_global_overview_scene(
             "source": str(source_labels.get(current_source, detail["source_type_label"])),
             "session": detail["display_name"],
             "project": detail.get("project_label", ""),
-            "summary_label": (
-                _codex_app_output_label(detail)
-                if detail["source_type_label"] == "Codex App"
-                else "最近摘要"
-            ),
+            "summary_label": _session_output_label(detail),
             "summary": (
                 _summary_preview(detail["summary"])
                 if detail["source_type_label"] != "Codex App"
@@ -554,14 +568,13 @@ def build_global_overview_scene(
                 detail_targets[button_id] = tuple(session["identity"])
                 detail_targets[title_node_id] = tuple(session["identity"])
                 project_label = str(session.get("project_label") or "未归属项目")
-                output_label = _codex_app_output_label(session)
-                output = _summary_preview(session.get("summary", "")) or "暂无最近输出"
+                output = _session_output_value(session)
                 scene_data["codex_app_preview"].append(
                     {
                         "status": session["status_label"],
                         "freshness": session["freshness_label"],
                         "project": f"项目：{project_label}",
-                        "output": f"{output_label}：{output}",
+                        "output": output,
                     }
                 )
                 preview_children = [
@@ -642,22 +655,41 @@ def build_global_overview_scene(
                     "name": session["display_name"],
                     "status": session["status_label"],
                     "freshness": session["freshness_label"],
+                    "project": _session_project_value(session),
+                    "output": _session_output_value(session),
                 }
             )
             preview_children = [
-                _text(
-                    f"global-claude-preview-name-{state.revision}-{index}",
-                    {"$path": f"/claude_preview/{index}/name"},
-                ),
                 {
-                    "id": f"global-claude-preview-status-{state.revision}-{index}",
-                    "kind": "badge",
-                    "props": {
-                        "text": {"$path": f"/claude_preview/{index}/status"},
-                        "tone": _status_tone(session),
-                    },
-                    "children": [],
+                    "id": f"global-claude-preview-heading-{state.revision}-{index}",
+                    "kind": "row",
+                    "props": {"gap": 8},
+                    "children": [
+                        _text(
+                            f"global-claude-preview-name-{state.revision}-{index}",
+                            {"$path": f"/claude_preview/{index}/name"},
+                        ),
+                        {
+                            "id": f"global-claude-preview-status-{state.revision}-{index}",
+                            "kind": "badge",
+                            "props": {
+                                "text": {"$path": f"/claude_preview/{index}/status"},
+                                "tone": _status_tone(session),
+                            },
+                            "children": [],
+                        },
+                    ],
                 },
+                _text(
+                    f"global-claude-preview-project-{state.revision}-{index}",
+                    {"$path": f"/claude_preview/{index}/project"},
+                    "small",
+                ),
+                _text(
+                    f"global-claude-preview-output-{state.revision}-{index}",
+                    {"$path": f"/claude_preview/{index}/output"},
+                    "small",
+                ),
             ]
             if session.get("freshness") != "fresh":
                 preview_children.append(
@@ -671,8 +703,8 @@ def build_global_overview_scene(
             children.append(
                 {
                     "id": f"global-claude-preview-row-{state.revision}-{index}",
-                    "kind": "row",
-                    "props": {"gap": 8},
+                    "kind": "stack",
+                    "props": {"gap": 3},
                     "children": preview_children,
                 }
             )
@@ -695,6 +727,13 @@ def build_global_overview_scene(
                 "small",
             )
         )
+        children.append(
+            _text(
+                "global-source-freshness",
+                f"数据新鲜度：{_source_update_label(current_source, projection)}",
+                "small",
+            )
+        )
         if not page_sessions:
             health = source_health.get(current_source, "unknown")
             empty_text = (
@@ -706,16 +745,13 @@ def build_global_overview_scene(
         for index, session in enumerate(page_sessions):
             button_id = f"global-session-detail-{state.revision}-{index}"
             detail_targets[button_id] = tuple(session["identity"])
-            project_label = str(session.get("project_label") or "未归属项目")
-            output_label = _codex_app_output_label(session)
-            output = _summary_preview(session.get("summary", "")) or "暂无最近输出"
             scene_data["sessions"].append(
                 {
                     "name": session["display_name"],
                     "status": session["status_label"],
                     "freshness": session["freshness_label"],
-                    "project": f"项目：{project_label}" if current_source == "codex-app" else "",
-                    "output": f"{output_label}：{output}" if current_source == "codex-app" else "",
+                    "project": _session_project_value(session),
+                    "output": _session_output_value(session),
                 }
             )
             if current_source == "codex-app":
@@ -754,7 +790,6 @@ def build_global_overview_scene(
                     _text(
                         f"global-session-output-{state.revision}-{index}",
                         {"$path": f"/sessions/{index}/output"},
-                        "small",
                     ),
                 ]
                 if session.get("freshness") != "fresh":
@@ -771,31 +806,51 @@ def build_global_overview_scene(
                 row_props = {"gap": 4}
             else:
                 session_children = [
-                    _text(
-                        f"global-session-name-{state.revision}-{index}",
-                        {"$path": f"/sessions/{index}/name"},
-                    ),
                     {
-                        "id": f"global-session-status-{state.revision}-{index}",
-                        "kind": "badge",
-                        "props": {
-                            "text": {"$path": f"/sessions/{index}/status"},
-                            "tone": _status_tone(session),
-                        },
-                        "children": [],
+                        "id": f"global-session-heading-{state.revision}-{index}",
+                        "kind": "row",
+                        "props": {"gap": 8},
+                        "children": [
+                            _text(
+                                f"global-session-name-{state.revision}-{index}",
+                                {"$path": f"/sessions/{index}/name"},
+                            ),
+                            {
+                                "id": f"global-session-status-{state.revision}-{index}",
+                                "kind": "badge",
+                                "props": {
+                                    "text": {"$path": f"/sessions/{index}/status"},
+                                    "tone": _status_tone(session),
+                                },
+                                "children": [],
+                            },
+                        ],
                     },
+                    _text(
+                        f"global-session-project-{state.revision}-{index}",
+                        {"$path": f"/sessions/{index}/project"},
+                        "small",
+                    ),
+                    _text(
+                        f"global-session-output-{state.revision}-{index}",
+                        {"$path": f"/sessions/{index}/output"},
+                        "small",
+                    ),
+                    *(
+                        [
+                            _text(
+                                f"global-session-freshness-{state.revision}-{index}",
+                                {"$path": f"/sessions/{index}/freshness"},
+                                "small",
+                            )
+                        ]
+                        if session.get("freshness") != "fresh"
+                        else []
+                    ),
+                    _button(button_id, "详情", "view.open_detail"),
                 ]
-                if session.get("freshness") != "fresh":
-                    session_children.append(
-                        _text(
-                            f"global-session-freshness-{state.revision}-{index}",
-                            {"$path": f"/sessions/{index}/freshness"},
-                            "small",
-                        )
-                    )
-                session_children.append(_button(button_id, "详情", "view.open_detail"))
-                row_kind = "row"
-                row_props = {"gap": 8}
+                row_kind = "stack"
+                row_props = {"gap": 4}
             children.append(
                 {
                     "id": f"global-session-row-{state.revision}-{index}",

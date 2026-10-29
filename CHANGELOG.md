@@ -1,5 +1,11 @@
 # 变更记录
 
+## Unreleased — provider inventory 与 Agent 会话卡片（2026-10-29）
+
+- 增加 opt-in `0.4-preview.1` endpoint-local `provider.inventory.register/list`；来源自报 capability 不产生 grants，跨 Host 发现由调用者显式选择并鉴权。
+- Global Agent Overview 为 Codex CLI、Claude Code、Codex App 统一展示会话名称、状态、项目与来源可确认的文本；只标记 Codex App 的 `agent_message` 为最近 Agent 输出，Codex CLI preview 标明发言方未知，Claude 缺少的输出字段明确呈现为不可用。
+- 当前 Windows release 的合成 UIA smoke 已看到四字段；真实 Codex App connector 快照和 UUID 深链接仍为 `BLOCKED/NOT_RUN`，不宣称真实会话已经接入。
+
 ## Unreleased — 原生窗口动作与 Obsidian Workspace 交互（2026-10-27）
 
 - 增加 Tauri-only、能力门控的 `native_window_action`：仅 `obsidian`、`traffic_monitor` 白名单应用和 `activate`、`restore`、`minimize` 枚举动作；用户触发后由宿主在同一 revision/lease 验证下执行，不开放 shell、AHK 或任意进程路径。

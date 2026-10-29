@@ -65,18 +65,18 @@ class SourceReadError(RuntimeError):
 class LiveSnapshot:
     '''保存一轮受限的实时来源投影
     - 📌projection 仅含 UI 所需状态与来源健康
-    - 📌records_by_source 保存已脱敏的活动记录，用于单来源故障时标记 stale
+    - 📌records_by_source 保存哈希身份、脱敏名称/项目、受限预览与来源状态
     - 📌sequence 是本 Provider 内递增的采样序号
     '''
 
     projection: dict[str, Any]
     '''投影给通用 renderer 的状态'''
     records_by_source: dict[str, list[dict[str, Any]]]
-    '''只含哈希身份和来源状态，不含名称、路径、预览或日志'''
+    '''只含哈希身份、脱敏标签/短预览与状态；不含完整路径、原始 ID 或完整日志'''
     sequence: int
     '''当前采样序号'''
     source_observed_at: dict[str, datetime]
-    '''每个来源最近一次成功快照的本机接收时刻'''
+    '''每个来源最近一次成功快照的来源采集时刻；缺少采集时刻时回退为本机接收时刻'''
 
 
 class _CodexAppServer:
@@ -189,6 +189,34 @@ def _timestamp(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
+def _codex_app_capture_time(
+    payload: Mapping[str, Any],
+    received_at: datetime,
+) -> datetime:
+    '''读取 Codex App 快照采集时刻
+    - 🎯防止延迟送达的旧快照被标成刚刚更新
+    - 📌缺少采集时刻的旧格式仍按本机接收时刻处理
+    - 🤖【2026-10-29】Agent新增，待人类审阅
+    '''
+    if 'captured_at' not in payload:  # 兼容早期没有采集时间的桥接快照
+        return received_at
+
+    captured_value = payload['captured_at']
+    if not isinstance(captured_value, str):
+        raise SourceReadError('codex-app', 'invalid_capture_time')
+    try:
+        captured_at = datetime.fromisoformat(captured_value.replace('Z', '+00:00'))
+    except ValueError as exc:
+        raise SourceReadError('codex-app', 'invalid_capture_time') from exc
+    if captured_at.tzinfo is None or captured_at.utcoffset() is None:
+        raise SourceReadError('codex-app', 'invalid_capture_time')
+
+    captured_at = captured_at.astimezone(timezone.utc)
+    if captured_at > received_at:  # 来源时间不能把年龄倒拨到未来
+        raise SourceReadError('codex-app', 'capture_time_in_future')
+    return captured_at
+
+
 def _add_source_freshness(
     projection: dict[str, Any],
     source_observed_at: Mapping[str, datetime],
@@ -196,7 +224,7 @@ def _add_source_freshness(
     now: datetime,
 ) -> None:
     '''把每个来源最近成功读取年龄和新鲜度状态加到呈现投影
-    - 📌年龄基于宿主收到快照的本机时间，不冒充来源端的精确生成时间
+    - 📌Codex App优先使用授权Agent捕获快照的时刻，旧格式回退到本机接收时刻
     - 🚩单源断开时保留上次成功读取时间，并单独报告断开状态
     '''
     ages: dict[str, int | None] = {}
@@ -217,7 +245,7 @@ def _add_source_freshness(
         ages[source_id] = age_seconds
         if source_health.get(source_id) == 'disconnected':
             freshness[source_id] = 'disconnected'
-        elif age_seconds > SOURCE_SNAPSHOT_TTL_SECONDS:
+        elif age_seconds >= SOURCE_SNAPSHOT_TTL_SECONDS:
             freshness[source_id] = 'stale'
         else:
             freshness[source_id] = 'fresh'
@@ -243,7 +271,7 @@ def _activity_record(
     sequence: int,
     observed_at: datetime,
 ) -> dict[str, Any]:
-    '''构造不包含会话正文或路径的 activity draft 记录'''
+    '''构造包含最少会话展示元数据的 activity draft 记录'''
     source_type_labels = {
         'codex': 'Codex',
         'codex-app': 'Codex App',
@@ -279,6 +307,8 @@ def _activity_record(
         'freshness': 'fresh',
         'authority': authority,
         'summary': '',
+        'project_label': '',
+        'last_output_kind': 'unavailable',
         'control_capabilities': [],
         'provenance': 'official-cli',
     }
@@ -291,7 +321,8 @@ def normalize_claude_agents(
     sequence: int,
 ) -> tuple[list[dict[str, Any]], str]:
     '''规范化 Claude Code agents --json 输出
-    - 📌只读取 id 与 state；忽略 cwd、sessionId、name 和其余会话字段
+    - 📌读取 id、state、name 与 cwd 的项目目录名；不读取会话正文
+    - 🚩该 CLI 不提供最近 Agent 输出时，保留 unavailable 状态，不从其它字段推断
     - 🚩返回的状态是 online 或 partial；未知 state 不会原样透传
     '''
     if not isinstance(payload, list):
@@ -320,18 +351,19 @@ def normalize_claude_agents(
             status_entry = ('unknown', 'unknown', 'unknown')
             partial = True
         source_status, normalized_status, authority = status_entry
-        records.append(
-            _activity_record(
-                source_id='claude-code',
-                raw_id=raw_id,
-                parent_raw_id=None,
-                status=source_status,
-                normalized_status=normalized_status,
-                authority=authority,
-                sequence=sequence * SOURCE_SEQUENCE_STRIDE + source_order,
-                observed_at=observed_at,
-            )
+        record = _activity_record(
+            source_id='claude-code',
+            raw_id=raw_id,
+            parent_raw_id=None,
+            status=source_status,
+            normalized_status=normalized_status,
+            authority=authority,
+            sequence=sequence * SOURCE_SEQUENCE_STRIDE + source_order,
+            observed_at=observed_at,
         )
+        record['display_name'] = _safe_app_text(item.get('name'), 96) or record['display_name']
+        record['project_label'] = _project_label_from_cwd(item.get('cwd'))
+        records.append(record)
     return records, 'partial' if partial else 'online'
 
 
@@ -367,7 +399,8 @@ def normalize_codex_threads(
     sequence: int,
 ) -> tuple[list[dict[str, Any]], str]:
     '''规范化 Codex app-server thread/list 响应
-    - 📌只读取 id、parentThreadId 与 status；忽略 name、preview、cwd、path 和 turns
+    - 📌读取 id、parentThreadId、status、name、cwd 与有界 preview；忽略 path、turns 和 session IDs
+    - 🚩preview 的发言方未标注，UI 必须称为会话预览，不能称为 Agent 输出
     - 🚩thread/list 请求必须由调用者使用 useStateDbOnly，避免扫描 rollout JSONL
     '''
     if not isinstance(payload, Mapping) or not isinstance(payload.get('data'), list):
@@ -393,23 +426,26 @@ def normalize_codex_threads(
         partial = partial or not known
         raw_parent = item.get('parentThreadId')
         parent_id = raw_parent if isinstance(raw_parent, str) and raw_parent in raw_ids else None
-        records.append(
-            _activity_record(
-                source_id='codex',
-                raw_id=raw_id,
-                parent_raw_id=parent_id,
-                status=source_status,
-                normalized_status=normalized_status,
-                authority=authority,
-                sequence=sequence * SOURCE_SEQUENCE_STRIDE + source_order,
-                observed_at=observed_at,
-            )
+        record = _activity_record(
+            source_id='codex',
+            raw_id=raw_id,
+            parent_raw_id=parent_id,
+            status=source_status,
+            normalized_status=normalized_status,
+            authority=authority,
+            sequence=sequence * SOURCE_SEQUENCE_STRIDE + source_order,
+            observed_at=observed_at,
         )
+        record['display_name'] = _safe_app_text(item.get('name'), 96) or record['display_name']
+        record['project_label'] = _project_label_from_cwd(item.get('cwd'))
+        record['summary'] = _safe_app_text(item.get('preview'), 256)
+        record['last_output_kind'] = 'source_preview' if record['summary'] else 'unavailable'
+        records.append(record)
     return records, 'partial' if partial else 'online'
 
 
 def _safe_app_text(value: object, limit: int) -> str:
-    '''限制并脱敏 Codex App 文本字段
+    '''限制并脱敏来源提供的会话展示文本
     - 📌保留标题、项目和最近输出的可读片段
     - ⚠️遮蔽常见凭据与绝对路径；渲染端仍只把结果当纯文本
     '''
@@ -427,6 +463,16 @@ def _safe_app_text(value: object, limit: int) -> str:
     return text[:limit]
 
 
+def _project_label_from_cwd(value: object) -> str:
+    '''只从工作目录提取项目末级名称，不把绝对路径带入 activity 数据'''
+    if not isinstance(value, str) or not value.strip():
+        return ''
+    parts = [part for part in value.replace('\\', '/').split('/') if part]
+    if len(parts) < 3 or parts[-2].casefold() in {'users', 'home'}:
+        return ''
+    return _safe_app_text(parts[-1], 96)
+
+
 def normalize_codex_app_snapshot(
     payload: object,
     *,
@@ -435,6 +481,7 @@ def normalize_codex_app_snapshot(
 ) -> tuple[list[dict[str, Any]], str]:
     '''规范化由有权 Agent 经 Codex App connector 推送的线程快照
     - 📌读取 thread ID、标题、状态、项目标签与最近 Agent 输出片段
+    - 📌captured_at控制来源年龄与会话TTL，缺少字段时回退到接收时刻
     - 🚩thread ID 仅作为 native_window_action 的 UUID 参数；不作为 scene.data 字段
     - ⚠️payload 中的标题与输出是不可信纯文本，不解释为指令
     '''
@@ -446,6 +493,7 @@ def normalize_codex_app_snapshot(
         or not isinstance(payload.get('threads'), list)
     ):
         raise SourceReadError('codex-app', 'invalid_payload')
+    captured_at = _codex_app_capture_time(payload, observed_at)
     records: list[dict[str, Any]] = []
     seen: set[str] = set()
     partial = payload.get('source_health') == 'partial'
@@ -502,7 +550,7 @@ def normalize_codex_app_snapshot(
             normalized_status=normalized_status,
             authority=authority,
             sequence=sequence * SOURCE_SEQUENCE_STRIDE + item_sequence,
-            observed_at=observed_at,
+            observed_at=captured_at,
         )
         record['display_name'] = _safe_app_text(item.get('title'), 96) or 'Codex App 会话'
         record['project_label'] = project_label
@@ -706,6 +754,7 @@ def merge_codex_app_snapshot(
 ) -> LiveSnapshot:
     '''合并来自 Codex App MCP connector 的 Agent-fed 快照
     - 📌本 Provider 不直接调用 Codex App connector；调用方必须提供受限快照
+    - 📌来源年龄和会话TTL服从captured_at，未来或无效时间由该来源失败关闭
     - 🚩只接受标题、状态、项目名和最近 Agent 输出片段
     '''
     observed_at = now or datetime.now(timezone.utc)
@@ -721,13 +770,14 @@ def merge_codex_app_snapshot(
         health = 'disconnected' if records else 'unavailable'
         observed_source_at = previous.source_observed_at.get('codex-app')
     elif supplied_health in {'online', 'partial'}:
+        captured_at = _codex_app_capture_time(payload, observed_at)
         records, normalized_health = normalize_codex_app_snapshot(
             payload,
-            observed_at=observed_at,
+            observed_at=captured_at,
             sequence=sequence,
         )
         health = 'partial' if supplied_health == 'partial' or normalized_health == 'partial' else 'online'
-        observed_source_at = observed_at
+        observed_source_at = captured_at
     else:
         raise SourceReadError('codex-app', 'invalid_source_health')
 

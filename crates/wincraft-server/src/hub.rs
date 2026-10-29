@@ -1,3 +1,4 @@
+use crate::provider_inventory::{ProviderInventoryRegistration, ProviderInventoryRegistry};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -5,6 +6,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
     time::Instant,
 };
+use time::OffsetDateTime;
 use tokio::{
     sync::{broadcast, watch},
     task::JoinHandle,
@@ -32,7 +34,7 @@ mod capability_tests {
     use serde_json::json;
     use wincraft_core::{
         EventSource, Fault, InteractionSource, JoinPolicy, Kind, NativeWindowApplication,
-        NativeWindowOperation, Node, Scene, ShortcutSpec, WindowSpec,
+        NativeWindowOperation, Node, ProtocolVersion, Scene, ShortcutSpec, WindowSpec,
     };
 
     fn native_action_world(hub: &Hub) -> (uuid::Uuid, uuid::Uuid, wincraft_core::LeaseKey, u64) {
@@ -160,6 +162,139 @@ mod capability_tests {
             .any(
                 |event| event["type"] == "window.geometry_changed" && event["delivery"] == "state"
             ));
+    }
+
+    #[test]
+    fn provider_inventory_is_preview_only_and_discovery_does_not_grant_world_access() {
+        let hub = Hub::new(false);
+        let stable_capabilities = hub.capabilities_for(ProtocolVersion::Stable03);
+        assert!(stable_capabilities.get("provider_inventory").is_none());
+        let preview_capabilities = hub.capabilities_for(ProtocolVersion::ComponentLeasesPreview01);
+        assert_eq!(
+            preview_capabilities["provider_inventory"]["status"],
+            "preview"
+        );
+        assert_eq!(preview_capabilities["provider_inventory"]["version"], 1);
+
+        let invitation = {
+            let mut core = hub.lock();
+            let owner = core.register("inventory.owner".into(), false).unwrap();
+            core.create(
+                owner,
+                WindowSpec::default(),
+                JoinPolicy::Invite,
+                false,
+                false,
+                hub.now(),
+            )
+            .unwrap()
+        };
+        let source_provider = hub
+            .lock()
+            .register_with_protocol(
+                "inventory.source".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap();
+        let observer = hub
+            .lock()
+            .register_with_protocol(
+                "inventory.observer".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap();
+        let observed_at = time::OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .unwrap();
+        let registration = json!({
+            "kind":"wincraft.inventory.registration",
+            "schema_version":"draft-2026-10-29",
+            "generation":1,
+            "observed_at":observed_at,
+            "valid_for_seconds":60,
+            "providers":[
+                {
+                    "source_id":"source.codex",
+                    "source_instance_id":"instance-a",
+                    "provider_type":"agent-board",
+                    "display_name":"Same source label",
+                    "adapter_contract":1,
+                    "state":"online",
+                    "capabilities":["activity.read"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":60
+                },
+                {
+                    "source_id":"source.codex",
+                    "source_instance_id":"instance-b",
+                    "provider_type":"agent-board",
+                    "display_name":"Same source label",
+                    "adapter_contract":1,
+                    "state":"degraded",
+                    "capabilities":["activity.read"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":30
+                }
+            ]
+        });
+        let mut forged_grants = registration.clone();
+        forged_grants["providers"][0]["grants"] = json!(["activity.read"]);
+        assert_eq!(
+            hub.dispatch(
+                source_provider,
+                "provider.inventory.register",
+                forged_grants,
+            )
+            .unwrap_err()
+            .code,
+            "INVALID_PARAMS"
+        );
+        hub.dispatch(
+            source_provider,
+            "provider.inventory.register",
+            registration.clone(),
+        )
+        .unwrap();
+
+        let listed = hub
+            .dispatch(observer, "provider.inventory.list", json!({}))
+            .unwrap();
+        assert_eq!(listed["endpoint_id"], hub.host_id.to_string());
+        let providers = listed["providers"].as_array().unwrap();
+        assert_eq!(providers.len(), 2);
+        assert_eq!(providers[0]["display_name"], providers[1]["display_name"]);
+        assert_eq!(providers[0]["id"], providers[1]["id"]);
+        assert_ne!(providers[0]["instance_id"], providers[1]["instance_id"]);
+        assert!(providers
+            .iter()
+            .all(|provider| provider["grants"] == json!([])));
+        let serialized = listed.to_string();
+        for private_field in ["token", "lease", "scene", "data"] {
+            assert!(!serialized.contains(private_field));
+        }
+
+        assert_eq!(
+            hub.dispatch(
+                observer,
+                "world.join",
+                json!({"world_id":invitation.world.id,"mode":"read"}),
+            )
+            .unwrap_err()
+            .code,
+            "FORBIDDEN"
+        );
+        let stable_provider = hub
+            .lock()
+            .register("inventory.stable".into(), false)
+            .unwrap();
+        assert_eq!(
+            hub.dispatch(stable_provider, "provider.inventory.list", json!({}))
+                .unwrap_err()
+                .code,
+            "UNSUPPORTED_CAPABILITY"
+        );
     }
 
     #[test]
@@ -445,6 +580,7 @@ pub struct Hub {
     state_changes: Arc<Mutex<BTreeMap<Uuid, StateChange>>>,
     state_updates: watch::Sender<u64>,
     shortcuts: Arc<Mutex<ShortcutRegistry>>,
+    provider_inventory: Arc<Mutex<ProviderInventoryRegistry>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -600,6 +736,7 @@ impl Hub {
             state_changes: Arc::new(Mutex::new(BTreeMap::new())),
             state_updates,
             shortcuts: Arc::new(Mutex::new(ShortcutRegistry::default())),
+            provider_inventory: Arc::new(Mutex::new(ProviderInventoryRegistry::default())),
         }
     }
     pub fn lock(&self) -> MutexGuard<'_, Engine> {
@@ -729,6 +866,10 @@ impl Hub {
                 .filter_map(|id| core.worlds.get(&id).map(|world| (id, world.sequence)))
                 .collect::<Vec<_>>()
         };
+        self.provider_inventory
+            .lock()
+            .expect("provider inventory mutex poisoned")
+            .disconnect(sid, self.now());
         for (id, sequence) in changes {
             self.changed_at(id, sequence, EventSource::System, None);
         }
@@ -825,7 +966,7 @@ impl Hub {
         } else {
             "exclusive_writer"
         };
-        json!({"protocol":protocol.as_str(),"transport":["websocket"],"window_scope":window_scope,
+        let mut capabilities = json!({"protocol":protocol.as_str(),"transport":["websocket"],"window_scope":window_scope,
             "read_model":"immutable_snapshots","dynamic_scene":true,"component_leases":component_leases,
             "event_subscriptions":{"scope":"session","max_subscriptions":32,"events":[
                 {"type":"window.geometry_changed","delivery":"state"},
@@ -838,7 +979,18 @@ impl Hub {
             "button_features":button_features,
             "scene_features":["theme_tokens","rich_key_value"],
             "window_properties":["title","width","height","position","anchor","always_on_top","visible","resizable","title_bar_visible","background_drag_enabled","text_selectable","decorations","skip_taskbar","click_through","geometry_control","position_control","surface_opacity"],
-            "not_implemented":not_implemented})
+            "not_implemented":not_implemented});
+        if protocol.supports_provider_inventory() {
+            capabilities["provider_inventory"] = json!({
+                "status":"preview",
+                "version":1,
+                "registration_method":"provider.inventory.register",
+                "list_method":"provider.inventory.list",
+                "scope":"authenticated_provider_sessions",
+                "registration_grants":"never_accepted"
+            });
+        }
+        capabilities
     }
     pub fn reply(&self, sid: Uuid, req: Request) -> Value {
         if req.id.is_empty() || req.id.len() > 80 || req.method.len() > 80 {
@@ -910,6 +1062,41 @@ impl Hub {
             }
             "host.capabilities" => self.capabilities_for(e.sessions[&sid].protocol),
             "world.list" => encode(e.list(sid)?)?,
+            "provider.inventory.register" => {
+                if !e.sessions[&sid].protocol.supports_provider_inventory() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "provider inventory requires the 0.4-preview.1 capability",
+                    ));
+                }
+                let registration: ProviderInventoryRegistration = decode(params)?;
+                let snapshot = self
+                    .provider_inventory
+                    .lock()
+                    .expect("provider inventory mutex poisoned")
+                    .register(
+                        sid,
+                        self.host_id,
+                        registration,
+                        now,
+                        OffsetDateTime::now_utc(),
+                    )?;
+                encode(snapshot)?
+            }
+            "provider.inventory.list" => {
+                if !e.sessions[&sid].protocol.supports_provider_inventory() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "provider inventory requires the 0.4-preview.1 capability",
+                    ));
+                }
+                let snapshot = self
+                    .provider_inventory
+                    .lock()
+                    .expect("provider inventory mutex poisoned")
+                    .snapshot(self.host_id, now, OffsetDateTime::now_utc())?;
+                encode(snapshot)?
+            }
             "world.create" => {
                 let p: CreateParams = decode(params)?;
                 let mut c = e.create(sid, p.window, p.join_policy, p.claim, false, now)?;

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:provider-inventory:draft-2026-10-29",
+  "title": "Host-generated provider inventory snapshot",
+  "description": "Optional 0.4 preview metadata. Inventory discovery is read-only and never grants provider capabilities.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "wincraft.inventory.draft" },
+    "schema_version": { "const": "draft-2026-10-29" },
+    "endpoint_id": { "type": "string", "format": "uuid" },
+    "generation": { "type": "integer", "minimum": 1 },
+    "observed_at": { "type": "string", "format": "date-time" },
+    "valid_for_seconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+    "providers": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+          "instance_id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+          "provider_type": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+          "display_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+          "adapter_contract": { "type": "integer", "minimum": 1 },
+          "state": { "enum": ["online", "offline", "degraded"] },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$" },
+            "uniqueItems": true,
+            "maxItems": 64
+          },
+          "grants": { "type": "array", "maxItems": 0 },
+          "source_updated_at": { "type": "string", "format": "date-time" },
+          "fresh_for_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 }
+        },
+        "required": [
+          "id", "instance_id", "provider_type", "display_name", "adapter_contract",
+          "state", "capabilities", "grants", "source_updated_at", "fresh_for_seconds"
+        ]
+      }
+    }
+  },
+  "required": ["kind", "schema_version", "endpoint_id", "generation", "observed_at", "valid_for_seconds", "providers"]
+}

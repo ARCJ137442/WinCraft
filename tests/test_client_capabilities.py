@@ -281,6 +281,74 @@ class CapabilityTests(unittest.TestCase):
         )
         self.assertEqual(calls[2][1]["reader_scope_generation"], 3)
 
+    def test_provider_inventory_requires_the_advertised_preview_capability(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1}
+        })
+        with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
+            client.require_provider_inventory()
+
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.require_provider_inventory()
+
+        client.ready["capabilities"]["provider_inventory"]["version"] = 2
+        with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
+            client.require_provider_inventory()
+
+    def test_inventory_rpc_helpers_fail_before_sending_when_capability_is_missing(self):
+        client = self.client_with({})
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        calls = []
+
+        async def unexpected_call(method, params):
+            calls.append((method, params))
+            return {}
+
+        client.call = unexpected_call
+        with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
+            asyncio.run(client.register_provider_inventory({"kind": "synthetic"}))
+        with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
+            asyncio.run(client.list_provider_inventory())
+        self.assertEqual(calls, [])
+
+    def test_inventory_rpc_helpers_use_explicit_methods_after_preview_gate(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.ready["host_id"] = "synthetic-endpoint"
+        calls = []
+
+        async def capture(method, params):
+            calls.append((method, params))
+            return {"endpoint_id": "synthetic-endpoint", "providers": []}
+
+        client.call = capture
+        registration = {"kind": "wincraft.inventory.registration", "providers": []}
+        result = asyncio.run(client.register_provider_inventory(registration))
+        listing = asyncio.run(client.list_provider_inventory())
+
+        self.assertEqual(result, {"endpoint_id": "synthetic-endpoint", "providers": []})
+        self.assertEqual(listing, {"endpoint_id": "synthetic-endpoint", "providers": []})
+        self.assertEqual(calls, [
+            ("provider.inventory.register", registration),
+            ("provider.inventory.list", {}),
+        ])
+
+    def test_provider_inventory_snapshot_must_match_hello_endpoint(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.ready["host_id"] = "selected-endpoint"
+
+        async def wrong_endpoint(*_args, **_kwargs):
+            return {"endpoint_id": "another-endpoint", "providers": []}
+
+        client.call = wrong_endpoint
+        with self.assertRaisesRegex(RuntimeError, "different endpoint"):
+            asyncio.run(client.list_provider_inventory())
+
 
 if __name__ == "__main__":
     unittest.main()

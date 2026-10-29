@@ -40,8 +40,8 @@ The five interactive lessons are:
    its interaction.
 4. **换一个自己的外观** — apply or reset the bounded `theme_tokens` feature.
 5. **发现与加入是两件事** — summarize `world.list` metadata and join policies only;
-   the lesson never opens another world's scene. Protocol 0.3 does not yet provide a
-   separate provider catalog, so the tutorial states that limit instead of simulating one.
+   the lesson never opens another world's scene. Stable Protocol 0.3 remains world-only;
+   the optional Provider inventory is a separate 0.4 preview capability.
 
 Every lesson can be skipped. The course banner and all values identify the content as
 synthetic. Use an isolated test host for repeatable runs. If a connected host does not
@@ -77,6 +77,30 @@ cannot mutate. `world.list` returns only worlds this session has joined plus exp
 `open_authenticated` non-system worlds. Unjoined invite-only worlds stay hidden. A listed
 world still requires `world.join` before its snapshot can be read; discovery grants no
 membership or write permission.
+
+### Optional Provider inventory (0.4-preview.1)
+
+Use the inventory only after selecting an endpoint descriptor and negotiating
+`0.4-preview.1`:
+
+```python
+client.require_provider_inventory()
+registered = await client.register_provider_inventory(registration_snapshot)
+inventory = await client.list_provider_inventory()
+```
+
+Registration accepts bounded source ID/instance ID, type, display label, adapter version,
+source state, claimed capabilities, freshness timestamp, and TTL. The schema rejects
+unknown fields; a Provider cannot submit `grants`. The Host returns an empty `grants`
+list, so registration and listing do not authorize a source operation, join a world, or
+obtain a lease. Treat `capabilities` as source claims and check `grants` separately.
+
+Each inventory response includes its `endpoint_id`. An Agent may query multiple endpoints
+only when each descriptor was explicitly selected and authenticated; do not discover
+endpoints by scanning processes, files, browser profiles, or the LAN. `state` reports
+online/offline/degraded, while `source_updated_at` and `fresh_for_seconds` carry freshness.
+The registry is in-memory and is rebuilt after Host restart. Stable 0.3 providers continue
+to use `world.list`; the Host omits `provider_inventory` from their capability table.
 
 ### 2. Build the first scene
 

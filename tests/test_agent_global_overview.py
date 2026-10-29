@@ -54,8 +54,19 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         )
         self.assertTrue(detail_targets)
         self.assertTrue(all(item["status"] and item["freshness"] for item in scene["data"]["claude_preview"]))
+        self.assertTrue(all(item["project"] and item["output"] for item in scene["data"]["claude_preview"]))
 
         nodes = list(walk_nodes(scene["root"]))
+        claude_preview_row = next(
+            node for node in nodes if node["id"].startswith("global-claude-preview-row-")
+        )
+        self.assertEqual(claude_preview_row["kind"], "stack")
+        self.assertTrue(
+            any(node["id"].startswith("global-claude-preview-project-") for node in nodes)
+        )
+        self.assertTrue(
+            any(node["id"].startswith("global-claude-preview-output-") for node in nodes)
+        )
         actions = [node["props"]["action"] for node in nodes if node["kind"] == "button"]
         self.assertTrue(actions)
         self.assertTrue(all(action.startswith("view.") for action in actions))

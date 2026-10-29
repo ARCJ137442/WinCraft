@@ -2,7 +2,7 @@
 {
   "doc_id": "docs__08_DISCOVERY_ADAPTIVE_PACKS",
   "title": "自发现、自适应配置与整合包",
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-29",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -68,4 +68,4 @@
 
 现有 `world.list` 不是完整 Provider inventory。它只返回当前 session 已加入的世界和显式 `open_authenticated` 的非系统世界；未加入的 invite-only 世界不暴露元数据。列表不会返回 token、lease 或 scene，加入与读取仍需独立调用 `world.join`。core/headless 验证覆盖同名实例身份、online/stale/vacant 状态以及 unauthorized invite 的拒绝。
 
-Provider 类型、版本、能力 grants、来源 fresh-for 与多 endpoint registry 仍属于提案，尚未加入线协议 0.3；不能把 `world.list` 宣称为完成的跨来源 inventory，也不得为此扫描进程、浏览器账户或私人数据。
+Provider 类型、版本、能力声明、grants 与 freshness 的 inventory 仍是 draft 契约，未加入稳定线协议 0.3。B01-03 已以 `0.4-preview.1` 可选 capability 提供 endpoint-local register/list：只收已认证连接显式注册的有限元数据，Host 不接收自授 grants，返回的 grants 固定为空；stable `world.list` 仍只列 world。每个响应保留 `endpoint_id`，调用者要组合多个 endpoint 时必须逐个选定并鉴权；Host 不扫描进程、浏览器账户或网络。该 API 不授予加入世界、读取业务快照或执行来源动作的权限。整合包 planner 继续只消费经授权的 inventory 快照，不把发现结果当作批准或执行权限。
