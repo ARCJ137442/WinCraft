@@ -186,13 +186,27 @@ python scripts/browser_smoke.py
 
 | 事项 | 状态 | 证据与边界 |
 |---|---|---|
-| 五课 Agent provider 教程 | PASS（release Tauri） | 五课在本地 release Tauri 宿主完整走完；动态插入、动作回执、主题应用/恢复、发现计数均使用合成数据。隐藏后从管理器恢复成功，教程世界结束后清理确认。|
-| 教程运行与清理 | PASS（release Tauri） | release 宿主显示五课窗口；提供者结束后管理器回到 0 个世界，教程原生窗口消失。没有接触真实 Harness 或外心业务数据。|
+| 五课 Agent provider 教程 | PARTIAL（历史 release 测试） | 2026-10-26 记录包含五课场景、动态插入、回执、主题、发现计数及隐藏恢复；后续记录仍将完整用户旅程列为待验，且未找到覆盖 A1 全部动作的专用运行证据，因此不把摘要直接升为 PASS。|
+| 教程运行与清理 | PASS（历史 release 运行） | 先前一次 release 运行记录了五课窗口出现、提供者退出后管理器计数为 0；这证明该次运行的清理，不证明五课全流程用户验收。本轮新启动未观察到教程窗，清理状态另记为未确认。|
 | 焦点与待处理动作 | PASS（DOM） | pending 动作期间用 `aria-disabled` 保留键盘焦点，按组件阻止重复提交；回执只在原控件仍持有焦点时恢复，不把焦点从用户后来选中的控件抢回；Chromium smoke 回归通过。|
 | 连接状态可访问性语义 | PASS（DOM） | `#status` 标记 `role=status`、`aria-live=polite`、`aria-atomic=true`；主窗口移除无用途的额外 Tab 停靠，滚动组件区仍可键盘聚焦。|
 | Windows UIA/原生键盘/IME/读屏 | PARTIAL | 本轮通过当前 release 的 UIA 树验证教程五课、动态结构、回执、主题、窗口拖动及隐藏/管理器恢复；IME、真实键盘快捷键和读屏仍 NOT_RUN。|
 
 shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use 曾无法激活教程窗，未绕过该限制继续发送键鼠；人工 UIA/IME/读屏/五课验收仍待完成。
+
+## 2026-10-30 B02-03-A1 教程交互复核
+
+此前记录摘要称五课 release Tauri 流程已走完，后续记录又把完整用户交互列为待验；本机 `evidence/local/nextgen-2026-10-30/` 中也没有覆盖 A1 全部动作的旅程证据。当前 acceptance 状态定为 **PARTIAL**，等待可复核的完整用户流记录。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Release 宿主/描述文件选择 | PASS（只读准备） | 唯一 release 进程与其本机 runtime descriptor 通过 PID 匹配；不保存描述文件路径或内容。|
+| 五课 Provider 启动 | PARTIAL | 以合成数据启动 `provider_tutorial.py` 后，进程在后续观察前已退出，Computer Use 未观察到教程窗口；该启动本身不能证明课程交互。|
+| 管理器窗口交互 | BLOCKED | 新枚举到唯一管理器后，Observed 的展开按钮 click 与一次重新枚举恢复均返回 `foreground window did not report a process id`；按 Computer Use 恢复规则停止后续输入。|
+| 教程世界清理 | NOT_RUN | 非 operator 的 `world.list` 显示 0 个可见世界，但不能看见 invite-only/system 世界，故清理结果未确认。|
+| A1 新用户完整旅程 | PARTIAL | 建窗、改字、按钮、主题、课程发现未在本次连续完成；保留为人工验收/可用 UI 自动化路径待办。|
+
+脱敏运行摘要见忽略的 `evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json`；没有记录 runtime descriptor、token、真实会话或业务数据。
 
 ## B03-01 Popup 兼容适配（2026-10-26）
 
