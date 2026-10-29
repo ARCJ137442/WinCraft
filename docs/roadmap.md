@@ -4,6 +4,8 @@ Windows 原生能力的细化计划（事件订阅、语义位置、Shell、主�
 
 下一世代的需求、任务、验收和依赖已单独整理在[2026-10-26 平台演进交接包](strategy/2026-10-26/START_HERE.md)。当前先重定基线并推进协议能力门与 Popup 临时世界闭环；该包中标记为草案的契约仍需逐项落地和验证。
 
+2026-10-30 对 B06 状态重新对齐：B06-01 配置包格式/导出与 B06-02 纯规划器在其 L1-L2 范围为 VERIFIED；B06-03 本机 `.wcp` 预览/提交/回退已进入 Rust Host 与通用管理器，但 A1-A3 仍 PARTIAL；B06-04 合成分享样例和文档已补齐，两个独立用户环境的重新授权验收仍 PARTIAL。当前 release build 已通过，管理器视觉交互因 Computer Use 状态读取失败而未验。详细状态与证据以 [`engineering/VALIDATION.md`](engineering/VALIDATION.md) 和策略任务账本为准。
+
 ## 阶段 0：本次原型源码
 
 世界/窗口层级；单写租约与读快照；动态组件树；事件回执；托盘；内部管理器；外部 Python 提供者；TrafficMonitor 与 Obsidian Obsidian Workspace 本机只读投影。协议 0.3 的窗口文本默认可选属性已进入真实 lease probe；尚未完成的 Windows 手工验收见 [`engineering/VALIDATION.md`](engineering/VALIDATION.md)，机器专属证据位于默认忽略的 `evidence/local/nextgen-2026-10-26/`。

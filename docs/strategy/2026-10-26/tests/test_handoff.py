@@ -120,6 +120,48 @@ class PlannerTests(unittest.TestCase):
         self.inv["providers"][0]["fresh_for_seconds"] = 20
         self.assertEqual(self.result()["expires_at"], "2026-10-26T12:00:20Z")
 
+class SubmissionEligibilityTests(unittest.TestCase):
+    def setUp(self):
+        self.pack = load("examples/packs/workday.pack.json")
+        self.inventory = load("examples/inventory/optional-missing.json")
+        self.now = "2026-10-26T12:00:10Z"
+        self.plan = P.plan(self.pack, self.inventory, self.now)
+
+    def test_confirmed_degraded_plan_can_be_applied(self):
+        self.assertEqual(self.plan["status"], "degraded")
+        accepted, reasons = P.check_submission_eligibility(
+            self.plan,
+            pack_id=self.pack["id"],
+            inventory_generation=self.inventory["generation"],
+            now=self.now,
+            confirmed=True,
+        )
+        self.assertTrue(accepted)
+        self.assertEqual(reasons, [])
+
+    def test_degraded_plan_still_requires_explicit_confirmation(self):
+        accepted, reasons = P.check_submission_eligibility(
+            self.plan,
+            pack_id=self.pack["id"],
+            inventory_generation=self.inventory["generation"],
+            now=self.now,
+            confirmed=False,
+        )
+        self.assertFalse(accepted)
+        self.assertIn("user_confirmation_required", reasons)
+
+    def test_blocked_plan_cannot_be_submitted_even_when_confirmed(self):
+        blocked = P.plan(self.pack, load("examples/inventory/required-missing.json"), self.now)
+        accepted, reasons = P.check_submission_eligibility(
+            blocked,
+            pack_id=self.pack["id"],
+            inventory_generation=blocked["inventory_generation"],
+            now=self.now,
+            confirmed=True,
+        )
+        self.assertFalse(accepted)
+        self.assertIn("plan_not_applicable", reasons)
+
 class ContractTests(unittest.TestCase):
     def test_all_positive_and_negative_fixtures(self):
         for case in load("contracts/examples-index.json")["cases"]:

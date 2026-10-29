@@ -1,0 +1,32 @@
+{
+  "event": "world.import.joined",
+  "data": {
+    "kind": "wincraft.provider-import.event",
+    "schema_version": "draft-2026-10-26",
+    "host_id": "00000000-0000-4000-8000-000000000001",
+    "pack_id": "fixture.workday",
+    "pack_version": "1.0.0",
+    "blueprint_id": "workday",
+    "blueprint_world_id": "agents-board",
+    "binding_ids": ["agents"],
+    "approved_permissions": ["activity.read"],
+    "world": {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "revision": 2,
+      "sequence": 2,
+      "window_revision": 1,
+      "epoch": 1,
+      "system": false,
+      "writer": "00000000-0000-4000-8000-000000000020",
+      "status": "online",
+      "window": {},
+      "scene": {},
+      "native": {},
+      "actions": []
+    },
+    "lease": {
+      "id": "00000000-0000-4000-8000-000000000030",
+      "epoch": 1
+    }
+  }
+}

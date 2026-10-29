@@ -146,6 +146,16 @@ B07-03 在同一 preview 中提供 `state.slot.create/set_readers/read/compare_a
 
 ## 0.4-preview.1 Provider inventory（可选草案）
 
-同一 preview 连接可检查 `provider_inventory` capability，再调用 `provider.inventory.register` 和 `provider.inventory.list`。注册只接受有界的来源 ID/实例 ID、显示名、类型、适配器契约版本、状态、能力声明与来源更新时间；未知字段（包括 Provider 自带的 `grants`）失败关闭。Host 返回的 `grants` 固定为空，因此发现不会授予 `world.join`、快照读取、租约或任何来源操作权。
+同一 preview 连接可检查 `provider_inventory` capability，再调用 `provider.inventory.register` 和 `provider.inventory.list`。注册只接受有界的来源 ID/实例 ID、显示名、类型、适配器契约版本、状态、能力声明与来源更新时间；未知字段（包括 Provider 自带的 `grants`）失败关闭。Host 返回的 grant 最初为空；只有可信本机管理器可在用户批准后，为在线、新鲜且已声明的来源能力写入临时 grant。grant 会推进 inventory generation，但不直接授予 world membership、快照读取或写租约；Provider 不能自授。
 
 inventory 是 Host 内存中的可重建元数据：列表仅包含经现有 bearer 鉴权连接并显式注册的来源，不枚举进程、浏览器账号、Vault 或 LAN。`endpoint_id` 绑定当前 Host；跨 endpoint 使用必须由调用者逐个选择并分别鉴权。相同显示名由 `id + instance_id` 区分；连接断开时来源变为 offline 并按注册 TTL 清除，来源新鲜度由 `source_updated_at` 与 `fresh_for_seconds` 独立表达。该 API 只在 `0.4-preview.1` capability table 中出现，稳定 `0.3` 的 `world.list` 和加入/写租约语义不变。注册与输出 Schema 见 [`provider-inventory-registration.schema.json`](../protocol/provider-inventory-registration.schema.json) 和 [`provider-inventory.schema.json`](../protocol/provider-inventory.schema.json)。
+
+## 0.4-preview.1 Provider import（本机管理器草案）
+
+`provider_import` capability 标明当前 Host 是否支持本机确认的配置包接入，声明 `schema_version: draft-2026-10-26`、定向事件 `world.import.joined`、必需声明 `world.import.accept`、`exclusive_world_lease` 和 `requires_local_confirmation=true`。它不会添加稳定协议 0.3 方法，也不允许 Provider 自行安装或执行 adapter。
+
+本机用户在内部管理器选择 `.wcp` 后，Host 对有界 zip 做严格路径/大小/成员检查，只读取 `pack.json` 与显式 blueprint；未知字段、凭据、业务 `Scene.data`、原机几何、额外文件与 symlink 拒绝。adapter 字段只保留为不执行的声明。
+
+预览按 endpoint-local inventory 的能力、权限、状态、新鲜度、generation 和到期时间给出 `ready`/`degraded`/`blocked` 结果。必需绑定缺失或未授权时阻止应用；可选绑定缺失时解释 fallback。来源选择或本机批准一个已声明权限会改变 generation，旧计划必须作废并重新预览。只有 Ready/Degraded 计划可在本机用户明确确认后应用；Host 重新校验 expiry、generation、来源与选择，再逐窗口创建新的 invite-only world。既有 world 不被覆盖；每个被选 Provider 只获得其新 world 的独占写租约，Host 定向发送 `world.import.joined`。多原生窗口不是 OS 事务，逐个应用并分别回报失败。
+
+提交使用预览 ID 做进程内幂等；Host 内存 ledger 记录创建的 world/revision/epoch/scene/window/membership。回退需本机二次确认，只销毁仍与 ledger 完全一致、没有被编辑或后续 Provider 加入的 world，并报告移除/保留；Host 重启后 ledger 不持久。完整操作示例见 [`tools/pack/README.md`](../tools/pack/README.md)，正反事件契约见 [`provider-import-event.schema.json`](strategy/2026-10-26/contracts/provider-import-event.schema.json)。

@@ -51,9 +51,10 @@ Until the user explicitly authorizes publishing, this repository may produce loc
 - Keep raw `evidence/local/` private and ignored. Publish only a reviewed summary that contains no descriptor contents, user data or machine-specific path.
 - Record the scanner/version, scope, exit code, findings disposition and remaining limits. Any unresolved finding makes the visibility change BLOCKED.
 
-## Current WinCraft status (2026-10-29)
+## Current WinCraft status (2026-10-30)
 
-- `exomind-team/WinCraft` is private. The user intends future public repositories after sanitization; no visibility change or product release is authorized by this checklist.
-- Full-history Gitleaks preflight had no credential findings, but a prior public commit contains a local checkout path and ignored local evidence contains stale runtime descriptors. History cleanup and a final clean-candidate scan are required before publication.
-- Windows native/manual gates, cross-platform builds, signing and long-run performance remain incomplete.
-- The current task audit is the source of truth for VERIFIED, IMPLEMENTED_UNVERIFIED, IN_PROGRESS, BLOCKED and NOT_STARTED work.
+- `exomind-team/WinCraft` remains private. Future public repositories are a separate goal; no repository visibility change or product release is performed by this local development checkpoint.
+- The 2026-10-29 scan recorded no credential-pattern hit in the then-audited reachable history, but a prior public commit contains a local checkout path and ignored local evidence contains stale runtime descriptors. Those findings remain open for any future public-history cleanup; this checkpoint did not rescan all refs/tags/LFS. The current `.wcp` sample was inspected in place and contains only its pack manifest and referenced synthetic blueprint; it is ignored under `evidence/local/`.
+- Current source `npm run check:local` passes on Windows 11; the 2026-10-30 local release candidate was built from an uncommitted worktree and launched, but Computer Use could not capture the manager window (`GetCursorPos` access denied). It is a local candidate, not a clean-commit release or publication artifact. The Python SDK completed a read-only live Tauri capability handshake without registering inventory or creating a world.
+- B06-01/B06-02 are VERIFIED at their draft-export/pure-planner scope. B06-03/B06-04 remain `IMPLEMENTED_UNVERIFIED` with PARTIAL acceptance: current-source Tauri protocol handshake passed, but manager UI and two-user sharing acceptance are still open.
+- Windows native/manual gates, two-user import/re-authorization, cross-platform builds, signing, ACL audit and long-run performance remain incomplete. The strategy task/status and acceptance ledgers are the source of truth for each task state.

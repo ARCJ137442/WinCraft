@@ -60,6 +60,8 @@
           },
           "capabilities": {
             "type": "array",
+            "contains": {"const": "world.import.accept"},
+            "minContains": 1,
             "items": {
               "type": "string",
               "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,95}$"

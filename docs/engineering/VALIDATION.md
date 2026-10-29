@@ -347,18 +347,32 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | Windows `RegisterHotKey`/IME/UIA/真实冲突 | NOT_RUN | 当前只完成核心意图层；接入 OS 前需用户授权与人工原生验收 |
 
 回退边界：移除 registry 模块即可回到没有快捷键资源意图的旧行为；没有修改系统全局配置或注册任何后台键盘监听。
-## 交接包 planner/maintenance suite（2026-10-27 实施，2026-10-30 验收）
+## 交接包规划、导出与运行时导入（2026-10-30）
 
-当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。单独运行结果为 **37 tests passed**，覆盖：full/optional/required/no-grant/ambiguous inventory、显式选择、过期/陈旧来源、未来时钟、重复身份、provider contract 版本、输入不变性、digest 稳定性、pack secret/path traversal/artifact rejection、缺失来源说明、adapter 不执行、resolution plan schema，以及验收标准改变/显式 reset 后旧结果失效。
+当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。2026-10-30 复核为 **40 tests passed**，覆盖 inventory 匹配/缺失/歧义/权限、过期与 generation、digest 稳定性、pack secret/path traversal/artifact rejection、adapter 不执行和旧验收结果失效。`tests/test_pack_export.py` 的 10 项通过、1 项 Windows symlink 创建不可用而跳过；拒绝 symlink 的检查仍保留。
 
-新增 `tools/pack/export_pack.py` draft exporter，并由 `tests/test_pack_export.py` 做本地 CLI/归档回归：输出只含 `pack.json` 和所引用的 blueprint JSON；schema、路径、大小、确定性字节和不覆盖现有目标均有检查。当前定向用例为 10 PASS、1 symlink 用例因 Windows 创建 symlink 返回 `OSError` 而 SKIP；symlink 检查仍保留在实现中。导出器只处理显式输入文件，不安装 Provider、不运行 adapter、不调用 Host。实际导入/应用仍属于 B06-03。
+`tools/pack/export_pack.py` 仅把显式指定的 `pack.json` 与引用的 blueprint JSON 写入 `.wcp`，不安装 Provider、不运行 adapter、不调用 Host。B06-03 现已补入 Rust Host 与内部管理器：受限解析 `.wcp`、只读生成计划、显式授权后重新规划、用户确认后逐世界创建、定向加入事件、幂等提交与有条件回退。它是独立 `0.4-preview.1` 能力，不扩展稳定 Protocol 0.3；Provider 必须声明 `world.import.accept`，Host 在 capability 中公布草案 schema、事件、排他写租约和本机确认要求。
 
 | 验收 | 状态 | 证据范围 |
 |---|---|---|
-| B06-01-A1/A2/A3 配置包格式 | PASS（draft CLI export，L1-L2） | 新 exporter 只打包 pack 与其 blueprint；正反例拒绝 provider binary、descriptor、lease、install hook、秘密字段和路径穿越；缺少来源映射为 blocker/degraded 说明。没有 runtime import。|
-| B06-02-A1/A2/A3 纯规划器 | PASS（L0-L2 demo） | 确定性 digest、必选/可选缺源、歧义要求用户选择、权限≠能力、`mutates_host=false`、需要确认、外部 adapter 不执行。输入为显式 fixture JSON，不扫描本机。|
+| B06-01-A1/A2/A3 配置包格式 | PASS（draft CLI export，L1-L2） | `.wcp` 仅含 pack 与引用的 blueprint；拒绝 binary、descriptor、lease、install hook、秘密字段和路径穿越；不执行 adapter。|
+| B06-02-A1/A2/A3 纯规划器 | PASS（L0-L2 demo） | 必选/可选来源、权限与能力、歧义、digest、到期和无宿主副作用均由合成 fixture 覆盖；不扫描本机。|
+| B06-03-A1 计划变化后失效并重新规划 | PARTIAL（Rust 行为测试，L1-L2） | generation 变化、授权后重新规划、过期与来源变化回归通过；新 release 管理器界面尚未实测。|
+| B06-03-A2 取消不清空既有世界 | PARTIAL（Rust Host/manager 测试，L1-L2） | 取消预览/提交不会改变既有 worlds；release UI 的取消与重开尚未实测。|
+| B06-03-A3 部分失败及真实回退 | PARTIAL（Rust Host/manager 测试，L1-L2） | 重复提交幂等；回退只删除账本吻合且未被后续改变/加入的资源，并报告保留项；Tauri release 中的成功/失败/回退交互尚未实测。|
+| B06-04-A1/A2/A3 分享与新环境 | PARTIAL（静态 fixture/导出，L0-L2） | full/optional-missing/required-missing/no-grant 四种 inventory 已索引；合成 `.wcp` 只含 pack 与所引 blueprint、无凭据键或绝对用户路径。两独立用户环境、干净安装与重新授权仍 NOT_RUN。|
 
-这些结果验证的是 draft contract、配置包导出 CLI 与纯规划演示，不代表 protocol 0.3 导入能力。B06-01 的 L1-L2 验收已完成；B06-02 task state 仍为 `IMPLEMENTED_UNVERIFIED`，因为 Host plan-apply adapter 尚未实现。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
+2026-10-30 Windows 本机 `npm run check:local` 退出码 0：UI 28 tests、离线契约一致性、Rust fmt/check/workspace tests/clippy、Python 176 tests（1 项因 Windows symlink 创建返回 `OSError` 而跳过）及 27 个 Provider Skill 引用检查均通过。增加 Host capability 断言后的定向 Rust 用例退出码 0。当前源码的 Tauri release 也已构建：`target/release/wincraft-desktop.exe`，13,277,184 bytes，SHA-256 `AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0`。
+
+新 release 已以 `--open-manager` 启动，Computer Use 能枚举到“窗构 · 世界管理器”，但截图/可访问性读取两次都因 `GetCursorPos failed: 拒绝访问 (0x80070005)` 失败。按 Computer Use 恢复规则已停止后续窗口操作，没有点击、输入或重放旧坐标。**原生管理器验收仍为 NOT_RUN。** 详细命令、工具链、退出码、二进制哈希和失败证据见 `evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json`。
+
+窗口状态读取失败后，另用当前 release 自己生成的本机 descriptor 做了只读 Python SDK hello/capability smoke：真实 Tauri Host 协商 `0.4-preview.1`，并返回 provider inventory 与 provider import 的预览契约、草案 schema、定向事件、声明 claim、排他写租约和本机确认要求。该请求未登记 inventory、未创建世界，也未调用导入；它只证明 Tauri Host 的真实协议握手，不证明 Manager UI。
+
+供本机人工续验的合成 `.wcp` 流程见 [`docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md`](../release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md) 的“B06-03 配置包导入人工验收”；测试包无业务数据，重建命令由仓库 exporter 生成到 `evidence/local/`。
+
+**B06-03 保持 `IMPLEMENTED_UNVERIFIED`，A1/A2/A3 保持 PARTIAL。** 行为测试证明本地 Host/manager 规则；新 release 的预览、授权后重规划、应用、Provider 加入事件与动作回执、取消及回退 UI 尚未验证。不要把 release 构建成功或当前窗口存在写成 UI 通过。
+
+**B06-04 保持 `IMPLEMENTED_UNVERIFIED`，A1/A2/A3 为 PARTIAL。** 当前仅证明格式/fixture/导出物的静态卫生；必须由两个独立用户环境分别读取同一个 `.wcp`，在来源缺失时明确解释且不下载/执行 Provider，再由每个用户单独选择并授权本地 Provider，才能关闭此任务。
 
 ## 2026-10-28 标题栏轴线与折叠尺寸
 

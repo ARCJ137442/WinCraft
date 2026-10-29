@@ -2,8 +2,8 @@
 {
   "doc_id": "contracts__README",
   "title": "提案型契约的使用边界",
-  "updated_at": "2026-10-26",
-  "last_verified_at": "2026-10-26",
+  "updated_at": "2026-10-30",
+  "last_verified_at": "2026-10-30",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
   "status": "draft-contract",
@@ -23,9 +23,11 @@
 
 | Schema | 作用 | 不负责 |
 |---|---|---|
-| pack / blueprint | 配置、能力需求和布局引用 | 安装提供者、存凭据、执行脚本 |
+| pack / blueprint | 配置、能力需求、声明式场景树和安全窗口属性 | 安装提供者、存业务数据、复制设备坐标、存凭据、执行脚本 |
 | inventory | 已批准来源元数据 | 无界扫描、授权或真实身份认证 |
 | resolution-plan | 解析结果与阻塞原因 | 调Host、提交操作、写系统配置 |
+| provider-import-event | 本地确认后定向发给 Provider 的新窗口快照与短期租约 | 写入配置包、跨 Host 重用租约、执行 adapter |
+| provider-import-event | Host 在本地用户确认后定向授予的单窗口写租约 | Provider 自行创建世界、跨 endpoint 重用权限或执行包内程序 |
 | theme | token边界 | 任意CSS、自动证明对比度 |
 | ephemeral-request | 外层问题身份与过期；payload沿现有Popup契约 | 改写既有返回、永久保存人类选择 |
 | activity | 来源状态归一与来源标签 | 业务存档、默认批准 |

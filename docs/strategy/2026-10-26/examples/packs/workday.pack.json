@@ -15,7 +15,8 @@
         "agent-board"
       ],
       "capabilities": [
-        "activity.read"
+        "activity.read",
+        "world.import.accept"
       ],
       "permissions": [
         "activity.read"
@@ -29,7 +30,8 @@
         "metrics"
       ],
       "capabilities": [
-        "metrics.read"
+        "metrics.read",
+        "world.import.accept"
       ],
       "permissions": [
         "metrics.read"

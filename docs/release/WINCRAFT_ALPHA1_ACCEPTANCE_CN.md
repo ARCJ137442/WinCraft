@@ -1,7 +1,7 @@
 ---
 title: WinCraft 0.1.0-alpha.1 Windows 验收指南
-updated_at: 2026-10-29
-last_verified_at: 2026-10-29
+updated_at: 2026-10-30
+last_verified_at: 2026-10-30
 status: local-release-acceptance-guide
 audience: maintainer, Windows tester
 ---
@@ -12,13 +12,15 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `a0366e1ecc9fb7e7eaaa1c23e14c161c400e56fd` |
+| 源码基线 | `3a0f97e86662de1899f10821042920ef6f28e034` + 当前未提交本机工作树改动 |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 12,429,312 bytes |
-| SHA-256 | `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093` |
+| 文件大小 | 13,277,184 bytes |
+| SHA-256 | `AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由 `npm run desktop:build` 构建，退出码 0；当前 source tree 的 `npm run check:local` 退出码 0（28 Node UI、116 Rust、159 Python tests、离线契约和 27 个 Provider Skill 引用）。EXE 本身来自源码提交 `a0366e1`；后续更改仅更新外置 Python Provider/文档，不改变二进制。独立启动当前 EXE 后，真实 Tauri host 的 `lease_probe.py` 返回 `status=PASS`、退出码 0。GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对阶段提交 `a0366e1` 的 Windows `npm run check:local` 通过，耗时 7m02s；workflow 不启动 Tauri 窗口，也不替代托盘菜单、窗口像素与 Windows 原生行为验收。
+这是单个 Windows 可执行文件，不是安装器。2026-10-30 用当前本机工作树运行 `npm run desktop:build` 构建，退出码 0；`npm run check:local` 退出码 0：UI 28 项、Rust fmt/check/workspace tests/clippy、Python 176 项（1 项因 Windows symlink 创建返回 `OSError` 而跳过）、离线契约和 27 个 Provider Skill 引用检查通过。该 EXE 已用 `--open-manager` 启动。它包含 B06-03 配置包导入运行时，但当前 Computer Use 两次因 `GetCursorPos` 拒绝访问而无法读取窗口状态；没有发送 UI 点击或文字输入，故本指南新增的 B06-03 UI 项仍待人工验收。
+
+2026-10-29 已提交的上一版 `a0366e1` release 为 12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`，GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对该提交的 Windows `npm run check:local` 通过。那份旧二进制不含本次 B06-03 改动，不能作为本表新 EXE 的验收证据。
 
 此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。最新 live Provider smoke 以 `--sources codex claude-code` 读取这两个来源，明确不查询 Codex App；两次真实 Tauri 协议运行提交了 4/2 个只读场景并正常退出。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仍限于标题/项目和身份匹配的 Agent 输出，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把 synthetic UIA 或两来源 smoke 计作真实 Codex App UI 接入。
 
@@ -59,3 +61,49 @@ audience: maintainer, Windows tester
 ## 记录与复现
 
 本次构建命令为 `npm run desktop:build`，产物位于 Cargo target release 目录。逐命令退出码、工具版本和脱敏探针结果保存在默认忽略的 `evidence/local/nextgen-2026-10-29/`。不要把 `.runtime.json`、令牌、Obsidian 笔记或 TrafficMonitor 遥测写入提交。
+
+## B06-03 配置包导入人工验收
+
+Computer Use 当前无法读取新 release 窗口，以下步骤可由维护者在已打开的“窗构 · 世界管理器”中完成。数据全部为合成样例；不使用真实 Provider 或用户世界。
+
+### 样例与提供者
+
+- 预生成 `.wcp`：`evidence/local/nextgen-2026-10-30/workday-synthetic.wcp`，1,109 bytes，SHA-256 `3407EC6895809A6227860E6E83E952DCC3DF31B083123C5E8FD6171E8527A840`。它只含 `pack.json` 与声明的 blueprint；需要时从仓库根目录重建：
+
+  ```powershell
+  python tools/pack/export_pack.py --pack docs/strategy/2026-10-26/examples/packs/workday.pack.json --output evidence/local/nextgen-2026-10-30/workday-synthetic-rebuild.wcp
+  ```
+
+  exporter 不覆盖已存在的输出；重建后使用命令生成的新文件路径。
+
+- 在另一个 PowerShell 窗口启动合成 Provider，`<runtime descriptor>` 使用管理器当前显示的本机路径，不复制文件内容或令牌：
+
+  ```powershell
+  python examples/python/pack_provider_demo.py --runtime "<runtime descriptor 路径>" --duration-seconds 30
+  ```
+
+  Provider 只注册 `agent-board` 的合成 inventory，声明 `activity.read` 与 `world.import.accept`，等待本机确认后才接入新世界。
+
+### 流程与预期
+
+| 步骤 | 操作 | 预期 |
+|---|---|---|
+| 1. 预览 | 在管理器“配置包路径”中填入上述 `.wcp` 路径，点“预览配置包”。 | 显示来源与权限需求；`activity.read` 未批准时计划受阻。已有世界不变。 |
+| 2. 撤销预览 | 点“取消”，再刷新或重新打开管理器检查。 | 提示“预览已取消；现有世界未更改。”没有新增窗口。 |
+| 3. 授权并重规划 | 再预览，选择 `Synthetic pack provider`，只批准本样例请求的 `activity.read`；按提示重新预览。 | 授权会改变清单 generation，旧预览失效；新预览显示可选 `metrics` 来源缺失及 fallback，状态为“可选来源缺失”。 |
+| 4. 明确应用 | 点“确认并创建窗口”。 | 只创建 blueprint 声明的新窗口；原有世界不替换。合成 Provider 收到定向 `world.import.joined`，窗口从静态内容更新到合成进度条，然后 Provider 正常离开并保留窗口。 |
+| 5. 回退确认 | 在导入记录中点“查看回退选项”，检查说明，再点“确认回退”。 | Provider 已更新并加入的 Agent 窗口应保留；未被后续改变的可选指标 fallback 窗口可清理，结果应说明部分回退。不得删除其他/已编辑世界。 |
+| 6. 新鲜度栅栏（可选） | Provider 运行期间先预览，等待它下一轮 inventory generation 更新，再尝试应用旧预览。 | 旧预览被拒绝并要求重新预览；不会创建窗口。 |
+
+逐项把结果写入 [`docs/strategy/2026-10-26/plan/acceptance.json`](../strategy/2026-10-26/plan/acceptance.json) 的 B06-03-A1/A2/A3，并附上脱敏截图。不要截图 runtime descriptor 或复制令牌；完成后退出合成 Provider 与本次 WinCraft 宿主。直到这些 UI 项通过，本任务继续保持 `IMPLEMENTED_UNVERIFIED`/`PARTIAL`。
+
+## B06-04 配置包跨环境分享验收
+
+此项需要两个彼此独立的 Windows 用户环境或设备；同一 Host 下开两个窗口不算。将上一节生成的 `workday-synthetic.wcp` 复制过去即可，**不要复制 runtime descriptor、授权记录或 Provider 状态**。
+
+1. 在第二环境打开 WinCraft；没有注册来源时，先预览包。必选 `agents` 来源应显示受阻，管理器不得自动下载、安装或运行 adapter/Provider；可选 `metrics` 缺失应给出降级/替代说明。
+2. 在该环境单独选择/启动一个受信任的合成 Provider，并使用该环境自己的 runtime descriptor。仅在预览明确列出 `activity.read` 后才由本机用户批准；然后重新预览并再次确认应用。
+3. 在第一环境重复同一 `.wcp` 流程。两个环境的 provider instance、grant、world ID 和 import ledger 应独立；pack 本身不携带这些身份或授权。
+4. 检查分享文件只含 `pack.json` 与声明的 blueprint，不含原机绝对路径、token、runtime descriptor 或私有标题。将两个环境各自的结果记录在 B06-04-A1/A2/A3；单机 fixture 和 exporter 测试不能替代此验收。
+
+截至本指南更新时间，跨两个用户环境的导入与重新授权尚未执行，B06-04 仍为 `IMPLEMENTED_UNVERIFIED`/`PARTIAL`。

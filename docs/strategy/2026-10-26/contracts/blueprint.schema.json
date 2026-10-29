@@ -56,15 +56,74 @@
               "row",
               "compact"
             ]
+          },
+          "window": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "width": {"type": "number", "minimum": 160, "maximum": 2400},
+              "height": {"type": "number", "minimum": 50, "maximum": 1800},
+              "always_on_top": {"type": "boolean"},
+              "visible": {"type": "boolean"},
+              "resizable": {"type": "boolean"},
+              "title_bar_visible": {"type": "boolean"},
+              "background_drag_enabled": {"type": "boolean"},
+              "text_selectable": {"type": "boolean"},
+              "decorations": {"type": "boolean"},
+              "skip_taskbar": {"type": "boolean"},
+              "click_through": {"type": "boolean"},
+              "surface_opacity": {"type": "number", "minimum": 0.15, "maximum": 1.0}
+            }
+          },
+          "scene": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "root": {"$ref": "#/$defs/node"},
+              "theme": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "background": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                  "foreground": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                  "accent": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+                  "font_scale": {"type": "number", "minimum": 0.9, "maximum": 2.0},
+                  "radius_px": {"type": "integer", "minimum": 0, "maximum": 32},
+                  "spacing_px": {"type": "integer", "minimum": 0, "maximum": 32}
+                },
+                "required": ["background", "foreground", "accent", "font_scale", "radius_px", "spacing_px"]
+              }
+            },
+            "required": ["root"]
           }
         },
         "required": [
           "id",
           "title",
           "binding_slots",
-          "layout_hint"
+          "layout_hint",
+          "scene"
         ]
       }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,96}$"},
+        "kind": {
+          "enum": ["stack", "row", "text", "metric", "progress", "icon", "bar_chart", "button", "input", "textarea", "key_value"]
+        },
+        "props": {"type": "object", "maxProperties": 64},
+        "children": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {"$ref": "#/$defs/node"}
+        }
+      },
+      "required": ["id", "kind"]
     }
   },
   "required": [

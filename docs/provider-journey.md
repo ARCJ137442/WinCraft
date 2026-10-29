@@ -22,6 +22,7 @@ WinCraft 提供者只发送声明式组件、数据和静态动作回执。业�
 | 语义定位 | 在 provider 几何模式下使用工作区角落锚点；理解 DPI 换算和本地救援 | `docs/protocol.md`、`examples/python/lease_probe.py` | `window_property:anchor`、`geometry_control` |
 | 观察与原生能力 | 订阅窗口状态；在用户点击后请求已登记应用动作 | `references/window-events.md`、`references/native-window-actions.md` | `window_state_events`、`external_window_actions` |
 | 数据包式适配 | 将外部来源投影成可重建组件树，不复制来源业务状态 | `examples/python/trafficmonitor_provider.py`、`examples/python/obsidian-workspace.py` | 来源授权、数据新鲜度、只读边界 |
+| 配置包接入 | 用无代码 `.wcp` 蓝图声明依赖；由本机管理器预览、授权并创建新世界 | [`tools/pack/README.md`](../tools/pack/README.md)、`examples/python/pack_provider_demo.py` | `provider_import` capability、`world.import.accept`、本机确认与 generation 变更后重规划 |
 
 ## 每层的完成证据
 
@@ -32,6 +33,7 @@ WinCraft 提供者只发送声明式组件、数据和静态动作回执。业�
 5. **语义定位**：先检查 `window_property:anchor`；切到 provider 几何模式后提交四角和逻辑边距；human 模式拒绝，救援后重新读取快照。
 6. **观察与原生能力**：订阅不授予读权或写权；原生动作只由用户点击触发，失败不伪造成功。
 7. **数据包式适配**：来源断开显示 stale/waiting，不把缺失值改成零；连接重建使用新 session/lease。
+8. **配置包接入**：导出物只含 manifest/blueprint；Provider 进程保持独立并显式声明 `world.import.accept`，本机用户选择来源、批准所需权限、重新预览，再确认创建。Host 不安装/运行 Provider；回退只移除 ledger 仍匹配的新增世界。
 
 ## 固定排错顺序
 

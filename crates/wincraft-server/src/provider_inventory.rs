@@ -57,6 +57,12 @@ pub(crate) struct ProviderInventorySnapshot {
     providers: Vec<ProviderInventorySource>,
 }
 
+impl ProviderInventorySnapshot {
+    pub(crate) fn generation(&self) -> u64 {
+        self.generation
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 struct ProviderInventorySource {
     id: String,
@@ -117,25 +123,39 @@ impl ProviderInventoryRegistry {
             ));
         }
 
-        let identities: BTreeSet<(String, String)> = prepared
+        let identities: BTreeSet<String> = prepared
             .providers
             .iter()
-            .map(|source| (source.source_id.clone(), source.source_instance_id.clone()))
+            .map(|source| source.source_instance_id.clone())
             .collect();
         if self.sessions.iter().any(|(owner, inventory)| {
             *owner != session
-                && inventory.providers.iter().any(|provider| {
-                    identities.contains(&(provider.id.clone(), provider.instance_id.clone()))
-                })
+                && inventory
+                    .providers
+                    .iter()
+                    .any(|provider| identities.contains(&provider.instance_id))
         }) {
             return Err(Fault::new(
                 "DUPLICATE_INVENTORY_IDENTITY",
-                "source id and instance id are already registered on this endpoint",
+                "provider instance id is already registered on this endpoint",
             ));
         }
 
         let mut providers = Vec::with_capacity(prepared.providers.len());
         for source in prepared.providers {
+            let prior_grants = existing
+                .and_then(|inventory| {
+                    inventory.providers.iter().find(|provider| {
+                        provider.id == source.source_id
+                            && provider.instance_id == source.source_instance_id
+                    })
+                })
+                .map(|provider| provider.grants.clone())
+                .unwrap_or_default();
+            let grants = prior_grants
+                .into_iter()
+                .filter(|permission| source.capabilities.contains(permission))
+                .collect();
             providers.push(ProviderInventorySource {
                 id: source.source_id,
                 instance_id: source.source_instance_id,
@@ -144,8 +164,8 @@ impl ProviderInventoryRegistry {
                 adapter_contract: source.adapter_contract,
                 state: source.state,
                 capabilities: source.capabilities,
-                // Provider claims are descriptive; only a separate host grant can authorize use.
-                grants: vec![],
+                // Provider claims are descriptive; only a separate host action populates grants.
+                grants,
                 source_updated_at: source.source_updated_at,
                 fresh_for_seconds: source.fresh_for_seconds,
             });
@@ -174,6 +194,98 @@ impl ProviderInventoryRegistry {
             inventory.disconnected_at_ms = Some(now_ms);
             self.generation = self.generation.saturating_add(1).max(1);
         }
+    }
+
+    /// Grant only capabilities the identified live provider already declared.
+    /// This method is host-internal; provider registration cannot set grants.
+    pub(crate) fn grant_permissions(
+        &mut self,
+        instance_id: &str,
+        permissions: &[String],
+        endpoint_id: Uuid,
+        now_ms: u64,
+        now: OffsetDateTime,
+    ) -> Result<ProviderInventorySnapshot, Fault> {
+        if permissions.is_empty() || permissions.len() > 64 {
+            return Err(Fault::new(
+                "INVALID_GRANT",
+                "at least one bounded permission is required",
+            ));
+        }
+        let mut unique = BTreeSet::new();
+        if permissions
+            .iter()
+            .any(|permission| !valid_inventory_id(permission) || !unique.insert(permission.clone()))
+        {
+            return Err(Fault::new(
+                "INVALID_GRANT",
+                "permission identifiers must be valid and unique",
+            ));
+        }
+        self.prune_expired(now_ms);
+        let mut changed = false;
+        let mut found = false;
+        for inventory in self.sessions.values_mut() {
+            if inventory.disconnected_at_ms.is_some() {
+                continue;
+            }
+            for provider in &mut inventory.providers {
+                if provider.instance_id != instance_id {
+                    continue;
+                }
+                found = true;
+                let source_updated =
+                    parse_timestamp(&provider.source_updated_at, "source_updated_at")?;
+                if provider.state != ProviderInventoryState::Online
+                    || now
+                        >= source_updated
+                            + time::Duration::seconds(i64::from(provider.fresh_for_seconds))
+                {
+                    return Err(Fault::new(
+                        "PROVIDER_NOT_ONLINE",
+                        "host permissions require an online and fresh provider instance",
+                    ));
+                }
+                if permissions
+                    .iter()
+                    .any(|permission| !provider.capabilities.contains(permission))
+                {
+                    return Err(Fault::new(
+                        "GRANT_NOT_DECLARED",
+                        "host grants must match capabilities declared by this provider",
+                    ));
+                }
+                for permission in permissions {
+                    if !provider.grants.contains(permission) {
+                        provider.grants.push(permission.clone());
+                        changed = true;
+                    }
+                }
+                provider.grants.sort();
+                provider.grants.dedup();
+            }
+        }
+        if !found {
+            return Err(Fault::new(
+                "PROVIDER_NOT_ONLINE",
+                "the selected provider instance is no longer registered",
+            ));
+        }
+        if changed {
+            self.generation = self.generation.saturating_add(1).max(1);
+        }
+        self.snapshot(endpoint_id, now_ms, now)
+    }
+
+    pub(crate) fn session_for_instance(&self, instance_id: &str) -> Option<Uuid> {
+        self.sessions.iter().find_map(|(session, inventory)| {
+            (inventory.disconnected_at_ms.is_none()
+                && inventory
+                    .providers
+                    .iter()
+                    .any(|provider| provider.instance_id == instance_id))
+            .then_some(*session)
+        })
     }
 
     pub(crate) fn snapshot(
@@ -314,11 +426,10 @@ fn prepare_registration(
                 "provider metadata is invalid",
             ));
         }
-        let identity = (source.source_id.clone(), source.source_instance_id.clone());
-        if !identities.insert(identity) {
+        if !identities.insert(source.source_instance_id.clone()) {
             return Err(Fault::new(
                 "DUPLICATE_INVENTORY_IDENTITY",
-                "source id and instance id must be unique within a registration",
+                "provider instance ids must be unique within a registration",
             ));
         }
 
@@ -452,6 +563,73 @@ mod tests {
         for forbidden in ["token", "lease", "scene", "data"] {
             assert!(!serialized.contains(forbidden));
         }
+    }
+
+    #[test]
+    fn only_host_approval_grants_declared_permissions_and_same_session_refresh_preserves_them() {
+        let mut registry = ProviderInventoryRegistry::default();
+        let session = Uuid::new_v4();
+        registry
+            .register(session, Uuid::from_u128(1), registration(1, 60), 100, now())
+            .unwrap();
+        let granted = registry
+            .grant_permissions(
+                "codex-instance-a",
+                &["activity.read".into()],
+                Uuid::from_u128(1),
+                101,
+                now(),
+            )
+            .unwrap();
+        let approved = granted
+            .providers
+            .iter()
+            .find(|provider| provider.instance_id == "codex-instance-a")
+            .unwrap();
+        let unapproved = granted
+            .providers
+            .iter()
+            .find(|provider| provider.instance_id == "codex-instance-b")
+            .unwrap();
+        assert_eq!(approved.grants, vec!["activity.read"]);
+        assert!(unapproved.grants.is_empty());
+
+        let refreshed = registry
+            .register(session, Uuid::from_u128(1), registration(2, 60), 102, now())
+            .unwrap();
+        assert_eq!(
+            refreshed
+                .providers
+                .iter()
+                .find(|provider| provider.instance_id == "codex-instance-a")
+                .unwrap()
+                .grants,
+            vec!["activity.read"]
+        );
+    }
+
+    #[test]
+    fn instance_id_is_unique_across_sources_on_the_endpoint() {
+        let mut registry = ProviderInventoryRegistry::default();
+        registry
+            .register(
+                Uuid::new_v4(),
+                Uuid::from_u128(1),
+                registration(1, 60),
+                100,
+                now(),
+            )
+            .unwrap();
+        let mut duplicate = registration(1, 60);
+        duplicate.providers.truncate(1);
+        duplicate.providers[0].source_id = "source.other".into();
+        assert_eq!(
+            registry
+                .register(Uuid::new_v4(), Uuid::from_u128(1), duplicate, 101, now())
+                .unwrap_err()
+                .code,
+            "DUPLICATE_INVENTORY_IDENTITY"
+        );
     }
 
     #[test]

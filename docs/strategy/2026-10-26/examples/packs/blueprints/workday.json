@@ -4,16 +4,60 @@
   "id": "workday",
   "worlds": [
     {
-      "id": "desk",
+      "id": "agents-board",
       "title": {
-        "zh-CN": "我的工作台",
-        "en-US": "My desk"
+        "zh-CN": "Agent 活动",
+        "en-US": "Agent activity"
       },
-      "binding_slots": [
-        "agents",
-        "metrics"
-      ],
-      "layout_hint": "stack"
+      "binding_slots": ["agents"],
+      "layout_hint": "stack",
+      "window": {
+        "width": 480,
+        "height": 360,
+        "always_on_top": true,
+        "title_bar_visible": true,
+        "click_through": false,
+        "surface_opacity": 0.8
+      },
+      "scene": {
+        "root": {
+          "id": "root",
+          "kind": "stack",
+          "props": {"gap": 12},
+          "children": [
+            {"id": "heading", "kind": "text", "props": {"text": "Agent 活动", "size": "title"}},
+            {"id": "waiting", "kind": "text", "props": {"text": "等待选定的提供者加入", "tone": "muted"}}
+          ]
+        }
+      }
+    },
+    {
+      "id": "metrics-board",
+      "title": {
+        "zh-CN": "系统指标",
+        "en-US": "System metrics"
+      },
+      "binding_slots": ["metrics"],
+      "layout_hint": "row",
+      "window": {
+        "width": 420,
+        "height": 220,
+        "always_on_top": true,
+        "title_bar_visible": true,
+        "click_through": false,
+        "surface_opacity": 0.8
+      },
+      "scene": {
+        "root": {
+          "id": "root",
+          "kind": "row",
+          "props": {"gap": 12, "align": "center"},
+          "children": [
+            {"id": "heading", "kind": "text", "props": {"text": "系统指标", "size": "heading"}},
+            {"id": "waiting", "kind": "text", "props": {"text": "等待选定的提供者加入", "tone": "muted"}}
+          ]
+        }
+      }
     }
   ]
 }

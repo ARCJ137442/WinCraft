@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-30",
   "cases": [
     {
       "path": "examples/packs/workday.pack.json",
@@ -102,6 +102,12 @@
       "schema": "resolution-plan",
       "expected_valid": true,
       "reason": ""
+    },
+    {
+      "path": "contracts/examples/provider-import-joined.json",
+      "schema": "provider-import-event",
+      "expected_valid": true,
+      "reason": "Synthetic event; lease and world UUIDs are placeholders."
     }
   ]
 }

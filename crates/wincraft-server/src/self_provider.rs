@@ -1,9 +1,10 @@
 //! A local provider that builds the manager/settings world using the SAME scene
 //! vocabulary and exclusive-writer engine as external providers. Only explicit
 //! operator actions (rescue/destroy) have extra authority.
+use crate::pack_import::{ImportReceipt, PackPreview, PlanStatus, RollbackReceipt};
 use crate::{Hub, Notice};
 use serde_json::{json, Value};
-use std::{sync::OnceLock, time::Duration};
+use std::{collections::BTreeMap, path::PathBuf, sync::OnceLock, time::Duration};
 use uuid::Uuid;
 use wincraft_core::*;
 
@@ -18,6 +19,26 @@ struct Settings {
     title: String,
     always_on_top: bool,
     pending_close: Option<Uuid>,
+    pack_path: String,
+    pack_selections: BTreeMap<String, String>,
+    pack_preview: Option<PackPreview>,
+    pack_notice: Option<String>,
+    pending_rollback: Option<Uuid>,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            title: "空白世界".into(),
+            always_on_top: true,
+            pending_close: None,
+            pack_path: String::new(),
+            pack_selections: BTreeMap::new(),
+            pack_preview: None,
+            pack_notice: None,
+            pending_rollback: None,
+        }
+    }
 }
 fn manager_text(locale: &str, key: &str) -> String {
     static ZH: OnceLock<Value> = OnceLock::new();
@@ -97,8 +118,7 @@ impl ManagerProvider {
         tokio::spawn(async move {
             let mut settings = Settings {
                 title: manager_text(&hub.locale(), "manager.default_world"),
-                always_on_top: true,
-                pending_close: None,
+                ..Settings::default()
             };
             let mut events = hub.subscribe();
             let mut timer = tokio::time::interval(Duration::from_millis(750));
@@ -145,6 +165,112 @@ impl ManagerProvider {
             }
             "settings.top" => {
                 s.always_on_top = !s.always_on_top;
+            }
+            "pack.path" => {
+                s.pack_path = event
+                    .value
+                    .as_str()
+                    .unwrap_or_default()
+                    .trim()
+                    .chars()
+                    .take(1024)
+                    .collect();
+                s.pack_notice = None;
+            }
+            "pack.preview" => {
+                let path = PathBuf::from(s.pack_path.trim());
+                let preview =
+                    hub.preview_pack_file(self.session, &path, s.pack_selections.clone())?;
+                s.pack_preview = Some(preview);
+                s.pack_notice = None;
+                s.pending_rollback = None;
+            }
+            "pack.cancel" => {
+                if let Some(preview) = &s.pack_preview {
+                    hub.cancel_pack_preview(self.session, preview.preview_id)?;
+                }
+                s.pack_preview = None;
+                s.pack_notice = Some(manager_text(&hub.locale(), "manager.import.cancelled"));
+            }
+            a if a.starts_with("pack.select:") => {
+                let (preview_id, binding_id, instance_id) = parse_pack_choice(a, "pack.select:")?;
+                if s.pack_preview.as_ref().map(|preview| preview.preview_id) != Some(preview_id) {
+                    return Err(Fault::new(
+                        "STALE_PLAN",
+                        "review the current provider inventory again",
+                    ));
+                }
+                s.pack_selections.insert(binding_id, instance_id);
+                let preview = hub.preview_pack_file(
+                    self.session,
+                    PathBuf::from(s.pack_path.trim()).as_path(),
+                    s.pack_selections.clone(),
+                )?;
+                s.pack_preview = Some(preview);
+                s.pack_notice = Some(manager_text(&hub.locale(), "manager.import.replanned"));
+            }
+            a if a.starts_with("pack.grant:") => {
+                let (preview_id, binding_id, instance_id) = parse_pack_choice(a, "pack.grant:")?;
+                if s.pack_preview.as_ref().map(|preview| preview.preview_id) != Some(preview_id) {
+                    return Err(Fault::new(
+                        "STALE_PLAN",
+                        "review the current provider inventory again",
+                    ));
+                }
+                hub.authorize_pack_binding(self.session, preview_id, &binding_id, &instance_id)?;
+                // Permission approval changes the inventory generation. Generate a new preview
+                // immediately so no stale plan can be submitted.
+                let preview = hub.preview_pack_file(
+                    self.session,
+                    PathBuf::from(s.pack_path.trim()).as_path(),
+                    s.pack_selections.clone(),
+                )?;
+                s.pack_preview = Some(preview);
+                s.pack_notice = Some(manager_text(
+                    &hub.locale(),
+                    "manager.import.permission_granted",
+                ));
+            }
+            a if a.starts_with("pack.apply:") => {
+                let preview_id = parse_id(a, "pack.apply:")?;
+                if s.pack_preview.as_ref().map(|preview| preview.preview_id) != Some(preview_id) {
+                    return Err(Fault::new(
+                        "STALE_PLAN",
+                        "review the current provider inventory again",
+                    ));
+                }
+                match hub.apply_pack_preview(self.session, preview_id, true) {
+                    Ok(receipt) => {
+                        s.pack_preview = None;
+                        s.pack_notice = Some(import_receipt_text(hub, &receipt));
+                    }
+                    Err(error) if error.code == "STALE_PLAN" => {
+                        s.pack_preview = None;
+                        s.pack_notice = Some(manager_text(&hub.locale(), "manager.import.stale"));
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+            a if a.starts_with("pack.rollback.request:") => {
+                s.pending_rollback = Some(parse_id(a, "pack.rollback.request:")?);
+            }
+            a if a.starts_with("pack.rollback.cancel:") => {
+                let id = parse_id(a, "pack.rollback.cancel:")?;
+                if s.pending_rollback == Some(id) {
+                    s.pending_rollback = None;
+                }
+            }
+            a if a.starts_with("pack.rollback.confirm:") => {
+                let id = parse_id(a, "pack.rollback.confirm:")?;
+                if s.pending_rollback != Some(id) {
+                    return Err(Fault::new(
+                        "FORBIDDEN",
+                        "confirm the selected configuration rollback first",
+                    ));
+                }
+                let result = hub.rollback_pack_import(self.session, id)?;
+                s.pending_rollback = None;
+                s.pack_notice = Some(rollback_receipt_text(hub, &result));
             }
             "settings.locale" => {
                 let old_locale = hub.locale();
@@ -235,6 +361,240 @@ impl ManagerProvider {
         }
         Ok(())
     }
+    fn pack_controls(&self, hub: &Hub, settings: &Settings, locale: &str) -> Result<Node> {
+        let mut controls = vec![
+            node(
+                "pack-title",
+                Kind::Text,
+                json!({"text":manager_text(locale,"manager.import.title"),"size":"heading"}),
+                vec![],
+            ),
+            node(
+                "pack-explainer",
+                Kind::Text,
+                json!({"text":manager_text(locale,"manager.import.explainer"),"tone":"muted"}),
+                vec![],
+            ),
+            node(
+                "pack-path",
+                Kind::Input,
+                json!({"label":manager_text(locale,"manager.import.path"),"value":settings.pack_path,
+                    "placeholder":manager_text(locale,"manager.import.path_placeholder"),"action":"pack.path"}),
+                vec![],
+            ),
+            node(
+                "pack-preview-action",
+                Kind::Button,
+                json!({"label":manager_text(locale,"manager.import.preview"),"action":"pack.preview","tone":"accent"}),
+                vec![],
+            ),
+        ];
+
+        if let Some(preview) = &settings.pack_preview {
+            controls.push(node(
+                "pack-preview-heading",
+                Kind::Text,
+                json!({"text":format!("{} · {} · {}",preview.pack_title,preview.pack_version,
+                    manager_text(locale,plan_status_key(preview.status))),"size":"heading"}),
+                vec![],
+            ));
+            controls.push(node(
+                "pack-preview-safety",
+                Kind::Text,
+                json!({"text":manager_text(locale,"manager.import.preview_safety"),"tone":"muted"}),
+                vec![],
+            ));
+            controls.push(node(
+                "pack-preview-summary",
+                Kind::KeyValue,
+                json!({"items":[
+                    {"key":manager_text(locale,"manager.import.world_count"),"value":preview.world_count},
+                    {"key":manager_text(locale,"manager.import.inventory_generation"),"value":preview.inventory_generation},
+                    {"key":manager_text(locale,"manager.import.expires"),"value":preview.expires_at},
+                    {"key":manager_text(locale,"manager.import.preview_id"),"value":preview.preview_id}
+                ]}),
+                vec![],
+            ));
+            for (index, world) in preview.worlds.iter().enumerate() {
+                controls.push(node(
+                    format!("pack-world-{index}"),
+                    Kind::KeyValue,
+                    json!({"items":[
+                        {"key":world.title,"value":format!("{} × {} {}",world.width,world.height,manager_text(locale,"manager.import.logical_pixels"))},
+                        {"key":manager_text(locale,"manager.import.visible"),"value":manager_text(locale,if world.visible{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.topmost"),"value":manager_text(locale,if world.always_on_top{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.resizable"),"value":manager_text(locale,if world.resizable{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.titlebar"),"value":manager_text(locale,if world.title_bar_visible{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.background_drag"),"value":manager_text(locale,if world.background_drag_enabled{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.text_selectable"),"value":manager_text(locale,if world.text_selectable{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.click_through"),"value":manager_text(locale,if world.click_through{"manager.import.on"}else{"manager.import.off"})},
+                        {"key":manager_text(locale,"manager.import.opacity"),"value":format!("{:.0}%",world.surface_opacity*100.0)},
+                        {"key":manager_text(locale,"manager.import.bindings"),"value":world.binding_slots.join(", ")}
+                    ]}),
+                    vec![],
+                ));
+            }
+            for (binding_index, binding) in preview.bindings.iter().enumerate() {
+                let resolved = binding
+                    .provider_name
+                    .clone()
+                    .or_else(|| binding.provider_instance_id.clone())
+                    .unwrap_or_else(|| manager_text(locale, "manager.import.no_provider"));
+                controls.push(node(
+                    format!("pack-binding-{binding_index}"),
+                    Kind::Text,
+                    json!({"text":format!("{} · {} · {} · {} · {}",binding.binding_id,
+                        manager_text(locale,binding_status_key(&binding.status)),resolved,
+                        manager_text(locale,binding_reason_key(&binding.reason)),
+                        binding.requested_permissions.join(", ")),"tone":"muted"}),
+                    vec![],
+                ));
+                for (candidate_index, candidate) in binding.candidates.iter().enumerate() {
+                    let candidate_label =
+                        format!("{} · {}", candidate.display_name, candidate.instance_id);
+                    let can_select = binding.status == "ambiguous"
+                        || binding
+                            .provider_instance_id
+                            .as_deref()
+                            .is_some_and(|selected| selected != candidate.instance_id);
+                    if candidate.missing_permissions.is_empty() && can_select {
+                        let action = format!(
+                            "pack.select:{}:{}:{}",
+                            preview.preview_id,
+                            encode_action_segment(&binding.binding_id),
+                            encode_action_segment(&candidate.instance_id)
+                        );
+                        controls.push(node(
+                            format!("pack-select-{binding_index}-{candidate_index}"),
+                            Kind::Button,
+                            json!({"label":format!("{}: {}",manager_text(locale,"manager.import.select_provider"),candidate_label),"action":action}),
+                            vec![],
+                        ));
+                    } else {
+                        let action = format!(
+                            "pack.grant:{}:{}:{}",
+                            preview.preview_id,
+                            encode_action_segment(&binding.binding_id),
+                            encode_action_segment(&candidate.instance_id)
+                        );
+                        controls.push(node(
+                            format!("pack-grant-{binding_index}-{candidate_index}"),
+                            Kind::Button,
+                            json!({"label":format!("{}: {} · {}",manager_text(locale,"manager.import.grant_permissions"),
+                                candidate_label,candidate.missing_permissions.join(", ")),"action":action,"tone":"accent"}),
+                            vec![],
+                        ));
+                    }
+                }
+            }
+            for (index, blocker) in preview.blockers.iter().enumerate() {
+                controls.push(node(
+                    format!("pack-blocker-{index}"),
+                    Kind::Text,
+                    json!({"text":format!("{}: {blocker}",manager_text(locale,"manager.import.blocked")),"tone":"danger"}),
+                    vec![],
+                ));
+            }
+            for (index, warning) in preview.warnings.iter().enumerate() {
+                controls.push(node(
+                    format!("pack-warning-{index}"),
+                    Kind::Text,
+                    json!({"text":format!("{}: {warning}",manager_text(locale,"manager.import.warning")),"tone":"muted"}),
+                    vec![],
+                ));
+            }
+            if matches!(preview.status, PlanStatus::Ready | PlanStatus::Degraded) {
+                controls.push(node(
+                    "pack-apply-action",
+                    Kind::Button,
+                    json!({"label":format!("{} · {}",manager_text(locale,"manager.import.apply"),preview.world_count),
+                        "action":format!("pack.apply:{}",preview.preview_id),"tone":"accent"}),
+                    vec![],
+                ));
+            } else {
+                controls.push(node(
+                    "pack-apply-blocked",
+                    Kind::Text,
+                    json!({"text":manager_text(locale,"manager.import.apply_blocked"),"tone":"muted"}),
+                    vec![],
+                ));
+            }
+            controls.push(node(
+                "pack-cancel-action",
+                Kind::Button,
+                json!({"label":manager_text(locale,"manager.import.cancel"),"action":"pack.cancel"}),
+                vec![],
+            ));
+        }
+
+        if let Some(message) = &settings.pack_notice {
+            controls.push(node(
+                "pack-notice",
+                Kind::Text,
+                json!({"text":message,"tone":"muted"}),
+                vec![],
+            ));
+        }
+
+        for receipt in hub.recent_pack_imports(self.session)?.into_iter().take(4) {
+            controls.push(node(
+                format!("pack-batch-{}", receipt.batch_id),
+                Kind::Text,
+                json!({"text":format!("{} · {} · {}",receipt.pack_id,receipt.pack_version,
+                    manager_text(locale,import_status_key(&receipt.status))),"tone":"muted"}),
+                vec![],
+            ));
+            if !receipt.worlds.is_empty() {
+                controls.push(node(
+                    format!("pack-batch-worlds-{}",receipt.batch_id),
+                    Kind::Text,
+                    json!({"text":receipt.worlds.iter().map(|world|format!("{} ({})",world.title,world.world_id)).collect::<Vec<_>>().join(" · "),"tone":"muted"}),
+                    vec![],
+                ));
+            }
+            if let Some(code) = &receipt.failure_code {
+                controls.push(node(
+                    format!("pack-failure-{}",receipt.batch_id),
+                    Kind::Text,
+                    json!({"text":format!("{}: {} · {}: {} · {}: {}",manager_text(locale,"manager.import.failed"),code,
+                        manager_text(locale,"manager.import.cleanup_removed"),receipt.cleanup_removed.len(),
+                        manager_text(locale,"manager.import.retained"),receipt.retained_worlds.len()),"tone":"danger"}),
+                    vec![],
+                ));
+            }
+            if receipt.status == "applied" || receipt.status == "partial_rollback" {
+                if settings.pending_rollback == Some(receipt.batch_id) {
+                    controls.push(node(
+                        format!("pack-rollback-note-{}",receipt.batch_id),
+                        Kind::Text,
+                        json!({"text":manager_text(locale,"manager.import.rollback_note"),"tone":"muted"}),
+                        vec![],
+                    ));
+                    controls.push(node(
+                        format!("pack-rollback-confirm-{}",receipt.batch_id),
+                        Kind::Button,
+                        json!({"label":manager_text(locale,"manager.import.rollback_confirm"),"action":format!("pack.rollback.confirm:{}",receipt.batch_id),"tone":"danger"}),
+                        vec![],
+                    ));
+                    controls.push(node(
+                        format!("pack-rollback-cancel-{}",receipt.batch_id),
+                        Kind::Button,
+                        json!({"label":manager_text(locale,"manager.import.cancel"),"action":format!("pack.rollback.cancel:{}",receipt.batch_id)}),
+                        vec![],
+                    ));
+                } else {
+                    controls.push(node(
+                        format!("pack-rollback-request-{}",receipt.batch_id),
+                        Kind::Button,
+                        json!({"label":manager_text(locale,"manager.import.rollback"),"action":format!("pack.rollback.request:{}",receipt.batch_id)}),
+                        vec![],
+                    ));
+                }
+            }
+        }
+
+        Ok(node("pack-import", Kind::Stack, json!({"gap":8}), controls))
+    }
     fn refresh(&self, hub: &Hub, settings: &Settings, descriptor: &str) -> Result<()> {
         let locale = hub.locale();
         let summaries = hub.lock().list(self.session)?;
@@ -309,6 +669,7 @@ impl ManagerProvider {
             ),
             node("worlds-line", Kind::Divider, json!({}), vec![]),
         ];
+        rows.insert(3, self.pack_controls(hub, settings, &locale)?);
         for w in summaries.into_iter().filter(|w| !w.system) {
             let id = w.id.to_string();
             let snap = hub.renderer_snapshot(w.id)?;
@@ -381,9 +742,186 @@ fn parse_id(action: &str, prefix: &str) -> Result<Uuid> {
         .ok_or_else(|| Fault::new("INVALID_ACTION", "invalid world id"))
 }
 
+fn encode_action_segment(value: &str) -> String {
+    value
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+fn decode_action_segment(value: &str) -> Result<String> {
+    if !value.len().is_multiple_of(2) || value.len() > 192 {
+        return Err(Fault::new(
+            "INVALID_ACTION",
+            "invalid configuration action identity",
+        ));
+    }
+    let mut bytes = Vec::with_capacity(value.len() / 2);
+    for pair in value.as_bytes().chunks_exact(2) {
+        let pair = std::str::from_utf8(pair)
+            .map_err(|_| Fault::new("INVALID_ACTION", "invalid configuration action identity"))?;
+        bytes.push(
+            u8::from_str_radix(pair, 16).map_err(|_| {
+                Fault::new("INVALID_ACTION", "invalid configuration action identity")
+            })?,
+        );
+    }
+    String::from_utf8(bytes).map_err(|_| {
+        Fault::new(
+            "INVALID_ACTION",
+            "configuration action identity is not UTF-8",
+        )
+    })
+}
+
+fn parse_pack_choice(action: &str, prefix: &str) -> Result<(Uuid, String, String)> {
+    let mut parts = action
+        .strip_prefix(prefix)
+        .ok_or_else(|| Fault::new("INVALID_ACTION", "invalid configuration action"))?
+        .split(':');
+    let preview_id = parts
+        .next()
+        .and_then(|value| value.parse().ok())
+        .ok_or_else(|| Fault::new("INVALID_ACTION", "invalid configuration preview id"))?;
+    let binding = parts
+        .next()
+        .ok_or_else(|| Fault::new("INVALID_ACTION", "configuration binding is missing"))?;
+    let instance = parts
+        .next()
+        .ok_or_else(|| Fault::new("INVALID_ACTION", "provider instance is missing"))?;
+    if parts.next().is_some() {
+        return Err(Fault::new(
+            "INVALID_ACTION",
+            "configuration action has extra fields",
+        ));
+    }
+    Ok((
+        preview_id,
+        decode_action_segment(binding)?,
+        decode_action_segment(instance)?,
+    ))
+}
+
+fn plan_status_key(status: PlanStatus) -> &'static str {
+    match status {
+        PlanStatus::Ready => "manager.import.status.ready",
+        PlanStatus::Degraded => "manager.import.status.degraded",
+        PlanStatus::Blocked => "manager.import.status.blocked",
+    }
+}
+
+fn binding_status_key(status: &str) -> &'static str {
+    match status {
+        "selected" => "manager.import.binding.selected",
+        "missing" => "manager.import.binding.missing",
+        "ambiguous" => "manager.import.binding.ambiguous",
+        "blocked" => "manager.import.binding.blocked",
+        _ => "manager.import.binding.unknown",
+    }
+}
+
+fn binding_reason_key(reason: &str) -> &'static str {
+    match reason {
+        "explicit_authorized_selection" => "manager.import.reason.explicit_selection",
+        "unique_eligible_provider" => "manager.import.reason.unique_provider",
+        "multiple_eligible_providers_need_user_choice" => "manager.import.reason.ambiguous",
+        "no_online_fresh_compatible_provider" => "manager.import.reason.missing",
+        "host_permission_required" | "explicit_selection_requires_permission" => {
+            "manager.import.reason.permission"
+        }
+        "explicit_selection_not_eligible" => "manager.import.reason.selection_ineligible",
+        _ => "manager.import.reason.other",
+    }
+}
+
+fn import_status_key(status: &str) -> &'static str {
+    match status {
+        "applied" => "manager.import.status.applied",
+        "failed_rolled_back" => "manager.import.status.failed_rolled_back",
+        "partial" => "manager.import.status.partial",
+        "rolled_back" => "manager.import.status.rolled_back",
+        "partial_rollback" => "manager.import.status.partial_rollback",
+        _ => "manager.import.status.unknown",
+    }
+}
+
+fn import_receipt_text(hub: &Hub, receipt: &ImportReceipt) -> String {
+    format!(
+        "{} · {} · {}",
+        manager_text(&hub.locale(), import_status_key(&receipt.status)),
+        receipt.pack_id,
+        receipt.worlds.len()
+    )
+}
+
+fn rollback_receipt_text(hub: &Hub, receipt: &RollbackReceipt) -> String {
+    format!(
+        "{} · {}: {} · {}: {}",
+        manager_text(&hub.locale(), import_status_key(&receipt.status)),
+        manager_text(&hub.locale(), "manager.import.cleanup_removed"),
+        receipt.removed.len() + receipt.already_missing.len(),
+        manager_text(&hub.locale(), "manager.import.retained"),
+        receipt.retained.len()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+    use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+
+    fn write_import_fixture() -> PathBuf {
+        let path = std::env::temp_dir().join(format!("wincraft-pack-{}.wcp", Uuid::new_v4()));
+        let pack = json!({
+            "kind":"wincraft.pack.draft","schema_version":"draft-2026-10-26",
+            "id":"fixture.manager-import","version":"1.0.0",
+            "title":{"zh-CN":"管理器导入测试","en-US":"Manager import test"},
+            "bindings":[{"id":"optional-metrics","required":false,"provider_types":["metrics"],
+                "capabilities":["metrics.read","world.import.accept"],"permissions":[],"min_adapter_contract":1}],
+            "blueprint":"blueprints/fixture.json","fallback_policy":"explain_missing","adapter":null
+        });
+        let blueprint = json!({
+            "kind":"wincraft.blueprint.draft","schema_version":"draft-2026-10-26","id":"fixture.blueprint",
+            "worlds":[{"id":"metrics","title":{"zh-CN":"测试指标","en-US":"Test metrics"},
+                "binding_slots":["optional-metrics"],"layout_hint":"stack",
+                "scene":{"root":{"id":"root","kind":"stack","children":[
+                    {"id":"title","kind":"text","props":{"text":"测试指标","size":"title"}}
+                ]}}}]
+        });
+        let file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&path)
+            .unwrap();
+        let mut archive = ZipWriter::new(file);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+        archive.start_file("pack.json", options).unwrap();
+        archive
+            .write_all(&serde_json::to_vec(&pack).unwrap())
+            .unwrap();
+        archive
+            .start_file("blueprints/fixture.json", options)
+            .unwrap();
+        archive
+            .write_all(&serde_json::to_vec(&blueprint).unwrap())
+            .unwrap();
+        drop(archive.finish().unwrap());
+        path
+    }
+
+    fn action(manager: &ManagerProvider, action: String, value: Value) -> UiEvent {
+        UiEvent {
+            id: Uuid::new_v4(),
+            world_id: manager.world_id,
+            component_id: "fixture-action".into(),
+            action,
+            value,
+            lease_epoch: 0,
+            revision: 0,
+        }
+    }
 
     #[test]
     fn manager_lists_hidden_worlds_and_can_show_without_destroying_them() {
@@ -409,7 +947,7 @@ mod tests {
         let mut settings = Settings {
             title: "fixture".into(),
             always_on_top: true,
-            pending_close: None,
+            ..Settings::default()
         };
 
         manager
@@ -473,7 +1011,7 @@ mod tests {
         let settings = Settings {
             title: "fixture".into(),
             always_on_top: true,
-            pending_close: None,
+            ..Settings::default()
         };
 
         manager
@@ -502,7 +1040,7 @@ mod tests {
         let mut settings = Settings {
             title: "空白世界".into(),
             always_on_top: true,
-            pending_close: None,
+            ..Settings::default()
         };
         manager
             .refresh(&hub, &settings, "<descriptor>")
@@ -558,5 +1096,98 @@ mod tests {
                 .and_then(Value::as_str),
             Some("settings.locale")
         );
+    }
+
+    #[test]
+    fn manager_import_preview_apply_and_confirmed_rollback_use_the_generic_world_ui() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let pack_path = write_import_fixture();
+        let mut settings = Settings {
+            pack_path: pack_path.to_string_lossy().into_owned(),
+            ..Settings::default()
+        };
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("manager previews a validated package");
+        let preview = settings
+            .pack_preview
+            .clone()
+            .expect("preview is stored for this session");
+        assert_eq!(preview.status, PlanStatus::Degraded);
+        assert!(!preview.worlds[0].click_through);
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let preview_scene = hub.renderer_snapshot(manager.world_id).unwrap().scene;
+        assert!(preview_scene.root.find("pack-preview-heading").is_some());
+        assert!(preview_scene.root.find("pack-apply-action").is_some());
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.cancel".into(), Value::Null),
+            )
+            .expect("cancelled preview does not mutate existing worlds");
+        assert!(settings.pack_preview.is_none());
+        assert_eq!(hub.lock().worlds.len(), 1);
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("a fresh preview can be prepared after cancellation");
+        let preview = settings
+            .pack_preview
+            .clone()
+            .expect("fresh preview is stored for this session");
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    format!("pack.apply:{}", preview.preview_id),
+                    Value::Null,
+                ),
+            )
+            .expect("explicit apply creates only the blueprint world");
+        let imports = hub.recent_pack_imports(manager.session).unwrap();
+        assert_eq!(imports.len(), 1);
+        let batch_id = imports[0].batch_id;
+        assert_eq!(hub.lock().worlds.len(), 2);
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    format!("pack.rollback.request:{batch_id}"),
+                    Value::Null,
+                ),
+            )
+            .expect("rollback is a separate confirmation step");
+        assert!(settings.pending_rollback.is_some());
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    format!("pack.rollback.confirm:{batch_id}"),
+                    Value::Null,
+                ),
+            )
+            .expect("confirmed rollback removes only its unchanged world");
+        assert_eq!(hub.lock().worlds.len(), 1);
+
+        std::fs::remove_file(pack_path).unwrap();
     }
 }

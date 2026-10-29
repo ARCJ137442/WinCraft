@@ -1112,7 +1112,8 @@
       ],
       "level": "L1-L4",
       "criterion": "环境变化使旧计划失效并重新规划",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: Rust Host/manager behavior tests cover inventory generation invalidation, expiration, host-approved permission grant followed by re-preview, and stale-plan rejection; a read-only Python SDK hello against the current Tauri release negotiated 0.4-preview.1 and verified the provider-import capability contract. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; re-preview is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-03-A2",
@@ -1124,7 +1125,8 @@
       ],
       "level": "L1-L4",
       "criterion": "导入取消不会清空既有世界",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: Rust Host/manager tests cover cancellation without creating or clearing existing worlds and explicit confirmation before apply. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; cancel/reopen is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-03-A3",
@@ -1136,7 +1138,8 @@
       ],
       "level": "L1-L4",
       "criterion": "失败报告部分成功与清理结果，不造假回滚",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: Rust tests cover partial creation failure, idempotent replay, and rollback that removes only ledger-matching unchanged resources while retaining edited/joined resources. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; UI/provider round-trip and rollback interaction are NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-04-A1",
@@ -1150,7 +1153,8 @@
       ],
       "level": "L0-L5",
       "criterion": "没有预装Provider的新机器不会自动运行下载代码",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: tools/pack/export_pack.py and provider-import demo/tests prove a configuration-only archive and no adapter download/execution; runtime preview reports required/optional source states. No clean second-user installation has yet been tested. Evidence: evidence/local/nextgen-2026-10-30/b06-04-sharing-fixtures-20261030.json."
     },
     {
       "id": "B06-04-A2",
@@ -1164,7 +1168,8 @@
       ],
       "level": "L0-L5",
       "criterion": "分享内容不含原机路径/密钥/私有标题",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: sample workday .wcp contains exactly pack.json and the referenced blueprint; static audit found no credential fields or absolute user paths. Two separate users/devices have not yet imported the shared pack. Evidence: evidence/local/nextgen-2026-10-30/b06-04-sharing-fixtures-20261030.json."
     },
     {
       "id": "B06-04-A3",
@@ -1178,7 +1183,8 @@
       ],
       "level": "L0-L5",
       "criterion": "使用者可解释每个缺失区域及其替代方案",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: full/optional-missing/required-missing/no-grant fixtures and planner tests distinguish blocked, degraded and permission-missing cases; manager UI explanation has not been visually verified because current Computer Use state capture fails. Evidence: evidence/local/nextgen-2026-10-30/b06-04-sharing-fixtures-20261030.json."
     },
     {
       "id": "B07-01-A1",

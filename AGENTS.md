@@ -40,3 +40,5 @@ WinCraft uses a per-checkout CodeGraph index for source navigation. The database
 ## 2026-10-26 平台演进交接包
 
 执行入口与机器可读任务账本见 [`docs/strategy/2026-10-26/START_HERE.md`](docs/strategy/2026-10-26/START_HERE.md)。该目录里的新 schema 和 API 均为提案，不能称为协议 0.3 已实现；先核对当前源码、能力表和状态，再按依赖推进。所有新增可选组件/行为先在 host 能力表宣告，并让 Provider SDK 缺能力时失败关闭；不能只靠 JSON Schema 放行。`P-POPUP` 仅保留必要的运行契约摘要，不复制受限技能全文或公开其定位链接。规划包自检只证明规划资产一致，不证明 WinCraft 运行时或 Windows UI 已验收。
+
+配置包 `.wcp` 仍是 `0.4-preview.1` 草案：不得携带 Provider 可执行文件、runtime descriptor、凭据、业务状态或原机坐标，不下载/运行 adapter。Provider 的 capability 是自我声明，不是 grant；权限 grant 只由可信本机管理器在用户批准后写入，generation 变化后必须重新预览。只有本机用户再次确认才能创建新世界；回退只清除与本次内存 ledger 一致且未被后续修改/加入的资源，不能覆盖或回滚用户既有世界。

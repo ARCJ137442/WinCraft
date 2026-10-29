@@ -22,7 +22,9 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 `wincraft-server` 给核心增加连接身份、JSON 消息、鉴权、限额、事件和提供者通道。headless 使用同一个核心，而不是 Python/JS 重写模型。
 
-`0.4-preview.1` 的可选 `provider_inventory` capability 在 `Hub` 内登记每个已认证 Provider 显式提交的有限来源元数据；它只维护内存快照，不持久化业务内容或凭据。登记的 capability 是来源声明，Host 输出的 `grants` 始终为空；读取 inventory 不改变 world membership、read 权限或 lease。每份快照带 `endpoint_id`，调用者必须单独选择/连接其他 Host；Host 不扫描本机进程、浏览器或网络。稳定协议 0.3 的 `world.list` 保持原有 world-only 语义。
+`0.4-preview.1` 的可选 `provider_inventory` capability 在 `Hub` 内登记每个已认证 Provider 显式提交的有限来源元数据；它只维护内存快照，不持久化业务内容或凭据。Provider 注册不得提交 `grants`；Host 快照中的 grants 起始为空，只有本机管理器可在用户批准后，为在线、新鲜且已声明相应 capability 的来源写入临时 grant。grant 会推进 inventory generation、使旧导入计划失效，但本身不加入世界、不授予 scene 读取或写租约。每份快照带 `endpoint_id`，调用者必须单独选择/连接其他 Host；Host 不扫描本机进程、浏览器或网络。稳定协议 0.3 的 `world.list` 保持原有 world-only 语义。
+
+`0.4-preview.1` 还声明可选的 `provider_import` capability；它不是面向外部 Provider 的通用导入 RPC。可信本机管理器解析有界、只含配置与 blueprint 的 `.wcp`，生成带 expiry 和 inventory generation 的只读计划；需要额外 permission 时由本机用户单独批准并重新预览。只有 Ready/Degraded 计划经过明确本机确认才会创建新的 invite-only worlds，并向每个被选来源发送 `world.import.joined` 与单窗独占写租约。Host 不下载或执行 pack 中的 adapter，不覆盖已有世界。导入/回退记录只在内存保留；回退仅清除与记录一致且未被后续修改或加入的世界，其余作为 partial 结果保留。该能力仍是草案，不属于稳定 0.3。
 
 稳定协议 0.3 中 `Engine` 对每个 world 持有一个独占 writer。实验性 `0.4-preview.1` 在单独的 ownership mode 中把 world authority、非重叠 component scopes 与各自的数据 namespace 分开；其他 0.3 world 写入入口在该 mode 失败关闭。Tauri 的可信 operator 仍取得合并快照用于 renderer；外部 session 只读到授权 scope 投影。
 

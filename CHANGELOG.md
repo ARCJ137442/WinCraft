@@ -1,5 +1,11 @@
 # 变更记录
 
+## Unreleased — 配置包运行时接入（2026-10-30）
+
+- 本机世界管理器支持预览并应用声明式 `.wcp`：有界归档检查、来源/权限匹配、显式 grant 后 generation 失效与重新预览、确认后只创建新世界、Provider 定向加入事件以及基于内存 ledger 的两步回退；不替换已有世界，不下载或运行 adapter。
+- Provider import 仅在 `0.4-preview.1` capability 表中声明，Provider SDK 缺少能力/claim 时失败关闭；稳定协议 0.3 不增加导入方法。
+- B06-01/02 在各自验收范围 VERIFIED；B06-03/04 的自动化/静态部分已实现，但管理器原生 UI 和两个用户环境的分享验收仍 PARTIAL/NOT_RUN。当前本地候选构建不是已发布发行版。
+
 ## Unreleased — provider inventory 与 Agent 会话卡片（2026-10-29）
 
 - 增加 opt-in `0.4-preview.1` endpoint-local `provider.inventory.register/list`；来源自报 capability 不产生 grants，跨 Host 发现由调用者显式选择并鉴权。

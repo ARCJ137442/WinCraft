@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 
 PROTOCOL_VERSION = "0.3"
 COMPONENT_LEASES_PREVIEW_PROTOCOL = "0.4-preview.1"
+PROVIDER_IMPORT_SCHEMA_VERSION = "draft-2026-10-26"
 SUPPORTED_PROTOCOLS = (PROTOCOL_VERSION, COMPONENT_LEASES_PREVIEW_PROTOCOL)
 
 class RpcError(RuntimeError):
@@ -226,7 +227,8 @@ class Client:
                              root_structure_patch: bool = False,
                              state_slots_version: int | None = None,
                              state_slot_schema_types: tuple[str, ...] = (),
-                             provider_inventory_version: int | None = None) -> None:
+                             provider_inventory_version: int | None = None,
+                             provider_import_version: int | None = None) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -242,6 +244,7 @@ class Client:
         state_slots = component_leases.get("state_slots") \
             if isinstance(component_leases, dict) else None
         provider_inventory = capabilities.get("provider_inventory")
+        provider_import = capabilities.get("provider_import")
         component_set = {value for value in advertised_components if isinstance(value, str)} \
             if isinstance(advertised_components, list) else set()
         shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
@@ -313,6 +316,24 @@ class Client:
             or provider_inventory.get("version") != provider_inventory_version
         ):
             missing.append(f"provider_inventory:preview-v{provider_inventory_version}")
+        if provider_import_version is not None and (
+            self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+            or not isinstance(provider_import, dict)
+            or provider_import.get("status") != "preview"
+            or provider_import.get("version") != provider_import_version
+        ):
+            missing.append(f"provider_import:preview-v{provider_import_version}")
+        if provider_import_version is not None and isinstance(provider_import, dict):
+            if provider_import.get("schema_version") != PROVIDER_IMPORT_SCHEMA_VERSION:
+                missing.append(f"provider_import_schema:{PROVIDER_IMPORT_SCHEMA_VERSION}")
+            if provider_import.get("event") != "world.import.joined":
+                missing.append("provider_import_event:world.import.joined")
+            if provider_import.get("required_claim") != "world.import.accept":
+                missing.append("provider_import_claim:world.import.accept")
+            if provider_import.get("writer_scope") != "exclusive_world_lease":
+                missing.append("provider_import_writer_scope:exclusive_world_lease")
+            if provider_import.get("requires_local_confirmation") is not True:
+                missing.append("provider_import_confirmation:local_operator")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
 
@@ -332,6 +353,72 @@ class Client:
         """Fail closed unless the draft provider inventory capability is advertised."""
         self.require_capabilities(provider_inventory_version=version)
 
+    def require_provider_import(self, version: int = 1) -> None:
+        """Fail closed unless this Host supports user-confirmed provider import events."""
+        self.require_capabilities(
+            provider_inventory_version=1,
+            provider_import_version=version,
+        )
+
+    def validate_provider_import_event(self, message: Any) -> dict[str, Any]:
+        """Validate a user-confirmed, Host-directed world import invitation."""
+        self.require_provider_import()
+        if not isinstance(message, Mapping) or message.get("event") != "world.import.joined":
+            raise RuntimeError("Host event is not a provider import invitation")
+        data = message.get("data")
+        if not isinstance(data, Mapping):
+            raise RuntimeError("Provider import invitation data is invalid")
+        if (
+            data.get("kind") != "wincraft.provider-import.event"
+            or data.get("schema_version") != PROVIDER_IMPORT_SCHEMA_VERSION
+            or data.get("host_id") != self.ready.get("host_id")
+        ):
+            raise RuntimeError("Provider import invitation belongs to an unsupported or different Host")
+        for field in ("pack_id", "pack_version", "blueprint_id", "blueprint_world_id"):
+            value = data.get(field)
+            if not isinstance(value, str) or not value or len(value) > 256:
+                raise RuntimeError(f"Provider import invitation has an invalid {field}")
+        binding_ids = data.get("binding_ids")
+        permissions = data.get("approved_permissions")
+        if (
+            not isinstance(binding_ids, list)
+            or not binding_ids
+            or len(binding_ids) > 64
+            or not all(isinstance(value, str) and value for value in binding_ids)
+            or len(set(binding_ids)) != len(binding_ids)
+            or not isinstance(permissions, list)
+            or len(permissions) > 64
+            or not all(isinstance(value, str) and value for value in permissions)
+            or len(set(permissions)) != len(permissions)
+        ):
+            raise RuntimeError("Provider import binding or permission list is invalid")
+        world = data.get("world")
+        lease = data.get("lease")
+        if not isinstance(world, Mapping) or not isinstance(lease, Mapping):
+            raise RuntimeError("Provider import invitation lacks its world snapshot or lease")
+        try:
+            world_id = uuid.UUID(str(world.get("id")))
+            writer_id = uuid.UUID(str(world.get("writer")))
+            lease_id = uuid.UUID(str(lease.get("id")))
+        except (ValueError, AttributeError) as error:
+            raise RuntimeError("Provider import invitation has invalid world or lease identity") from error
+        epoch = world.get("epoch")
+        lease_epoch = lease.get("epoch")
+        if (
+            world_id.int == 0
+            or writer_id.int == 0
+            or lease_id.int == 0
+            or not isinstance(epoch, int)
+            or isinstance(epoch, bool)
+            or epoch < 1
+            or lease_epoch != epoch
+            or world.get("system") is not False
+            or not isinstance(world.get("scene"), Mapping)
+            or not isinstance(world.get("window"), Mapping)
+        ):
+            raise RuntimeError("Provider import world/lease state is inconsistent")
+        return dict(data)
+
     def _validate_provider_inventory_endpoint(self, result: Any) -> dict[str, Any]:
         """Bind an inventory snapshot to the endpoint selected by the hello handshake."""
         expected_endpoint_id = self.ready.get("host_id")
@@ -346,6 +433,14 @@ class Client:
     async def register_provider_inventory(self, registration: Mapping[str, Any]) -> dict[str, Any]:
         """Register bounded source metadata; registration never grants source capabilities."""
         self.require_provider_inventory()
+        providers = registration.get("providers")
+        if isinstance(providers, list) and any(
+            isinstance(provider, Mapping)
+            and isinstance(provider.get("capabilities"), list)
+            and "world.import.accept" in provider["capabilities"]
+            for provider in providers
+        ):
+            self.require_provider_import()
         result = await self.call("provider.inventory.register", dict(registration))
         return self._validate_provider_inventory_endpoint(result)
 

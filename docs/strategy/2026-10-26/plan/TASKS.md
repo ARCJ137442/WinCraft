@@ -2,7 +2,7 @@
 {
   "doc_id": "plan__TASKS",
   "title": "实施任务与可验收交付（生成视图）",
-  "updated_at": "2026-10-29",
+  "updated_at": "2026-10-30",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -922,12 +922,15 @@ cargo test --workspace
 
 **输入：** 当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。
 
-**定位：** `crates/wincraft-server/src/hub.rs`；`crates/wincraft-server/src/self_provider.rs`
+**定位：** `crates/wincraft-server/src/hub.rs`；`crates/wincraft-server/src/self_provider.rs`；`crates/wincraft-server/src/pack_import.rs`；`crates/wincraft-server/src/provider_inventory.rs`；`crates/wincraft-server/Cargo.toml`；`examples/python/client.py`；`skills/wincraft-provider/SKILL.md`；`docs/strategy/2026-10-26/contracts/`；`apps/desktop/src/locales/`；`tests/`
 
 ### 实施
-1. 计划携带inventory版本和用户确认，执行前重验
-2. 建立本次创建资源账本，失败只清理本次资源
-3. 明确布局覆盖优先级和抖动抑制，不宣称多窗口OS事务原子
+1. 解析有界 .wcp；拒绝额外/危险归档条目、未知字段、动态业务数据和原机坐标；adapter 引用永不执行
+2. 从当前经授权 Provider inventory 生成带 generation、来源新鲜度和过期时间的只读计划；匹配/缺失/歧义/权限分别显示
+3. 本机用户可以只批准一个来源已声明的 permission；grant 改变 generation 并使旧计划失效，需重新预览
+4. 只有用户确认 Ready/Degraded 计划后，才创建新的 blueprint worlds；Provider 必须显式声明 world.import.accept，且每窗最多一个不同写入者
+5. 跟踪本次创建的 world ID、revision、epoch、scene/window 与 membership；失败/回退只清理未被后续更改或接入的资源
+6. 不向已有窗口同步更新；同一预览重复提交幂等；原生窗口逐个应用并报告，不声称多窗口 OS 事务原子
 
 ### 验收
 - **B06-03-A1** 环境变化使旧计划失效并重新规划
@@ -937,12 +940,12 @@ cargo test --workspace
 **验证层/目录：** L1-L4 / current WinCraft checkout
 
 ```text
-npm run check
-python scripts/check_contracts.py
-cargo test --workspace
+npm run check:local
+cargo test -p wincraft-server
+npm run desktop:build
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED
+**说明：** npm run check:local and the focused Host capability test pass; they verify code/behavior layers but not the Windows manager UI.；A fresh current-source release was built on 2026-10-30 and launched with --open-manager. Computer Use listed the manager window but state capture failed twice with GetCursorPos access denied; no UI action was injected.；Keep A1-A3 PARTIAL until the user or a working authorized UI automation path verifies preview, grant/re-preview, apply, provider join/action receipt, cancellation and confirmed rollback against synthetic data.
 
 **回滚：** 按本次资源账本释放新增资源；不恢复旧epoch或覆盖用户后续修改。
 
@@ -969,12 +972,11 @@ cargo test --workspace
 **验证层/目录：** L0-L5 / current WinCraft checkout
 
 ```text
-npm run check
-python scripts/check_contracts.py
-cargo test --workspace
+npm run check:local
+python tools/pack/export_pack.py --pack docs/strategy/2026-10-26/examples/packs/workday.pack.json --output <new-local-output>.wcp
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED
+**说明：** The full/optional-missing/required-missing/no-grant inventory examples and configuration-only workday pack are validated by the offline contract checker and planner suite.；A synthetic .wcp was exported and inspected locally: only pack.json and the declared blueprint are present; no credentials or absolute user paths were found.；Two independent user environments, provider absence without auto-download/execute, explicit local reauthorization, and visible fallback explanation remain manual NOT_RUN items.
 
 **回滚：** 删除合成导入世界和测试包，保留用户来源安装。
 

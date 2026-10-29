@@ -2,8 +2,8 @@
   "updated_at": "2026-10-30",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B08-02 remains BLOCKED; its Codex App subgoal is STALLED per the user's 2026-10-29 stage-checkpoint instruction. One real Agent-fed snapshot reached the Provider and the read-only local-state fallback supplies bounded metadata, but persistent relay, release UI and UUID deep-link acceptance remain open. B08-03 A1 five-category entry/version/unknown matrix, A6 synthetic view and A7 prior release interaction are PASS; A8 remains PARTIAL, live CLI/Claude Tauri protocol smokes are verified, and A2-A5 plus current pixel UI are still open. B09-02 remains BLOCKED pending Android source selection/permission.",
-  "next_action": "Keep the Codex App subgoal STALLED; do not retry Computer Use after the repeated failed window activation. Resume that subgoal only when a verified authorized persistent Agent-to-Provider relay and a usable native UI/deep-link verification path are available. Continue independent handoff tasks and current-release manual gates. Keep local Desktop status unknown without an authoritative source and output unavailable without a UUID-matched Agent message. For B09-02, wait for the user-selected Android app/source and notification permission. B06-03 has no runtime plan preview/apply/rollback implementation and is the next independent implementation target after the draft pack/planner contract checks.",
+  "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence and a fresh current-source release; UI acceptance remains PARTIAL after Computer Use capture failure. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 remains BLOCKED/Codex App STALLED per user checkpoint; B09-02 remains BLOCKED pending explicit source selection.",
+  "next_action": "First complete B06-03 manager UI acceptance against the current-source release when a usable authorized UI capture path is available (or the user completes the documented manual flow). Then finish B06-04 two-independent-environment import/re-authorization acceptance. Keep B06-03 and B06-04 PARTIAL until those gates pass. Continue independent handoff tasks; keep Codex App STALLED and B09-02 waiting for explicit source selection.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -31,8 +31,8 @@
     "B05-03": "IMPLEMENTED_UNVERIFIED",
     "B05-04": "IMPLEMENTED_UNVERIFIED",
     "B06-01": "VERIFIED",
-    "B06-02": "IMPLEMENTED_UNVERIFIED",
-    "B06-03": "NOT_STARTED",
+    "B06-02": "VERIFIED",
+    "B06-03": "IMPLEMENTED_UNVERIFIED",
     "B06-04": "IMPLEMENTED_UNVERIFIED",
     "B07-01": "VERIFIED",
     "B07-02": "VERIFIED",
@@ -63,7 +63,9 @@
     "TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权，未做在线请求。其他Harness、TouchAI和跨设备适配仍未实现，不用mock冒充。",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
     "Codex App subgoal STALLED per user instruction after the stage checkpoint: one real authorized snapshot reached the Provider, but no persistent relay exists; the local fallback provides bounded title/project metadata, cannot prove runtime status, and only shows UUID-matched Agent output. Current release visible UI and native UUID click/load remain unverified after Computer Use window activation failed.",
-    "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization."
+    "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization.",
+    "B06-03 current-source release built and launched, but Computer Use screenshot/accessibility capture failed twice with GetCursorPos access denied (0x80070005); no UI input was sent. World Manager preview/apply/provider receipt/rollback UI remains NOT_RUN.",
+    "B06-04: static pack/fixture checks pass, but the required two independent user environments and fresh-install no-auto-download/re-authorization flow have not been exercised."
   ],
   "completed_this_delivery": [
     "本机基线与锁文件/环境核对，UI/Rust/Python/交接包检查",
@@ -132,7 +134,11 @@
     "2026-10-29: Stage commit 32c8eee was pushed to exomind-team/WinCraft/dev; GitHub Actions run 40876095509 passed Windows npm run check:local in 11m42s. This confirms automated source checks only; native tray, pixel and live Codex App connector acceptance remain separate.",
     "2026-10-29: Added read-only Codex Desktop state_*.sqlite fallback keyed by originator=Codex Desktop. It supplies bounded title/project metadata, marks missing runtime status unknown, and reads only a rollout tail with matching session_meta UUID for agent_message/task_complete output. A real authorized Codex App list/read snapshot was sent once to the current live Provider; source data reached the Provider and the temporary world was cleaned. No snapshot text was persisted. Current local state smoke found no Agent message in the four recent bounded rollout tails; release UI pixels and UUID deep-link acceptance remain NOT_RUN after Computer Use returned failed to activate captured window.",
     "2026-10-30: B08-03-A1 PASS. Added the five planned Harness categories and separate Codex CLI/App rows with local version checks and explicit unknown/NOT_RUN boundaries: Codex CLI 0.138.0-alpha.7, Claude Code 2.1.302, OpenCode 1.1.14, omp 15.5.7; dsh --version failed, so DSH version remains unknown. Only Codex CLI and Claude Code have current read-only source smoke; other adapters are not claimed as integrated.",
-    "2026-10-30: B06-01 VERIFIED at L1-L2 after adding tools/pack/export_pack.py and 10 passing exporter tests (one symlink test skipped because local Windows denied symlink creation). The exporter writes only the validated pack and blueprint JSON to a new deterministic .wcp file; B06-02 remains IMPLEMENTED_UNVERIFIED as a draft pure planner without Host integration."
+    "B06-01 draft exporter and archive contract verified at L1-L2: deterministic .wcp contains only manifest and referenced blueprint; negative artifact/path cases pass.",
+    "B06-03: added bounded .wcp runtime preview, explicit permission grant/replan, locally confirmed world creation, selected-provider join event, idempotent submission and ledger-guarded partial rollback; full local checks pass, release UI remains open.",
+    "B06-03 fresh Windows Tauri release built from current source (13,277,184 bytes; SHA-256 AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0) and launched with --open-manager; Computer Use native UI capture remains NOT_RUN after two exact GetCursorPos access-denied failures.",
+    "Reconciled B06-01/B06-02 task states to VERIFIED based on their PASS acceptance rows and completed handoff suite; runtime Host import remains separately tracked as B06-03.",
+    "B06-04 static share slice: four synthetic inventory cases, sanitized configuration-only .wcp fixture, no-adapter-execution checks and Chinese two-environment acceptance steps are now recorded; real second-user/device run remains open."
   ],
   "history": [
     null,
@@ -171,7 +177,14 @@
     "2026-10-30: Commit 115cdc8e2de20b1f5749819a4cc5816542c819c7 added explicit live-source selection and was pushed to exomind-team/WinCraft/dev. GitHub Actions run 40914976329 passed on Windows in 7m59s; local HEAD and origin/dev match. The release executable was unchanged, and pixel/native UI acceptance remains NOT_RUN.",
     "2026-10-30: B08-03-A1 Harness version/source matrix recorded from local version-only checks. Codex CLI/Claude live read-only evidence retained; OpenCode, DSH and omp adapters remain NOT_RUN. DSH version unresolved because its local version command failed.",
     "2026-10-30: B02-03-A1 recheck is PARTIAL. A fresh Computer Use selection of the release manager failed to inject a click after re-enumeration with exact error 'foreground window did not report a process id'; no more UI input was sent. The synthetic tutorial provider process exited before its window was observed. A non-operator world.list showed zero visible worlds but could not verify invite-only/system-world cleanup. Full lesson flow remains unverified.",
-    "2026-10-30: B06-01-A1/A2/A3 and B06-02-A1/A2/A3 pass at draft-contract/pure-planner L0-L2 after 37 handoff tests. Added explicit pack artifact rejection and missing-provider explanation regressions. Core/server/Tauri audit found no plan preview/apply/rollback entry point; B06-03 was corrected from IMPLEMENTED_UNVERIFIED to NOT_STARTED.",
-    "2026-10-30: B06-01 draft export is VERIFIED at L1-L2 with tools/pack/export_pack.py; the archive includes only the pack and referenced blueprint and never installs or executes an adapter. B06-02 planner/demo still lacks Host integration and remains IMPLEMENTED_UNVERIFIED; B06-03 runtime apply/rollback is NOT_STARTED."
+    "2026-10-30 earlier audit checkpoint (superseded later the same day): B06-01/A1-A3 and B06-02/A1-A3 had draft-contract/pure-planner L0-L2 evidence; the Rust Host importer was not yet implemented, so B06-03 was then corrected to NOT_STARTED. Later implementation/build evidence follows in this history.",
+    "2026-10-30: B06-03 implementation landed in the worktree. npm run check:local exited 0 on Windows 11 (UI 28, contracts PASS, Rust fmt/check/workspace tests/clippy PASS, Python 176 with 1 Windows symlink skip, 27 provider references PASS); targeted Host capability test exited 0 after asserting schema, claim, writer scope and local-confirmation fields. B06-03-A1/A2/A3 are PARTIAL at L1-L2; fresh release UI remains NOT_RUN.",
+    "2026-10-30: B06-03 current-source desktop:build exited 0; release EXE SHA-256 AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0. Exact old host was gracefully closed first; fresh manager launched. Computer Use listed the manager but state capture failed twice with GetCursorPos access denied (0x80070005), and no UI action was sent. A1-A3 remain PARTIAL.",
+    "2026-10-30: Reconciled B06-01 and B06-02 task states with their existing PASS acceptance rows and completed handoff suite; both are VERIFIED at their L1-L2 draft-export/pure-planner scope. B06-03 now owns the separate runtime import/apply/rollback integration and remains IMPLEMENTED_UNVERIFIED/PARTIAL pending release UI acceptance.",
+    "2026-10-30: After reconciling B06-01/B06-02 to VERIFIED and regenerating plan views, npm run check:local was rerun and exited 0 (UI 28, Python 176 with 1 Windows symlink skip, 27 provider references PASS; Rust workspace and offline contract checks pass).",
+    "2026-10-30: B06-04 static fixtures checked: full, optional-missing, required-missing and no-grant inventories are indexed; planner and export tests pass. A synthetic workday .wcp contains only pack.json and its declared blueprint (1,109 bytes; no credential keys or absolute user paths). B06-04-A1/A2/A3 are PARTIAL pending two-user/re-authorization and native manager checks.",
+    "2026-10-30: B06-04 guide added a reproducible synthetic two-binding pack flow and explicit two-user acceptance steps; generated workday-synthetic.wcp contains only pack.json and its declared blueprint. npm run check:local exited 0 after plan regeneration. Two separate user environments remain NOT_RUN.",
+    "2026-10-30: Current-source Tauri release passed a real local Python SDK hello/capability smoke: 0.4-preview.1 provider_inventory/provider_import fields matched the preview contract. No inventory write or world creation was issued; manager UI remains NOT_RUN after Computer Use access-denied.",
+    "2026-10-30: Direct handoff suite recheck after B06-04 fixture/guide updates ran 40 tests and passed; current inventory examples include full, optional-missing, required-missing and no-grant cases."
   ]
 }

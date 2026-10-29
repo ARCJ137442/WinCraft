@@ -295,6 +295,102 @@ class CapabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
             client.require_provider_inventory()
 
+    def test_provider_import_requires_preview_contract_and_is_absent_from_stable_protocol(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1},
+            "provider_import": {
+                "status": "preview",
+                "version": 1,
+                "schema_version": "draft-2026-10-26",
+                "event": "world.import.joined",
+                "required_claim": "world.import.accept",
+                "writer_scope": "exclusive_world_lease",
+                "requires_local_confirmation": True,
+            },
+        })
+        with self.assertRaisesRegex(RuntimeError, "provider_import:preview-v1"):
+            client.require_provider_import()
+
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.require_provider_import()
+
+        client.ready["capabilities"]["provider_import"]["event"] = "world.create"
+        with self.assertRaisesRegex(RuntimeError, "provider_import_event:world.import.joined"):
+            client.require_provider_import()
+
+    def test_provider_import_event_is_bound_to_host_and_matching_world_lease_epoch(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1},
+            "provider_import": {
+                "status": "preview",
+                "version": 1,
+                "schema_version": "draft-2026-10-26",
+                "event": "world.import.joined",
+                "required_claim": "world.import.accept",
+                "writer_scope": "exclusive_world_lease",
+                "requires_local_confirmation": True,
+            },
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.ready["host_id"] = "00000000-0000-4000-8000-000000000001"
+        event = {
+            "event": "world.import.joined",
+            "data": {
+                "kind": "wincraft.provider-import.event",
+                "schema_version": "draft-2026-10-26",
+                "host_id": client.ready["host_id"],
+                "pack_id": "fixture.pack",
+                "pack_version": "1.0",
+                "blueprint_id": "fixture.blueprint",
+                "blueprint_world_id": "agents",
+                "binding_ids": ["agents"],
+                "approved_permissions": ["activity.read"],
+                "world": {
+                    "id": "00000000-0000-4000-8000-000000000010",
+                    "epoch": 2,
+                    "writer": "00000000-0000-4000-8000-000000000020",
+                    "system": False,
+                    "scene": {},
+                    "window": {},
+                },
+                "lease": {"id": "00000000-0000-4000-8000-000000000030", "epoch": 2},
+            },
+        }
+        self.assertEqual(client.validate_provider_import_event(event)["pack_id"], "fixture.pack")
+
+        foreign = json.loads(json.dumps(event))
+        foreign["data"]["host_id"] = "00000000-0000-4000-8000-000000000099"
+        with self.assertRaisesRegex(RuntimeError, "different Host"):
+            client.validate_provider_import_event(foreign)
+
+        stale_epoch = json.loads(json.dumps(event))
+        stale_epoch["data"]["lease"]["epoch"] = 1
+        with self.assertRaisesRegex(RuntimeError, "inconsistent"):
+            client.validate_provider_import_event(stale_epoch)
+
+    def test_provider_import_requires_preview_contract_and_is_absent_from_stable_protocol(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1},
+            "provider_import": {
+                "status": "preview",
+                "version": 1,
+                "schema_version": "draft-2026-10-26",
+                "event": "world.import.joined",
+                "required_claim": "world.import.accept",
+                "writer_scope": "exclusive_world_lease",
+                "requires_local_confirmation": True,
+            },
+        })
+        with self.assertRaisesRegex(RuntimeError, "provider_import:preview-v1"):
+            client.require_provider_import()
+
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        client.require_provider_import()
+
+        client.ready["capabilities"]["provider_import"]["event"] = "world.create"
+        with self.assertRaisesRegex(RuntimeError, "provider_import_event:world.import.joined"):
+            client.require_provider_import()
+
     def test_inventory_rpc_helpers_fail_before_sending_when_capability_is_missing(self):
         client = self.client_with({})
         client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
@@ -309,6 +405,26 @@ class CapabilityTests(unittest.TestCase):
             asyncio.run(client.register_provider_inventory({"kind": "synthetic"}))
         with self.assertRaisesRegex(RuntimeError, "provider_inventory:preview-v1"):
             asyncio.run(client.list_provider_inventory())
+        self.assertEqual(calls, [])
+
+    def test_provider_import_claim_is_not_registered_without_import_capability(self):
+        client = self.client_with({
+            "provider_inventory": {"status": "preview", "version": 1},
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        calls = []
+
+        async def unexpected_call(method, params):
+            calls.append((method, params))
+            return {}
+
+        client.call = unexpected_call
+        registration = {
+            "kind": "wincraft.inventory.registration",
+            "providers": [{"capabilities": ["world.import.accept"]}],
+        }
+        with self.assertRaisesRegex(RuntimeError, "provider_import:preview-v1"):
+            asyncio.run(client.register_provider_inventory(registration))
         self.assertEqual(calls, [])
 
     def test_inventory_rpc_helpers_use_explicit_methods_after_preview_gate(self):

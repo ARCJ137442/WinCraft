@@ -13,10 +13,12 @@
       "adapter_contract": 1,
       "state": "online",
       "capabilities": [
-        "activity.read"
+        "activity.read",
+        "world.import.accept"
       ],
       "grants": [
-        "activity.read"
+        "activity.read",
+        "world.import.accept"
       ],
       "source_updated_at": "2026-10-26T12:00:00Z",
       "fresh_for_seconds": 60
@@ -29,10 +31,12 @@
       "adapter_contract": 1,
       "state": "online",
       "capabilities": [
-        "metrics.read"
+        "metrics.read",
+        "world.import.accept"
       ],
       "grants": [
-        "metrics.read"
+        "metrics.read",
+        "world.import.accept"
       ],
       "source_updated_at": "2026-10-26T12:00:00Z",
       "fresh_for_seconds": 60
@@ -45,10 +49,12 @@
       "adapter_contract": 1,
       "state": "online",
       "capabilities": [
-        "activity.read"
+        "activity.read",
+        "world.import.accept"
       ],
       "grants": [
-        "activity.read"
+        "activity.read",
+        "world.import.accept"
       ],
       "source_updated_at": "2026-10-26T12:00:00Z",
       "fresh_for_seconds": 60

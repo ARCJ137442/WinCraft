@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-30",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "execution_policy": "依赖满足后按纵向闭环逐批执行；源码目标需再次核对。",
   "tasks": [
@@ -1500,7 +1500,7 @@
       "id": "B06-01",
       "batch": "B06",
       "title": "配置包格式与无秘密导出",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B01-03",
         "B02-02"
@@ -1562,7 +1562,7 @@
       "id": "B06-02",
       "batch": "B06",
       "title": "纯规划器与有界环境适配",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B06-01"
       ],
@@ -1621,7 +1621,7 @@
       "id": "B06-03",
       "batch": "B06",
       "title": "计划预览、提交与回退",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B06-02",
         "B01-02"
@@ -1633,13 +1633,25 @@
       ],
       "targets": [
         "crates/wincraft-server/src/hub.rs",
-        "crates/wincraft-server/src/self_provider.rs"
+        "crates/wincraft-server/src/self_provider.rs",
+        "crates/wincraft-server/src/pack_import.rs",
+        "crates/wincraft-server/src/provider_inventory.rs",
+        "crates/wincraft-server/Cargo.toml",
+        "examples/python/client.py",
+        "skills/wincraft-provider/SKILL.md",
+        "docs/strategy/2026-10-26/contracts/",
+        "apps/desktop/src/locales/",
+        "tests/"
       ],
       "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",
+      "scenario": "Given 本机管理器预览一个校验通过的 .wcp 和当前经授权 Provider inventory；When 清单 generation 变化或用户取消；Then 旧计划失效/不产生资源，既有世界保持不变。When 用户批准缺少的声明权限并重新预览、再明确应用；Then 仅为该 Host 创建新世界并给被选 Provider 一个单窗写租约。When 部分创建失败或用户回退；Then 报告移除与保留资源，只移除仍与导入账本完全一致的世界。",
       "implementation_steps": [
-        "计划携带inventory版本和用户确认，执行前重验",
-        "建立本次创建资源账本，失败只清理本次资源",
-        "明确布局覆盖优先级和抖动抑制，不宣称多窗口OS事务原子"
+        "解析有界 .wcp；拒绝额外/危险归档条目、未知字段、动态业务数据和原机坐标；adapter 引用永不执行",
+        "从当前经授权 Provider inventory 生成带 generation、来源新鲜度和过期时间的只读计划；匹配/缺失/歧义/权限分别显示",
+        "本机用户可以只批准一个来源已声明的 permission；grant 改变 generation 并使旧计划失效，需重新预览",
+        "只有用户确认 Ready/Degraded 计划后，才创建新的 blueprint worlds；Provider 必须显式声明 world.import.accept，且每窗最多一个不同写入者",
+        "跟踪本次创建的 world ID、revision、epoch、scene/window 与 membership；失败/回退只清理未被后续更改或接入的资源",
+        "不向已有窗口同步更新；同一预览重复提交幂等；原生窗口逐个应用并报告，不声称多窗口 OS 事务原子"
       ],
       "acceptance": [
         {
@@ -1657,14 +1669,15 @@
       ],
       "verification_level": "L1-L4",
       "verification_commands": [
-        "npm run check",
-        "python scripts/check_contracts.py",
-        "cargo test --workspace"
+        "npm run check:local",
+        "cargo test -p wincraft-server",
+        "npm run desktop:build"
       ],
       "verification_workdir": "current WinCraft checkout",
       "verification_instructions": [
-        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
-        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+        "npm run check:local and the focused Host capability test pass; they verify code/behavior layers but not the Windows manager UI.",
+        "A fresh current-source release was built on 2026-10-30 and launched with --open-manager. Computer Use listed the manager window but state capture failed twice with GetCursorPos access denied; no UI action was injected.",
+        "Keep A1-A3 PARTIAL until the user or a working authorized UI automation path verifies preview, grant/re-preview, apply, provider join/action receipt, cancellation and confirmed rollback against synthetic data."
       ],
       "priority": "P1",
       "evidence_required": [
@@ -1675,13 +1688,13 @@
         "回滚验证结果"
       ],
       "rollback": "按本次资源账本释放新增资源；不恢复旧epoch或覆盖用户后续修改。",
-      "write_scope": "仅列出的模块及相关测试/契约/文档；先读实际文件再定位，不凭路径猜实现。"
+      "write_scope": "仅列出的 Host、Provider SDK/Skill、配置包契约、管理器文案和相关测试/文档；不修改外部业务 Provider 或用户数据。先读实际文件再定位，不凭路径猜实现。"
     },
     {
       "id": "B06-04",
       "batch": "B06",
       "title": "配置分享与新机器验收",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B06-03"
       ],
@@ -1719,14 +1732,14 @@
       ],
       "verification_level": "L0-L5",
       "verification_commands": [
-        "npm run check",
-        "python scripts/check_contracts.py",
-        "cargo test --workspace"
+        "npm run check:local",
+        "python tools/pack/export_pack.py --pack docs/strategy/2026-10-26/examples/packs/workday.pack.json --output <new-local-output>.wcp"
       ],
       "verification_workdir": "current WinCraft checkout",
       "verification_instructions": [
-        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
-        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+        "The full/optional-missing/required-missing/no-grant inventory examples and configuration-only workday pack are validated by the offline contract checker and planner suite.",
+        "A synthetic .wcp was exported and inspected locally: only pack.json and the declared blueprint are present; no credentials or absolute user paths were found.",
+        "Two independent user environments, provider absence without auto-download/execute, explicit local reauthorization, and visible fallback explanation remain manual NOT_RUN items."
       ],
       "priority": "P1",
       "evidence_required": [
@@ -2046,8 +2059,8 @@
     {
       "id": "B08-02",
       "batch": "B08",
-    "title": "Claude Code、Codex CLI 与 Codex APP 三源适配",
-    "status": "IN_PROGRESS",
+      "title": "Claude Code、Codex CLI 与 Codex APP 三源适配",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "B08-01",
         "B00-03"
@@ -2059,21 +2072,21 @@
         "R074"
       ],
       "targets": [
-      "examples/integrations/agent-board/live_sources.py",
-      "examples/integrations/agent-board/live_provider.py",
-      "examples/integrations/agent-board/global_overview.py"
+        "examples/integrations/agent-board/live_sources.py",
+        "examples/integrations/agent-board/live_provider.py",
+        "examples/integrations/agent-board/global_overview.py"
       ],
-    "inputs": "Claude Code agents CLI、Codex CLI app-server状态库和明确授权的Codex App connector；不能自动读取任意session日志。",
+      "inputs": "Claude Code agents CLI、Codex CLI app-server状态库和明确授权的Codex App connector；不能自动读取任意session日志。",
       "implementation_steps": [
-      "将Claude Code、Codex CLI本机状态库与Codex App connector建成三个独立source_id和单独状态通道",
-      "Claude Code使用agents --json；Codex CLI app-server thread/list始终启用useStateDbOnly=true；Codex App只接收授权Agent提供的connector快照",
-      "为每个来源保留独立健康、新鲜度、缺失身份与重连边界；失败不得把其他来源标陈旧",
-      "对重新启动、多实例、子会话和connector桥接做发现与重建测试；不扫描任意会话日志"
+        "将Claude Code、Codex CLI本机状态库与Codex App connector建成三个独立source_id和单独状态通道",
+        "Claude Code使用agents --json；Codex CLI app-server thread/list始终启用useStateDbOnly=true；Codex App只接收授权Agent提供的connector快照",
+        "为每个来源保留独立健康、新鲜度、缺失身份与重连边界；失败不得把其他来源标陈旧",
+        "对重新启动、多实例、子会话和connector桥接做发现与重建测试；不扫描任意会话日志"
       ],
       "acceptance": [
         {
           "id": "B08-02-A1",
-        "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲"
+          "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲"
         },
         {
           "id": "B08-02-A2",
@@ -2082,14 +2095,14 @@
         {
           "id": "B08-02-A3",
           "criterion": "适配失败仅对应来源stale"
-      },
-      {
-        "id": "B08-02-A4",
-        "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开"
-      },
-      {
-        "id": "B08-02-A5",
-        "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界"
+        },
+        {
+          "id": "B08-02-A4",
+          "criterion": "Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开"
+        },
+        {
+          "id": "B08-02-A5",
+          "criterion": "来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界"
         }
       ],
       "verification_level": "L2-L5",
@@ -2176,10 +2189,10 @@
           "id": "B08-03-A7",
           "criterion": "Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。",
           "level": "L3-L4"
-      },
-      {
-        "id": "B08-03-A8",
-        "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露"
+        },
+        {
+          "id": "B08-03-A8",
+          "criterion": "总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露"
         }
       ],
       "verification_level": "L1-L5",
@@ -2195,7 +2208,7 @@
         "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
         "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED",
         "B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.",
-      "Read-only status aggregation may enumerate the explicitly selected source inventories; keep approval/write capability NOT_RUN until separately authorized. Codex App data still requires the authorized Agent bridge."
+        "Read-only status aggregation may enumerate the explicitly selected source inventories; keep approval/write capability NOT_RUN until separately authorized. Codex App data still requires the authorized Agent bridge."
       ],
       "priority": "P1",
       "evidence_required": [

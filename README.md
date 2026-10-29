@@ -26,6 +26,7 @@
 | 窗口 | 位置、尺寸、默认置顶（可配置）、显隐、装饰、任务栏、调整大小、点击穿透、人类/提供者几何控制；透明度默认 80%，文本默认可选，标题栏文字不可选；屏幕内恢复 |
 | 交互 | 组件动作回到当前写入者；等待/确认/失败/超时；拒绝过时界面的动作 |
 | 自用管理器 | 宿主内部提供者生成的管理与设置世界；共享同一组件树和渲染器；明确的本地接管/解除接管/关闭 |
+| 配置包（draft） | `0.4-preview.1` 本机管理器可预览、授权并应用配置型 `.wcp`；只创建新世界，不携带 Provider 二进制或业务状态，不下载/执行 adapter；当前原生导入 UI 仍需人工验收 |
 | 网络 | 统一健康检查与鉴权发现、协议握手、双向 WebSocket；非本机提供者可通过 SSH 隧道接入 |
 | 开发支撑 | 可独立运行的 headless Rust 宿主；Python 示例、真实协议验收探针、只读外心桥接；Windows 自动化验证 CI |
 
@@ -70,6 +71,7 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 ## Agent 提供者教程
 
 为 WinCraft 接入自动化程序或 Agent，从 [`skills/wincraft-provider/SKILL.md`](skills/wincraft-provider/SKILL.md) 开始。教程按“加入世界 → 搭建声明式场景 → 动态更新 → 回执动作 → 租约恢复”逐步讲解，并链接到真实 Python 示例。
+配置包 `.wcp` 是可分享的蓝图/需求声明，不封存提供者；导出与本机管理器导入边界见 [`tools/pack/README.md`](tools/pack/README.md)。
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
 Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
 

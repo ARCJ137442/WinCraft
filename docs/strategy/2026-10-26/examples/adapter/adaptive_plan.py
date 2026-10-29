@@ -141,8 +141,8 @@ def check_submission_eligibility(plan_result: dict[str, Any], *, pack_id: str,
         reasons.append("pack_mismatch")
     if plan_result.get("inventory_generation") != inventory_generation:
         reasons.append("inventory_generation_changed")
-    if plan_result.get("status") != "ready":
-        reasons.append("plan_not_ready")
+    if plan_result.get("status") not in ("ready", "degraded"):
+        reasons.append("plan_not_applicable")
     if plan_result.get("mutates_host") is not False:
         reasons.append("plan_mutation_flag_invalid")
     if plan_result.get("requires_confirmation") is not True or not confirmed:

@@ -1,8 +1,15 @@
+#[cfg(test)]
+use crate::pack_import::parse_loaded_json;
+use crate::pack_import::{
+    build_preview, load_pack_file, materialize_world, ImportBatch, ImportReceipt, ImportedWorld,
+    ImportedWorldSummary, PackImportRegistry, PackPreview, PlanStatus, RollbackReceipt,
+};
 use crate::provider_inventory::{ProviderInventoryRegistration, ProviderInventoryRegistry};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
+    path::Path,
     sync::{Arc, Mutex, MutexGuard},
     time::Instant,
 };
@@ -169,12 +176,35 @@ mod capability_tests {
         let hub = Hub::new(false);
         let stable_capabilities = hub.capabilities_for(ProtocolVersion::Stable03);
         assert!(stable_capabilities.get("provider_inventory").is_none());
+        assert!(stable_capabilities.get("provider_import").is_none());
         let preview_capabilities = hub.capabilities_for(ProtocolVersion::ComponentLeasesPreview01);
         assert_eq!(
             preview_capabilities["provider_inventory"]["status"],
             "preview"
         );
         assert_eq!(preview_capabilities["provider_inventory"]["version"], 1);
+        assert_eq!(preview_capabilities["provider_import"]["status"], "preview");
+        assert_eq!(preview_capabilities["provider_import"]["version"], 1);
+        assert_eq!(
+            preview_capabilities["provider_import"]["schema_version"],
+            "draft-2026-10-26"
+        );
+        assert_eq!(
+            preview_capabilities["provider_import"]["event"],
+            "world.import.joined"
+        );
+        assert_eq!(
+            preview_capabilities["provider_import"]["required_claim"],
+            "world.import.accept"
+        );
+        assert_eq!(
+            preview_capabilities["provider_import"]["writer_scope"],
+            "exclusive_world_lease"
+        );
+        assert_eq!(
+            preview_capabilities["provider_import"]["requires_local_confirmation"],
+            true
+        );
 
         let invitation = {
             let mut core = hub.lock();
@@ -581,6 +611,7 @@ pub struct Hub {
     state_updates: watch::Sender<u64>,
     shortcuts: Arc<Mutex<ShortcutRegistry>>,
     provider_inventory: Arc<Mutex<ProviderInventoryRegistry>>,
+    pack_imports: Arc<Mutex<PackImportRegistry>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -595,6 +626,33 @@ fn decode<T: DeserializeOwned>(v: Value) -> Result<T> {
 }
 fn encode<T: Serialize>(v: T) -> Result<Value> {
     serde_json::to_value(v).map_err(|e| Fault::new("INTERNAL", e.to_string()))
+}
+
+fn import_world_unchanged(core: &Engine, expected: &ImportedWorld) -> bool {
+    core.worlds.get(&expected.world_id).is_some_and(|world| {
+        world.revision == expected.expected_revision
+            && world.epoch == expected.expected_epoch
+            && world.window == expected.window
+            && world.scene == expected.scene
+            && world.writer.as_ref().map(|writer| writer.session) == expected.expected_writer
+            && world.readers.keys().copied().collect::<BTreeSet<_>>() == expected.expected_readers
+            && !world.write_blocked
+            && world.ownership_mode == OwnershipMode::ExclusiveWorld
+            && world.scopes.is_empty()
+            && world.authority.is_none()
+            && world.actions.is_empty()
+    })
+}
+
+fn imported_world_summaries(worlds: &[ImportedWorld]) -> Vec<ImportedWorldSummary> {
+    worlds
+        .iter()
+        .map(|world| ImportedWorldSummary {
+            blueprint_world_id: world.blueprint_world_id.clone(),
+            world_id: world.world_id,
+            title: world.title.clone(),
+        })
+        .collect()
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -737,6 +795,7 @@ impl Hub {
             state_updates,
             shortcuts: Arc::new(Mutex::new(ShortcutRegistry::default())),
             provider_inventory: Arc::new(Mutex::new(ProviderInventoryRegistry::default())),
+            pack_imports: Arc::new(Mutex::new(PackImportRegistry::default())),
         }
     }
     pub fn lock(&self) -> MutexGuard<'_, Engine> {
@@ -915,6 +974,524 @@ impl Hub {
     pub fn read_scopes(&self, session: Uuid, id: Uuid) -> Result<Vec<ScopeSnapshot>> {
         self.lock().read_scopes(session, id)
     }
+
+    fn require_local_operator(core: &Engine, session: Uuid) -> Result<()> {
+        if !core.sessions.contains_key(&session) {
+            return Err(Fault::new("SESSION_GONE", "session missing"));
+        }
+        if !core.operator(session) {
+            return Err(Fault::new(
+                "FORBIDDEN",
+                "local operator confirmation is required for configuration imports",
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn preview_pack_file(
+        &self,
+        session: Uuid,
+        path: &Path,
+        selections: BTreeMap<String, String>,
+    ) -> Result<PackPreview> {
+        let loaded = load_pack_file(path)?;
+        self.preview_loaded_pack(session, loaded, selections)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn preview_pack_values(
+        &self,
+        session: Uuid,
+        pack: Value,
+        blueprint: Value,
+        selections: BTreeMap<String, String>,
+    ) -> Result<PackPreview> {
+        let loaded = parse_loaded_json(pack, blueprint)?;
+        self.preview_loaded_pack(session, loaded, selections)
+    }
+
+    fn preview_loaded_pack(
+        &self,
+        session: Uuid,
+        loaded: crate::pack_import::LoadedPack,
+        selections: BTreeMap<String, String>,
+    ) -> Result<PackPreview> {
+        let core = self.lock();
+        Self::require_local_operator(&core, session)?;
+        let now_ms = self.now();
+        let inventory = self
+            .provider_inventory
+            .lock()
+            .expect("provider inventory mutex poisoned")
+            .snapshot(self.host_id, now_ms, OffsetDateTime::now_utc())?;
+        let inventory = encode(inventory)?;
+        let pending = build_preview(
+            loaded,
+            inventory,
+            selections,
+            OffsetDateTime::now_utc(),
+            now_ms,
+        )?;
+        let preview = pending.preview.clone();
+        self.pack_imports
+            .lock()
+            .expect("pack import registry mutex poisoned")
+            .insert_plan(pending, now_ms);
+        Ok(preview)
+    }
+
+    /// A local operator explicitly grants only permissions named by the selected pack binding.
+    /// The grant changes inventory generation, so the previous preview is invalidated.
+    pub(crate) fn authorize_pack_binding(
+        &self,
+        session: Uuid,
+        preview_id: Uuid,
+        binding_id: &str,
+        instance_id: &str,
+    ) -> Result<u64> {
+        let core = self.lock();
+        Self::require_local_operator(&core, session)?;
+        let now_ms = self.now();
+        let now = OffsetDateTime::now_utc();
+        let mut inventory = self
+            .provider_inventory
+            .lock()
+            .expect("provider inventory mutex poisoned");
+        let snapshot = inventory.snapshot(self.host_id, now_ms, now)?;
+        let plan = self
+            .pack_imports
+            .lock()
+            .expect("pack import registry mutex poisoned")
+            .plan(preview_id)
+            .ok_or_else(|| {
+                Fault::new("PLAN_NOT_FOUND", "configuration preview expired or missing")
+            })?;
+        if plan.expires_at_mono_ms <= now_ms
+            || snapshot.generation() != plan.preview.inventory_generation
+        {
+            self.pack_imports
+                .lock()
+                .expect("pack import registry mutex poisoned")
+                .cancel(preview_id);
+            return Err(Fault::new(
+                "STALE_PLAN",
+                "provider inventory changed; review a new preview",
+            ));
+        }
+        let binding = plan
+            .preview
+            .bindings
+            .iter()
+            .find(|binding| binding.binding_id == binding_id)
+            .ok_or_else(|| Fault::new("INVALID_GRANT", "binding is not part of this preview"))?;
+        let candidate = binding
+            .candidates
+            .iter()
+            .find(|candidate| candidate.instance_id == instance_id)
+            .ok_or_else(|| Fault::new("INVALID_GRANT", "provider is not a compatible candidate"))?;
+        if candidate.missing_permissions.is_empty() {
+            return Err(Fault::new(
+                "NO_PERMISSION_REQUIRED",
+                "this provider has no pending permission request",
+            ));
+        }
+        let updated = inventory.grant_permissions(
+            instance_id,
+            &candidate.missing_permissions,
+            self.host_id,
+            now_ms,
+            now,
+        )?;
+        self.pack_imports
+            .lock()
+            .expect("pack import registry mutex poisoned")
+            .cancel(preview_id);
+        Ok(updated.generation())
+    }
+
+    pub(crate) fn cancel_pack_preview(&self, session: Uuid, preview_id: Uuid) -> Result<()> {
+        let core = self.lock();
+        Self::require_local_operator(&core, session)?;
+        self.pack_imports
+            .lock()
+            .expect("pack import registry mutex poisoned")
+            .cancel(preview_id);
+        Ok(())
+    }
+
+    pub(crate) fn apply_pack_preview(
+        &self,
+        session: Uuid,
+        preview_id: Uuid,
+        confirmed: bool,
+    ) -> Result<ImportReceipt> {
+        if !confirmed {
+            return Err(Fault::new(
+                "CONFIRMATION_REQUIRED",
+                "explicit local confirmation is required",
+            ));
+        }
+        let now_ms = self.now();
+        let now = OffsetDateTime::now_utc();
+        let mut changed_worlds = Vec::new();
+        let mut directed = Vec::<(Uuid, Value)>::new();
+        let receipt = {
+            // Lock order is core -> inventory -> import ledger, matching the existing dispatch path.
+            let mut core = self.lock();
+            Self::require_local_operator(&core, session)?;
+            let mut inventory = self
+                .provider_inventory
+                .lock()
+                .expect("provider inventory mutex poisoned");
+            let inventory_snapshot = inventory.snapshot(self.host_id, now_ms, now)?;
+            let inventory_value = encode(inventory_snapshot.clone())?;
+            let mut registry = self
+                .pack_imports
+                .lock()
+                .expect("pack import registry mutex poisoned");
+            if let Some(previous) = registry.batch_for_preview(preview_id) {
+                let mut replay = previous.receipt;
+                replay.idempotent_replay = true;
+                return Ok(replay);
+            }
+            let plan = registry.plan(preview_id).ok_or_else(|| {
+                Fault::new("PLAN_NOT_FOUND", "configuration preview expired or missing")
+            })?;
+            if plan.preview.status == PlanStatus::Blocked {
+                return Err(Fault::new(
+                    "PLAN_BLOCKED",
+                    "blocked configuration plans cannot be applied",
+                ));
+            }
+            if plan.expires_at_mono_ms <= now_ms
+                || inventory_snapshot.generation() != plan.preview.inventory_generation
+            {
+                registry.cancel(preview_id);
+                return Err(Fault::new(
+                    "STALE_PLAN",
+                    "provider inventory changed; review a new preview",
+                ));
+            }
+            let current = build_preview(
+                plan.loaded.clone(),
+                inventory_value,
+                plan.selections.clone(),
+                now,
+                now_ms,
+            )?;
+            if current.preview.status == PlanStatus::Blocked
+                || current.preview.status != plan.preview.status
+                || current.preview.bindings != plan.preview.bindings
+            {
+                registry.cancel(preview_id);
+                return Err(Fault::new(
+                    "STALE_PLAN",
+                    "provider eligibility changed; review a new preview",
+                ));
+            }
+            if !matches!(
+                plan.preview.status,
+                PlanStatus::Ready | PlanStatus::Degraded
+            ) {
+                return Err(Fault::new(
+                    "PLAN_BLOCKED",
+                    "blocked configuration plans cannot be applied",
+                ));
+            }
+
+            let locale = self.locale();
+            let prepared_worlds = plan
+                .loaded
+                .blueprint
+                .worlds
+                .iter()
+                .map(|world| {
+                    Ok((
+                        world,
+                        materialize_world(&plan.loaded, world, &plan.preview.bindings, &locale)?,
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let mut created = Vec::new();
+            let mut failure = None;
+            for (blueprint_world, (window, scene)) in prepared_worlds {
+                let created_world = match core.create(
+                    session,
+                    window.clone(),
+                    JoinPolicy::Invite,
+                    false,
+                    false,
+                    now_ms,
+                ) {
+                    Ok(created) => created,
+                    Err(error) => {
+                        failure = Some(error.code);
+                        break;
+                    }
+                };
+                let world_id = created_world.world.id;
+                if let Some(world) = core.worlds.get_mut(&world_id) {
+                    world.scene = scene.clone();
+                    world.touch();
+                    if !self.native_windows {
+                        world.native = NativeReport {
+                            state: "unavailable".into(),
+                            applied_window_revision: None,
+                            error: Some("headless host: no native renderer".into()),
+                        };
+                    }
+                }
+                let initial = core
+                    .worlds
+                    .get(&world_id)
+                    .expect("created world remains in engine");
+                created.push(ImportedWorld {
+                    blueprint_world_id: blueprint_world.id.clone(),
+                    world_id,
+                    title: window.title.clone(),
+                    scene: scene.clone(),
+                    window: window.clone(),
+                    expected_revision: initial.revision,
+                    expected_epoch: initial.epoch,
+                    expected_writer: None,
+                    expected_readers: initial.readers.keys().copied().collect(),
+                });
+
+                let slots: BTreeSet<&str> = blueprint_world
+                    .binding_slots
+                    .iter()
+                    .map(String::as_str)
+                    .collect();
+                let source_instances: BTreeSet<&str> = plan
+                    .preview
+                    .bindings
+                    .iter()
+                    .filter(|binding| slots.contains(binding.binding_id.as_str()))
+                    .filter_map(|binding| binding.provider_instance_id.as_deref())
+                    .collect();
+                if source_instances.len() > 1 {
+                    failure = Some("EXCLUSIVE_WORLD_WRITER_CONFLICT".into());
+                    break;
+                }
+                if let Some(instance_id) = source_instances.iter().next().copied() {
+                    let Some(provider_session) = inventory.session_for_instance(instance_id) else {
+                        failure = Some("PROVIDER_NOT_ONLINE".into());
+                        break;
+                    };
+                    match core.join(
+                        provider_session,
+                        world_id,
+                        Some(&created_world.join_key),
+                        JoinMode::Write,
+                        now_ms,
+                    ) {
+                        Ok(joined) => {
+                            let lease = joined.lease.clone();
+                            if let Some(expected) = created.last_mut() {
+                                if let Some(world) = core.worlds.get(&world_id) {
+                                    expected.expected_revision = world.revision;
+                                    expected.expected_epoch = world.epoch;
+                                    expected.expected_writer = Some(provider_session);
+                                    expected.expected_readers =
+                                        world.readers.keys().copied().collect();
+                                }
+                            }
+                            let binding_ids = plan
+                                .preview
+                                .bindings
+                                .iter()
+                                .filter(|binding| {
+                                    binding.provider_instance_id.as_deref() == Some(instance_id)
+                                })
+                                .map(|binding| binding.binding_id.clone())
+                                .collect::<Vec<_>>();
+                            let approved_permissions = plan
+                                .preview
+                                .bindings
+                                .iter()
+                                .filter(|binding| {
+                                    binding.provider_instance_id.as_deref() == Some(instance_id)
+                                })
+                                .flat_map(|binding| binding.requested_permissions.iter().cloned())
+                                .collect::<BTreeSet<_>>();
+                            directed.push((
+                                provider_session,
+                                json!({
+                                    "event":"world.import.joined",
+                                    "data":{
+                                        "kind":"wincraft.provider-import.event",
+                                        "schema_version":"draft-2026-10-26",
+                                        "host_id":self.host_id,
+                                        "pack_id":plan.loaded.pack.id,
+                                        "pack_version":plan.loaded.pack.version,
+                                        "blueprint_world_id":blueprint_world.id,
+                                        "binding_ids":binding_ids,
+                                        "approved_permissions":approved_permissions,
+                                        "world":joined.world,
+                                        "lease":lease
+                                    }
+                                }),
+                            ));
+                        }
+                        Err(error) => {
+                            failure = Some(error.code);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some(failure_code) = failure {
+                // No provider receives an invitation until every world has been created.
+                directed.clear();
+                let mut cleanup_removed = Vec::new();
+                let mut retained_worlds = Vec::new();
+                for created_world in created.iter().rev() {
+                    if import_world_unchanged(&core, created_world) {
+                        match core.operator_destroy(session, created_world.world_id) {
+                            Ok(_) => cleanup_removed.push(created_world.world_id),
+                            Err(_) => retained_worlds.push(created_world.world_id),
+                        }
+                    } else {
+                        retained_worlds.push(created_world.world_id);
+                    }
+                }
+                let batch_id = Uuid::new_v4();
+                let status = if retained_worlds.is_empty() {
+                    "failed_rolled_back"
+                } else {
+                    "partial"
+                };
+                let receipt = ImportReceipt {
+                    batch_id,
+                    preview_id,
+                    pack_id: plan.loaded.pack.id.clone(),
+                    pack_version: plan.loaded.pack.version.clone(),
+                    status: status.into(),
+                    idempotent_replay: false,
+                    failure_code: Some(failure_code),
+                    cleanup_removed,
+                    retained_worlds,
+                    bindings: plan.preview.bindings.clone(),
+                    worlds: imported_world_summaries(&created),
+                };
+                registry.cancel(preview_id);
+                registry.record_batch(ImportBatch {
+                    receipt: receipt.clone(),
+                    expected_worlds: created,
+                });
+                receipt
+            } else {
+                let batch_id = Uuid::new_v4();
+                let receipt = ImportReceipt {
+                    batch_id,
+                    preview_id,
+                    pack_id: plan.loaded.pack.id.clone(),
+                    pack_version: plan.loaded.pack.version.clone(),
+                    status: "applied".into(),
+                    idempotent_replay: false,
+                    failure_code: None,
+                    cleanup_removed: Vec::new(),
+                    retained_worlds: Vec::new(),
+                    bindings: plan.preview.bindings.clone(),
+                    worlds: imported_world_summaries(&created),
+                };
+                changed_worlds = created.iter().map(|world| world.world_id).collect();
+                registry.cancel(preview_id);
+                registry.record_batch(ImportBatch {
+                    receipt: receipt.clone(),
+                    expected_worlds: created,
+                });
+                receipt
+            }
+        };
+        for world_id in changed_worlds {
+            self.changed(world_id);
+        }
+        for (target, message) in directed {
+            let _ = self.events.send(Notice::Directed(target, message));
+        }
+        Ok(receipt)
+    }
+
+    pub(crate) fn rollback_pack_import(
+        &self,
+        session: Uuid,
+        batch_id: Uuid,
+    ) -> Result<RollbackReceipt> {
+        let mut deleted = Vec::new();
+        let result = {
+            let mut core = self.lock();
+            Self::require_local_operator(&core, session)?;
+            let mut registry = self
+                .pack_imports
+                .lock()
+                .expect("pack import registry mutex poisoned");
+            let mut batch = registry.batch(batch_id).ok_or_else(|| {
+                Fault::new(
+                    "IMPORT_BATCH_NOT_FOUND",
+                    "configuration import is unavailable",
+                )
+            })?;
+            if batch.receipt.status == "rolled_back" {
+                return Ok(RollbackReceipt {
+                    batch_id,
+                    status: "rolled_back".into(),
+                    removed: batch.receipt.cleanup_removed,
+                    already_missing: Vec::new(),
+                    retained: batch.receipt.retained_worlds,
+                });
+            }
+            let mut removed = Vec::new();
+            let mut already_missing = Vec::new();
+            let mut retained = Vec::new();
+            for world in &batch.expected_worlds {
+                if !core.worlds.contains_key(&world.world_id) {
+                    already_missing.push(world.world_id);
+                } else if import_world_unchanged(&core, world) {
+                    match core.operator_destroy(session, world.world_id) {
+                        Ok(members) => {
+                            removed.push(world.world_id);
+                            deleted.push((world.world_id, members));
+                        }
+                        Err(_) => retained.push(world.world_id),
+                    }
+                } else {
+                    retained.push(world.world_id);
+                }
+            }
+            let status = if retained.is_empty() {
+                "rolled_back"
+            } else {
+                "partial_rollback"
+            };
+            batch.receipt.status = status.into();
+            batch.receipt.cleanup_removed = removed.clone();
+            batch.receipt.retained_worlds = retained.clone();
+            registry.update_batch(batch);
+            RollbackReceipt {
+                batch_id,
+                status: status.into(),
+                removed,
+                already_missing,
+                retained,
+            }
+        };
+        for (world_id, members) in deleted {
+            self.deleted(world_id, members);
+        }
+        Ok(result)
+    }
+
+    pub(crate) fn recent_pack_imports(&self, session: Uuid) -> Result<Vec<ImportReceipt>> {
+        let core = self.lock();
+        Self::require_local_operator(&core, session)?;
+        Ok(self
+            .pack_imports
+            .lock()
+            .expect("pack import registry mutex poisoned")
+            .recent_batches())
+    }
     pub fn capabilities(&self) -> Value {
         self.capabilities_for(ProtocolVersion::Stable03)
     }
@@ -988,6 +1565,15 @@ impl Hub {
                 "list_method":"provider.inventory.list",
                 "scope":"authenticated_provider_sessions",
                 "registration_grants":"never_accepted"
+            });
+            capabilities["provider_import"] = json!({
+                "status":"preview",
+                "version":1,
+                "schema_version":"draft-2026-10-26",
+                "event":"world.import.joined",
+                "required_claim":"world.import.accept",
+                "writer_scope":"exclusive_world_lease",
+                "requires_local_confirmation":true
             });
         }
         capabilities
@@ -1432,5 +2018,356 @@ impl Hub {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod pack_import_tests {
+    use super::*;
+    use crate::self_provider::ManagerProvider;
+    use serde_json::json;
+    use time::format_description::well_known::Rfc3339;
+    use wincraft_core::{ProtocolVersion, WindowSpec};
+
+    fn pack(required: bool, permissions: &[&str]) -> Value {
+        json!({
+            "kind":"wincraft.pack.draft",
+            "schema_version":"draft-2026-10-26",
+            "id":"test.import-pack",
+            "version":"1.0",
+            "title":{"zh-CN":"测试配置包","en-US":"Test configuration pack"},
+            "bindings":[{
+                "id":"agents",
+                "required":required,
+                "provider_types":["agent-board"],
+                "capabilities":["activity.read","world.import.accept"],
+                "permissions":permissions,
+                "min_adapter_contract":1
+            }],
+            "blueprint":"blueprints/test.json",
+            "fallback_policy":"explain_missing",
+            "adapter":null
+        })
+    }
+
+    fn blueprint(worlds: usize) -> Value {
+        json!({
+            "kind":"wincraft.blueprint.draft",
+            "schema_version":"draft-2026-10-26",
+            "id":"test.blueprint",
+            "worlds":(0..worlds).map(|index|json!({
+                "id":format!("world-{index}"),
+                "title":{"zh-CN":format!("测试世界 {index}")},
+                "binding_slots":["agents"],
+                "layout_hint":"stack",
+                "scene":{"root":{"id":"root","kind":"stack","children":[
+                    {"id":"title","kind":"text","props":{"text":format!("测试世界 {index}")}}
+                ]}}
+            })).collect::<Vec<_>>()
+        })
+    }
+
+    fn source_registration(instance: &str, generation: u64, now: &str) -> Value {
+        json!({
+            "kind":"wincraft.inventory.registration",
+            "schema_version":"draft-2026-10-29",
+            "generation":generation,
+            "observed_at":now,
+            "valid_for_seconds":60,
+            "providers":[{
+                "source_id":"source.agents",
+                "source_instance_id":instance,
+                "provider_type":"agent-board",
+                "display_name":"Agent board",
+                "adapter_contract":1,
+                "state":"online",
+                "capabilities":["activity.read","world.import.accept"],
+                "source_updated_at":now,
+                "fresh_for_seconds":45
+            }]
+        })
+    }
+
+    fn add_source(hub: &Hub, instance: &str, generation: u64) -> Uuid {
+        let session = hub
+            .lock()
+            .register_with_protocol(
+                format!("provider-{instance}"),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap();
+        let now = time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+        hub.dispatch(
+            session,
+            "provider.inventory.register",
+            source_registration(instance, generation, &now),
+        )
+        .unwrap();
+        session
+    }
+
+    fn world_count(hub: &Hub) -> usize {
+        hub.lock().worlds.len()
+    }
+
+    #[test]
+    fn inventory_change_invalidates_preview_before_any_world_is_created() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        add_source(&hub, "instance-a", 1);
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(true, &[]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(preview.status, PlanStatus::Ready);
+        add_source(&hub, "instance-b", 1);
+        let error = hub
+            .apply_pack_preview(manager.session, preview.preview_id, true)
+            .unwrap_err();
+        assert_eq!(error.code, "STALE_PLAN");
+        assert_eq!(world_count(&hub), 1);
+    }
+
+    #[test]
+    fn cancelling_preview_preserves_existing_worlds_and_does_not_apply() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        let existing = hub
+            .dispatch(
+                manager.session,
+                "world.create",
+                json!({"window":{"title":"existing"},"join_policy":"invite","claim":false}),
+            )
+            .unwrap()["world"]["id"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(false, &[]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(preview.status, PlanStatus::Degraded);
+        hub.cancel_pack_preview(manager.session, preview.preview_id)
+            .unwrap();
+        assert_eq!(
+            hub.apply_pack_preview(manager.session, preview.preview_id, true)
+                .unwrap_err()
+                .code,
+            "PLAN_NOT_FOUND"
+        );
+        assert_eq!(world_count(&hub), 2);
+        assert_eq!(
+            hub.renderer_snapshot(existing.parse().unwrap())
+                .unwrap()
+                .window
+                .title,
+            "existing"
+        );
+    }
+
+    #[test]
+    fn confirmation_creates_new_worlds_and_assigns_only_the_selected_provider() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        let provider = add_source(&hub, "instance-a", 1);
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(true, &[]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(preview.status, PlanStatus::Ready);
+        let initial = world_count(&hub);
+        assert_eq!(
+            hub.apply_pack_preview(manager.session, preview.preview_id, false)
+                .unwrap_err()
+                .code,
+            "CONFIRMATION_REQUIRED"
+        );
+        assert_eq!(world_count(&hub), initial);
+        let mut notices = hub.subscribe();
+        let receipt = hub
+            .apply_pack_preview(manager.session, preview.preview_id, true)
+            .unwrap();
+        assert_eq!(receipt.status, "applied");
+        assert_eq!(receipt.worlds.len(), 1);
+        assert_eq!(world_count(&hub), initial + 1);
+        let world_id = receipt.worlds[0].world_id;
+        let snapshot = hub.renderer_snapshot(world_id).unwrap();
+        assert_eq!(snapshot.writer, Some(provider));
+        assert!(serde_json::to_string(&snapshot.scene)
+            .unwrap()
+            .contains("测试世界 0"));
+        assert!(matches!(
+            notices.try_recv(),
+            Ok(Notice::Directed(target, ref event))
+                if target == provider && event["event"] == "world.import.joined"
+        ));
+
+        let replay = hub
+            .apply_pack_preview(manager.session, preview.preview_id, true)
+            .unwrap();
+        assert!(replay.idempotent_replay);
+        assert_eq!(world_count(&hub), initial + 1);
+    }
+
+    #[test]
+    fn permission_requires_a_separate_local_approval_and_repreview() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        let provider = add_source(&hub, "instance-a", 1);
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(true, &["activity.read"]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(preview.status, PlanStatus::Blocked);
+        assert_eq!(
+            preview.bindings[0].candidates[0].missing_permissions,
+            vec!["activity.read"]
+        );
+        hub.authorize_pack_binding(manager.session, preview.preview_id, "agents", "instance-a")
+            .unwrap();
+        assert_eq!(
+            hub.apply_pack_preview(manager.session, preview.preview_id, true)
+                .unwrap_err()
+                .code,
+            "PLAN_NOT_FOUND"
+        );
+        let updated = hub
+            .preview_pack_values(
+                manager.session,
+                pack(true, &["activity.read"]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(updated.status, PlanStatus::Ready);
+        let receipt = hub
+            .apply_pack_preview(manager.session, updated.preview_id, true)
+            .unwrap();
+        assert_eq!(
+            hub.renderer_snapshot(receipt.worlds[0].world_id)
+                .unwrap()
+                .writer,
+            Some(provider)
+        );
+    }
+
+    #[test]
+    fn provider_without_import_claim_cannot_be_selected_or_receive_a_world_lease() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        let provider = hub
+            .lock()
+            .register_with_protocol(
+                "provider-without-import-event".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap();
+        let now = time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap();
+        let mut registration = source_registration("instance-no-import", 1, &now);
+        registration["providers"][0]["capabilities"] = json!(["activity.read"]);
+        hub.dispatch(provider, "provider.inventory.register", registration)
+            .unwrap();
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(true, &[]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        assert_eq!(preview.status, PlanStatus::Blocked);
+        assert_eq!(preview.bindings[0].status, "missing");
+        assert_eq!(
+            hub.apply_pack_preview(manager.session, preview.preview_id, true)
+                .unwrap_err()
+                .code,
+            "PLAN_BLOCKED"
+        );
+        assert_eq!(hub.lock().worlds.len(), 1);
+    }
+
+    #[test]
+    fn mid_apply_failure_reports_cleanup_without_removing_existing_worlds() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        {
+            let mut core = hub.lock();
+            for index in 0..14 {
+                core.create(
+                    manager.session,
+                    WindowSpec {
+                        title: format!("existing-{index}"),
+                        ..WindowSpec::default()
+                    },
+                    JoinPolicy::Invite,
+                    false,
+                    false,
+                    hub.now(),
+                )
+                .unwrap();
+            }
+        }
+        assert_eq!(world_count(&hub), 15);
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(false, &[]),
+                blueprint(2),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        let receipt = hub
+            .apply_pack_preview(manager.session, preview.preview_id, true)
+            .unwrap();
+        assert_eq!(receipt.status, "failed_rolled_back");
+        assert_eq!(receipt.failure_code.as_deref(), Some("LIMIT"));
+        assert_eq!(receipt.cleanup_removed.len(), 1);
+        assert!(receipt.retained_worlds.is_empty());
+        assert_eq!(world_count(&hub), 15);
+    }
+
+    #[test]
+    fn rollback_preserves_worlds_that_a_user_or_provider_changed() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).unwrap();
+        let preview = hub
+            .preview_pack_values(
+                manager.session,
+                pack(false, &[]),
+                blueprint(1),
+                BTreeMap::new(),
+            )
+            .unwrap();
+        let receipt = hub
+            .apply_pack_preview(manager.session, preview.preview_id, true)
+            .unwrap();
+        let world_id = receipt.worlds[0].world_id;
+        hub.lock()
+            .operator_visibility(manager.session, world_id, false)
+            .unwrap();
+        let rollback = hub
+            .rollback_pack_import(manager.session, receipt.batch_id)
+            .unwrap();
+        assert_eq!(rollback.status, "partial_rollback");
+        assert_eq!(rollback.retained, vec![world_id]);
+        assert!(hub.renderer_snapshot(world_id).is_ok());
     }
 }

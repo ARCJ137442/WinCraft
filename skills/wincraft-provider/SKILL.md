@@ -91,9 +91,11 @@ inventory = await client.list_provider_inventory()
 
 Registration accepts bounded source ID/instance ID, type, display label, adapter version,
 source state, claimed capabilities, freshness timestamp, and TTL. The schema rejects
-unknown fields; a Provider cannot submit `grants`. The Host returns an empty `grants`
-list, so registration and listing do not authorize a source operation, join a world, or
-obtain a lease. Treat `capabilities` as source claims and check `grants` separately.
+unknown fields; a Provider cannot submit `grants`. The Host initially returns an empty
+`grants` list. Only an explicit local operator action can add a host-owned grant, and a
+Provider refresh preserves it only for the same source instance and still-declared
+capability. Registration and listing never authorize a world join or create a lease.
+Treat `capabilities` as source claims; only `grants` reflect local approval.
 
 Each inventory response includes its `endpoint_id`. An Agent may query multiple endpoints
 only when each descriptor was explicitly selected and authenticated; do not discover
@@ -101,6 +103,31 @@ endpoints by scanning processes, files, browser profiles, or the LAN. `state` re
 online/offline/degraded, while `source_updated_at` and `fresh_for_seconds` carry freshness.
 The registry is in-memory and is rebuilt after Host restart. Stable 0.3 providers continue
 to use `world.list`; the Host omits `provider_inventory` from their capability table.
+
+### User-confirmed configuration import event (0.4-preview.1)
+
+A provider that can accept a manager-created world may opt in by adding the declared
+`world.import.accept` capability to its inventory and calling
+`client.require_provider_import(version=1)` first. The Host advertises this optional event
+only when it also advertises the provider-inventory preview. Older Providers and Stable
+Protocol 0.3 do not receive the event.
+
+After the local user reviews a configuration plan, separately approves any missing
+declared permissions, and confirms **Apply**, the Host may send the selected Provider a
+targeted `world.import.joined` event. The event schema is
+[`provider-import-event.schema.json`](../../docs/strategy/2026-10-26/contracts/provider-import-event.schema.json).
+Validate the envelope with `client.validate_provider_import_event(message)` before using
+its snapshot or lease. It contains a newly created world snapshot and a window-level write
+lease; the Host creates no provider code and does not read business data. The package is
+configuration only, and its `scene.data`, device geometry, previous leases, credentials,
+and host/session identities are not imported.
+
+Use only the approved permissions listed in that event. Keep the lease in memory, never
+log it or place it in a package, and stop using it after disconnect, expiry, or local
+takeover. One window still has only one writer; plans that resolve different writers for
+the same window are blocked. A stale inventory generation requires a new preview and a
+new user confirmation. Adapters remain unexecuted. Providers that cannot handle this event
+must not claim `world.import.accept`.
 
 ### 2. Build the first scene
 
@@ -295,6 +322,9 @@ at the original installation's configuration or put source values in evidence.
 ## Guided examples
 
 - `examples/python/focus_demo.py` — first provider and dynamic components.
+- `examples/python/pack_provider_demo.py` — synthetic provider inventory and the optional
+  user-confirmed `world.import.joined` flow; it updates the imported world and leaves it
+  intact on exit.
 - `examples/python/trafficmonitor_provider.py` — live values from the local
   TrafficMonitor bridge, when its companion plugin is loaded.
 - For the plugin-backed Windows setup, staging boundary, and local run steps, follow

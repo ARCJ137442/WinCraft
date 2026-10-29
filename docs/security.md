@@ -20,6 +20,8 @@ host token 仍是粗粒度接入凭证，不是成熟多租户身份体系。持
 
 客户端不知道宿主函数名就能任意执行的模式不存在。组件 action 是不透明业务标识，仅回传对应提供者。提供者业务执行的安全由提供者处理，宿主 action.result 不能证明业务 exactly-once。
 
+`0.4-preview.1` 配置包导入只接受受限声明式 `.wcp`，不承载 Provider 二进制、安装脚本、runtime descriptor、lease 或业务 `Scene.data`；adapter 引用保留为说明，不下载或执行。Provider 注册不能提交 host-owned grants。只有本机管理器在本地用户批准后，才可为在线、新鲜且已声明相应 capability 的 Provider 增加临时 grant；该 grant 仅参与后续 plan eligibility，不取代世界加入、读权限或独占写 lease。授权会推进 inventory generation 并使既有计划失效。创建新世界前还需本机用户再次明确确认；两步回退只清理 ledger 完全匹配且未被修改/加入的资源。计划、grant 和回退 ledger 都不跨宿主重启持久化。
+
 跨应用原生操作走单独的 `native_window_action` 白名单。Obsidian 与 TrafficMonitor 只允许对宿主登记的既有窗口执行枚举窗口操作；Codex App 另有 `codex_thread_navigation` capability，只接受 UUID `thread_id` 并由宿主构造固定 `codex://threads/<UUID>` URI。不会接受任意 URL、shell 命令、可执行路径、AHK 源码或任意代码。Rust/Tauri 宿主校验场景 revision、活动 writer lease、组件 disabled 状态及 capability，并且仅在用户点击时调用 Windows URI 处理器；headless 与非 Windows host 拒绝该 Codex 动作。Windows 接受 URI 只证明跳转请求已交给系统，不证明 Codex App 已加载会话。关闭窗口、手动启动进程、原始坐标/句柄和自动动作不属于此 allowlist。
 
 窗口状态订阅按 WebSocket session 绑定，只能订阅已加入世界的有限类型，并只发出最小状态。读者订阅不授予写权；leave/destroy/disconnect 清理订阅。窗口状态事件不会自动触发本地动作；订阅与动作授权分离。
