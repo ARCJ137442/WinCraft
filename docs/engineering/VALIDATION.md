@@ -384,6 +384,6 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 撤销行为：删除 owner scope 会删除其槽位；删除 reader scope 会移除该 grant 并使槽 revision 前进；父 authority release/disconnect/expiry/rescue 会轮换所有 child generation/join key 并清空槽位。已有 provider 已读取的快照无法被追溯擦除，撤销保证之后的 host read 被拒绝。
 
-CI 回顾：GitHub Actions 在 2026-10-28 连续 9 次于 `npm run check:local` 失败，日志共同显示 Windows 默认 `cp1252` 读取 UTF-8 夹具，以及 LF/CRLF checkout 使翻译源哈希误报；提交 `5e5f7e9` 显式固定 UTF-8 并按文本规范化换行，随后 Actions 更新到 Node 24 运行时。最新已推送运行 `40801981651`、`40726526250` 均成功。B07-03 当前工作区改动尚未进入远端 CI；推送后必须记录对应运行结论。
+CI 回顾：GitHub Actions 在 2026-10-28 连续 9 次于 `npm run check:local` 失败，日志共同显示 Windows 默认 `cp1252` 读取 UTF-8 夹具，以及 LF/CRLF checkout 使翻译源哈希误报；提交 `5e5f7e9` 显式固定 UTF-8 并按文本规范化换行，随后 Actions 更新到 Node 24 运行时。后续运行 `40801981651`、`40726526250` 均成功。本任务提交 `6eda1a0` 的 Windows hosted run `40809546638` 也成功，`npm run check:local` 步骤通过；job 用时 6 分 54 秒。该结果只证明自动检查，不是 Tauri 原生 UI 证据。
 
 脱敏本地证据见 `evidence/local/nextgen-2026-10-29/b07-03-validation.json`。Headless 探针使用合成标识与临时 world；descriptor 仅由 Python client 为连接读取，临时文件在探针后删除，没有被复制或写入证据。回滚边界：移除 preview state slot 方法、capability、SDK helper 和 fixture 即可关闭高级共享；稳定 0.3 与已有 scope 结构能力不变。
