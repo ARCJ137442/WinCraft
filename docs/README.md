@@ -16,6 +16,7 @@
 | 性能预算与测量方案 | [performance.md](performance.md) |
 | 实际验证与限制 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |
 | Windows 验收步骤 | [engineering/ACCEPTANCE.md](engineering/ACCEPTANCE.md) |
+| 当前 alpha release 的中文操作与验收指南 | [release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md) |
 | 风险与修订优先级 | [engineering/KNOWN_LIMITS.md](engineering/KNOWN_LIMITS.md) |
 | 外心迁移和桥接 | [integration-exomind.md](integration-exomind.md) |
 | Obsidian Obsidian Workspace 仪表盘只读投影 | [integration-obsidian.md](integration-obsidian.md) |

@@ -10,8 +10,8 @@
 | `npm run check:local` | PASS | 新增的统一入口退出码 0；覆盖 UI/离线契约、Rust workspace fmt/check/test/Clippy、Python provider 单测与 Skill 引用校验。28 项 UI 测试、78 项 Python 测试、19 个 Skill 引用检查通过。|
 | Rust workspace 子检查 | PASS | `cargo fmt --all -- --check`、`cargo check --workspace --all-targets`、89 项 workspace 测试与 `cargo clippy --workspace --all-targets -- -D warnings` 均由统一入口执行并通过。|
 | CI workflow / `package.json` 语法 | PASS | Windows 验证 workflow 可解析；脚本清单 JSON 可解析。|
-| GitHub Actions Windows CI | PASS | B07-01 源码提交 run `40707844155`（commit `be7a50c`）完整通过，`npm run check:local` 成功，耗时 6m16s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
-| CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 67 个文件、1,505 个节点、4,428 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
+| GitHub Actions Windows CI | PASS | B07-02 源码提交 run `40726526250`（commit `27b8677`）完整通过，`npm run check:local` 成功，耗时约 4m20s；checkout/setup-node/setup-python 均使用 Node 24 action releases。|
+| CodeGraph | PASS（本机索引） | CLI 1.5.0；索引 69 个文件、1,628 个节点、5,196 条边，`status` 显示最新；索引数据库由 `.gitignore` 排除。它只用于导航，不代表代码验证。|
 
 这次只验证工具链、文档与既有自动化测试；没有据此重新宣称桌面 release、托盘、原生窗口、外部业务数据或人工验收通过。逐机命令和环境记录位于默认忽略的 `evidence/local/nextgen-2026-10-28/`。
 
@@ -47,8 +47,11 @@ B07-01 代码提交 `be7a50c` 的 Windows hosted run `40707844155` 随后完整�
 | Python SDK / preview contracts | PASS | capability fail-closed、SDK scope cache/revoke 与 preview Schema 单测通过；结构操作和 root authority patch 均要求 Host 明确宣告能力。|
 | 真实 Rust headless provider probe | PASS | `scope_probe.py` 退出码 0：两个子树独立更新、scope 内 insert/move、过滤 live snapshot、父删除撤销通知、旧 lease 拒绝、稳定 0.3 writer 拒绝；临时世界由探针销毁。|
 | 本机完整 `npm run check:local` | PASS | 退出码 0：28 项 UI 测试、101 项 Rust 测试、86 项 Python 测试、离线合同与 19 个 Provider Skill 引用检查通过；包含 workspace fmt/check/test/Clippy `-D warnings`。|
-| 独立 Tauri release 构建 | PASS | `npm run desktop:build` 退出码 0，构建产物为 `target/release/wincraft-desktop.exe`。本记录提交前还需用该 release 独立启动并跑真实协议 probe。|
-| B07-02 hosted Actions | NOT_RUN（推送前） | 本机最终 gate 通过；当前改动尚未推送，需由下一次 GitHub CLI commit 触发 Windows Actions。|
+| 独立 Tauri release 构建 | PASS | 已从提交 `27b8677` 执行 `npm run desktop:build`，退出码 0；实际 EXE 为 `target/release/wincraft-desktop.exe`，12,060,160 bytes，SHA-256 `572507C80123CB0236E4024BCA2AD51B97E7FD034C1963591287BBD2BE56DB98`，文件版本 `0.1.0-alpha.1`。|
+| 真实 Tauri release 协议 | PASS | 对本次 release 的真实 host 运行 `lease_probe.py`，40 项通过；`scope_probe.py` 也通过 scope 结构事务、过滤 live snapshots、父删除与旧 lease fencing。两条命令退出码均为 0。|
+| Tauri 管理器启动 | PASS（显式启动参数） | `wincraft-desktop.exe --open-manager` 启动后，Computer Use 窗口树显示“窗构 · 世界管理器”及管理器内容。此项不证明默认 tray-only 启动或托盘点击路径。|
+| Tauri descriptor / 正常退出 | PARTIAL | 最终核对时进程已不存在；该运行创建的 AppLocalData descriptor 留存，按进程启动时间确认后删除，内容未读取。托盘菜单正常退出路径仍 `NOT_RUN`。|
+| B07-02 hosted Actions | PASS | Windows run `40726526250` 对提交 `27b8677` 完整执行 `npm run check:local`，退出码 0。|
 
 父 authority 的显式释放、断线、过期与本地 rescue 会推进子 generation/epoch 并轮换 scope grant；已加入读者保留只读资格并收到 stale scope 投影。删除布局父节点则移除对应 scope 与 data namespace，向既有成员发送 `scope.revoked`。稳定协议 0.3 行为未改变；组件动作路由、跨 scope move 与 CAS 状态槽仍未实现。
 

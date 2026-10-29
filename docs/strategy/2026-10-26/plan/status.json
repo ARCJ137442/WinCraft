@@ -1,9 +1,9 @@
 {
   "updated_at": "2026-10-29",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
-  "phase": "active-local-development",
-  "active_batch": "B07-03 after verified B07-02; prepare the requested release EXE and Chinese acceptance guide checkpoint",
-  "next_action": "B07-02 L1-L2 acceptance is verified: scope-local atomic structure operations, root-authority boundary removal, parent revocation fencing, and filtered live scope snapshots pass on core, Rust WebSocket, and a real Rust headless provider probe. Build and independently run the current Tauri release, deliver its EXE and Chinese acceptance guide, then continue with B07-03/B07-04 and remaining NOT_RUN/BLOCKED tasks after the user resumes the explicitly requested checkpoint pause.",
+  "phase": "checkpoint-delivered-pending-resume",
+  "active_batch": "B07-03 after the requested release checkpoint is resumed",
+  "next_action": "The 2026-10-29 checkpoint is ready for delivery: B07-02 is VERIFIED and pushed, the release EXE from commit 27b8677 passed real Tauri protocol probes, and the Chinese acceptance guide is included. The user-requested pause follows this checkpoint. On resume, continue B07-03 then B07-04 and the remaining NOT_RUN/BLOCKED tasks; human tray, visual, click-through and multi-display gates remain listed below.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -56,7 +56,7 @@
     "B11-04": "IMPLEMENTED_UNVERIFIED"
   },
   "blockers": [
-    "Current release still needs human validation of tray manager open/focus, global hide/show, visual topmost ordering, current-build fold/drag, and native dimensions. The latest Computer Use retry enumerated the release manager but activation failed after reselecting it; no UI input was sent.",
+    "Current release still needs manual validation of default tray-only startup and tray-click open/exit, global hide/show, visual topmost ordering, fold/drag dimensions, click-through rescue and multi-display/DPI. The actual release manager was observed through its explicit --open-manager launch and its accessibility tree; the tray-click and normal tray-exit paths remain NOT_RUN.",
     "B03-02 Popup needs real release success/cancel, position reuse, keyboard/IME and concurrent-window acceptance.",
     "Windows UIA/IME/screen-reader, title-collapse sizing, click-through rescue, multiple displays/DPI, sleep/wake and graceful tray Exit need current-release human acceptance.",
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
@@ -112,7 +112,9 @@
     "Fixed nine consecutive Windows GitHub Actions failures by making handoff translation hashes newline-independent and test JSON encoding explicit. Updated official actions to Node 24 releases; latest Windows hosted run passed npm run check:local.",
     "2026-10-28: B07-01 component-lease preview is verified for its L1-L2 acceptance in opt-in protocol 0.4-preview.1: disjoint subtree writers advance independent revisions, stable 0.3 whole-world writers cannot mix into scoped mode, and readers receive only their subtree/data namespace. Core tests and a real Rust WebSocket headless provider probe pass; native UI is outside this task and remains subject to its own gates.",
     "2026-10-29: B07-02 implemented and verified in 0.4-preview.1. Scope-owner insert/remove/replace/move/props patches are atomic and subtree-confined; root authority can move intact boundaries or remove a parent, which removes scoped data and emits scope.revoked. Parent release/disconnect/expiry/rescue fences child generations and epochs. Filtered live scope.snapshot events, client capability gates, Rust WebSocket integration, and real headless scope_probe all pass; action routing and stable 0.3 adoption remain deferred.",
-    "2026-10-29: B07-02 implemented and verified in 0.4-preview.1. Scope-owner insert/remove/replace/move/props patches are atomic and subtree-confined; root authority can move intact boundaries or remove a parent, which removes scoped data and emits scope.revoked. Parent release/disconnect/expiry/rescue fences child generations and epochs. Filtered live scope.snapshot events, client capability gates, Rust WebSocket integration, and real headless scope_probe pass; action routing and stable 0.3 adoption remain deferred."
+    "2026-10-29: B07-02 implemented and verified in 0.4-preview.1. Scope-owner insert/remove/replace/move/props patches are atomic and subtree-confined; root authority can move intact boundaries or remove a parent, which removes scoped data and emits scope.revoked. Parent release/disconnect/expiry/rescue fences child generations and epochs. Filtered live scope.snapshot events, client capability gates, Rust WebSocket integration, and real headless scope_probe pass; action routing and stable 0.3 adoption remain deferred.",
+    "2026-10-29: Built the release EXE from committed source 27b8677; the actual Tauri host passed 40 lease_probe checks and the B07-02 scope probe. Added the Chinese release acceptance guide with remaining manual gates kept NOT_RUN.",
+    "2026-10-29: Checkpoint release deliverable prepared from committed source 27b8677: wincraft-desktop.exe (12,060,160 bytes, SHA-256 572507C80123CB0236E4024BCA2AD51B97E7FD034C1963591287BBD2BE56DB98), real Tauri lease_probe (40 checks) and B07-02 scope probe pass, and docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md documents manual gates. Tray-triggered manager opening/normal tray exit and visual native gates remain NOT_RUN."
   ],
   "history": [
     null,

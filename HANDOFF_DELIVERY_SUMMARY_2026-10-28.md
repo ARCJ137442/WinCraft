@@ -53,7 +53,7 @@ npm run check:local
 
 CodeGraph: `npm run codegraph:init` once per new checkout, then `npm run codegraph:explore -- "<query>"`; after code changes use `npm run codegraph:sync` and confirm `npm run codegraph:status`.
 
-## Stage release artifact
+## Previous stage release artifact (2026-10-28)
 
 - `target/release/wincraft-desktop.exe`
 - 11,806,720 bytes
@@ -82,3 +82,10 @@ These remain `NOT_RUN`, `BLOCKED` or `IMPLEMENTED_UNVERIFIED` in the matrix. The
 ## Checkpoint and rollback
 
 This checkpoint extends the existing public `ARCJ137442/WinCraft` `dev` history from base `24161e2` with position-control, the read-only ExoMind provider prototype, CodeGraph/toolchain setup, and the updated validation/acceptance documentation. The EXE is delivered as a local handoff artifact, not uploaded as a GitHub release. No release tag, installer publication, license change or remote permission change is included. Provider business data and external installations were not modified.
+
+## Follow-up checkpoint (2026-10-29)
+
+- B07-02 is implemented and recorded `VERIFIED`: component owners can atomically modify only their own subtree; root authority can remove child boundaries with namespace cleanup and revoke notifications; parent authority revocation fences child generations/epochs; scope-only readers get filtered live snapshots.
+- Source commit `27b8677d13ee0a2bb885aeda7fac3872db0c7e52` passed Windows Actions run `40726526250`. Local `npm run check:local` passed with 28 UI, 101 Rust, 86 Python tests, contracts, Clippy, and 19 Provider Skill reference checks.
+- The release EXE was rebuilt from that commit at `target/release/wincraft-desktop.exe` (12,060,160 bytes; SHA-256 `572507C80123CB0236E4024BCA2AD51B97E7FD034C1963591287BBD2BE56DB98`). A real Tauri host passed 40 `lease_probe.py` checks and the B07-02 `scope_probe.py`; the manager window appeared under `--open-manager`.
+- Chinese release guide: [`WinCraft 0.1.0-alpha.1 Windows 验收指南`](docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md). Default tray-only startup/click/normal exit, visual z-order, fold/resize pixels, click-through rescue, and multi-display/DPI still need the listed manual checks; those probes were not promoted to PASS.
