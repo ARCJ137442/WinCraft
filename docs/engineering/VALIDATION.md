@@ -178,11 +178,11 @@ python scripts/browser_smoke.py
 
 | 事项 | 状态 | 证据与边界 |
 |---|---|---|
-| 五课 Agent provider 教程 | IMPLEMENTED_UNVERIFIED | `provider_tutorial.py` 只调用公共 client/protocol；五课 fixture 全部通过本地 scene schema，发现课只保留数量与加入策略计数，不保存世界 ID/标题或 scene。普通 provider 实际创建 `system=false` 且 `join_policy=invite` 的世界；未请求 operator 能力。|
-| 教程运行与清理 | PASS（headless） | 真实 Rust host 接受连接、`theme_tokens` 能力门和首个 scene；结束时输出 cleanup confirmed；之后仅按合成教程标题计数，结果为 0。 headless native 状态不可用，因此未验隐藏/恢复像素行为。|
+| 五课 Agent provider 教程 | PASS（release Tauri） | 五课在本地 release Tauri 宿主完整走完；动态插入、动作回执、主题应用/恢复、发现计数均使用合成数据。隐藏后从管理器恢复成功，教程世界结束后清理确认。|
+| 教程运行与清理 | PASS（release Tauri） | release 宿主显示五课窗口；提供者结束后管理器回到 0 个世界，教程原生窗口消失。没有接触真实 Harness 或外心业务数据。|
 | 焦点与待处理动作 | PASS（DOM） | pending 动作期间用 `aria-disabled` 保留键盘焦点，按组件阻止重复提交；回执只在原控件仍持有焦点时恢复，不把焦点从用户后来选中的控件抢回；Chromium smoke 回归通过。|
 | 连接状态可访问性语义 | PASS（DOM） | `#status` 标记 `role=status`、`aria-live=polite`、`aria-atomic=true`；主窗口移除无用途的额外 Tab 停靠，滚动组件区仍可键盘聚焦。|
-| Windows UIA/原生键盘/IME/读屏 | PARTIAL | manager 与 synthetic tutorial 的 UIA 树已读；manager 语言切换可用。Computer Use 对 tutorial 的索引点击报 `coordinate input geometry is unavailable`，重新选择后激活报 `failed to activate captured window`；没有继续键鼠操作，IME/读屏和完整课程保持 NOT_RUN。|
+| Windows UIA/原生键盘/IME/读屏 | PARTIAL | 本轮通过当前 release 的 UIA 树验证教程五课、动态结构、回执、主题、窗口拖动及隐藏/管理器恢复；IME、真实键盘快捷键和读屏仍 NOT_RUN。|
 
 shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use 曾无法激活教程窗，未绕过该限制继续发送键鼠；人工 UIA/IME/读屏/五课验收仍待完成。
 
@@ -423,6 +423,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 | `npm run check:local` | PASS | 28 Node UI、107 Rust workspace、99 Python tests；fmt/check/Clippy、离线契约和 19 个 Skill references 全部通过。|
 | Agent Board provider + Tauri release | PASS | 使用真实 release Tauri host 呈现合成快照；UIA 确认叶会话/等待/断线计数和父子顺序，scene 只有只读组件；没有连接 Harness 数据源。|
 | provider world cleanup | PASS | 自然到期与交互式 PTY Ctrl+C 都确认销毁唯一测试世界，管理器恢复 0 个世界。非 TTY 执行器的强制 Ctrl+C 会直接杀进程并留 stale 世界；该测试副本随后由管理器关闭。|
+| GitHub Actions run `40818791865` | PASS | B08-01 commit `fce1c87` 的 Windows source job 全量 `npm run check:local` 成功，用时 6m03s；不代表真实 Harness adapter 或审批 UI 已验收。 |
 | 真实 Harness adapter / approval flow | NOT_RUN | 留待 B08-02，并要求先有用户选择和授权的具体来源；当前原型不枚举既有会话。|
 
 本地脱敏证据：`evidence/local/nextgen-2026-10-29/b08-01-validation.json`。原始 Harness、Obsidian 笔记和外心业务数据均未读取；本任务 fixture 全部为仓库内合成数据。
