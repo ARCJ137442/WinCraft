@@ -26,6 +26,14 @@ REQUIRED_PATHS = (
     "skills/wincraft-provider/references/trafficmonitor.md",
     "skills/wincraft-provider/references/theme.md",
     "apps/desktop/src/accessibility.ts",
+    "protocol/activity.schema.json",
+    "examples/integrations/agent-board/README.md",
+    "examples/integrations/agent-board/activity_board.py",
+    "examples/integrations/agent-board/provider.py",
+    "protocol/device-message.schema.json",
+    "examples/integrations/device-inbox/README.md",
+    "examples/integrations/device-inbox/device_inbox.py",
+    "examples/integrations/device-inbox/provider.py",
 )
 
 
