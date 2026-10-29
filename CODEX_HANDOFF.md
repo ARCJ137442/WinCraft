@@ -25,6 +25,7 @@
 ## 当前验证与仓库状态（2026-10-29）
 
 - 当前可复现的命令、环境、退出码和验证分层以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。最近一次 `npm run check:local`：28 项 UI、138 项 Python 测试通过，Rust fmt/check/test/Clippy、离线契约和 27 个 Provider Skill 引用检查通过。
+- GitHub Actions Windows run `40852232278`（commit `6a44c00`）的 `npm run check:local` 通过，用时 11m26s；它不证明 Tauri 窗口的像素/人工验收。
 - B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 现有 Claude Code `agents --json`、Codex CLI 本机状态库和 Codex App connector 三种独立来源；Codex App 的真实快照进入 release Provider 与原生深链接仍未验收。
 - B08-03 的单窗口 Global Agent Overview 已在当前 Tauri release 用合成数据完成 L1-L4 UI 验收（首屏/来源列表/详情/回执/清理）；A6/A7 为 `PASS`。Codex App 列表的四字段投影与来源新鲜度已有定向测试和合成 release smoke；真实 connector bridge 仍为 `BLOCKED`，不计作真实会话显示。
 - B09-02 Android 通知和实际设备传输仍为 `NOT_RUN`，等待真机、应用与权限选择。

@@ -515,8 +515,9 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | Claude Code `agents --json` / Codex CLI `thread/list` | PASS（L1-L2） | Claude CLI 查询成功，当前返回 2 个 blocked 后台 Agent；Codex CLI `useStateDbOnly=true` 返回 0 条。本地状态没有扫描 JSONL 或完整会话日志。|
 | Codex App connector 只读枚举 | PASS（来源读取） | `list_threads` 与 `list_projects` 返回独立于 Codex CLI state DB 的 Codex App 数据；active Agent 消息只读限长，不读取完整 turn/tool history。|
 | 三来源规范化、独立健康、新鲜度与 Codex App 四字段行 | PASS（L1-L2） | `tests.test_agent_live_sources` / `tests.test_agent_global_overview` 共 27 项定向测试通过；覆盖 App 标题/状态/项目/最近输出、受限链接、来源失败隔离、上次成功时间与 CLI/App 状态映射。|
-| `npm run check:local` | PASS | 28 Node UI tests、137 Python tests、Rust workspace fmt/check/test/Clippy、离线契约与 Provider Skill 引用校验均通过。|
+| `npm run check:local` | PASS | 28 Node UI tests、138 Python tests、Rust workspace fmt/check/test/Clippy、离线契约与 Provider Skill 引用校验均通过。|
 | `npm run desktop:build` | PASS | 当前 release 产物为 `target/release/wincraft-desktop.exe`。Python provider 场景无需重新编译宿主，但本次仍重建了 release。|
+| GitHub Actions run `40852232278` / commit `6a44c00` | PASS | Windows hosted `npm run check:local` 通过，用时 11m26s；workflow 不启动 Tauri 窗口，也不替代本机原生/人工验收。|
 | Tauri release + 合成 ASCII bridge smoke | PASS（L3 可访问性） | Computer Use accessibility tree 在真实 release 窗口中看到会话名、状态、项目和输出四项，以及来源健康与相对更新时间。样例内容为合成 Smoke/Demo，不代表真实 Codex App 会话。|
 | Codex App 实际快照进入 release Provider | BLOCKED | 当前本地执行器的 PTY/stdin 不能稳定将真实 connector JSONL 行送入持续 Provider；实际窗口仍正确显示“等待 Agent 桥接”。Codex App 打开本身不会自动向 Provider 推送快照。需要验证一个持久 Agent→Provider stdin relay。|
 | Codex App 原生深链接点击与目标加载 | NOT_RUN | 只通过单元测试验证 UUID-only `codex://threads/<UUID>` allowlist；本轮没有确认实际点击和目标会话加载。|

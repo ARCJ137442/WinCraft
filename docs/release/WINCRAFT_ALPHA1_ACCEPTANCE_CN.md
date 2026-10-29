@@ -18,7 +18,7 @@ audience: maintainer, Windows tester
 | SHA-256 | `66C7F5B9E87CE469636A58746369AE49D4AFA87DF03121AD43DFBD62FAD29CBE` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由源码提交 `eb40996` 构建；本机 `npm run check:local` 与 `npm run desktop:build` 均退出码 0。GitHub Actions 结果以该提交对应的实际 workflow run 为准；本指南不把本地通过当作托管 CI 证据。托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单人工验收。
+这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由源码提交 `eb40996` 构建；本机 `npm run check:local` 与 `npm run desktop:build` 均退出码 0。GitHub Actions Windows run `40852232278`（commit `6a44c00`，包含同一源码树）也通过 `npm run check:local`，用时 11m26s。该 workflow 不启动 Tauri 窗口；托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单人工验收。
 
 ## 快速启动
 
