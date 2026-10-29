@@ -11,37 +11,8 @@ PYTHON_EXAMPLES = Path(__file__).resolve().parents[2] / "python"
 if str(PYTHON_EXAMPLES) not in sys.path:
     sys.path.insert(0, str(PYTHON_EXAMPLES))
 
-from client import Client, add_runtime_args, require_runtime  # noqa: E402
+from client import Client, add_runtime_args, destroy_world_safely, require_runtime  # noqa: E402
 from activity_board import aggregate_activities, build_scene, load_synthetic_activities  # noqa: E402
-
-
-async def _destroy_owned_world(client: Client, world_id: str, lease: dict[str, Any]) -> None:
-    """Finish cleanup before propagating cancellation or an unknown outcome."""
-    cleanup = asyncio.create_task(
-        client.call("world.destroy", {"world_id": world_id, "lease": lease})
-    )
-    was_cancelled = False
-    while not cleanup.done():
-        try:
-            await asyncio.shield(cleanup)
-        except asyncio.CancelledError:
-            was_cancelled = True
-        except Exception as exc:
-            raise RuntimeError(
-                "Agent Board world cleanup outcome is unknown; inspect the manager before retrying"
-            ) from exc
-    if cleanup.cancelled():
-        raise RuntimeError(
-            "Agent Board world cleanup was cancelled; inspect the manager before retrying"
-        )
-    error = cleanup.exception()
-    if error is not None:
-        raise RuntimeError(
-            "Agent Board world cleanup outcome is unknown; inspect the manager before retrying"
-        ) from error
-    print("Agent Board test world cleanup confirmed.", flush=True)
-    if was_cancelled:
-        raise asyncio.CancelledError
 
 
 async def run(args: argparse.Namespace) -> None:
@@ -74,7 +45,12 @@ async def run(args: argparse.Namespace) -> None:
             await asyncio.sleep(args.duration_seconds)
         finally:
             if world_id is not None and lease is not None:
-                await _destroy_owned_world(client, world_id, lease)
+                await destroy_world_safely(
+                    client,
+                    world_id,
+                    lease,
+                    provider_name="Agent Board",
+                )
 
 
 def main() -> None:

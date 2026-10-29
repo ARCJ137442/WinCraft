@@ -18,6 +18,28 @@ inputs, native window actions, approval affordances, file writes, or continue-ex
 actions. Source IDs, raw source statuses, and model details stay in the provider process;
 only display summaries and aggregate counts enter scene data.
 
+## One-window global overview
+
+`global_overview_provider.py` is a separate synthetic demo for the requested single
+floating overview of Codex and Claude Code. Its first view shows the Codex parallel count,
+the Claude session count, and up to three Claude session status previews. Source lists,
+pagination, and per-session details appear only after a local view action. Only
+`view.*` navigation actions are registered; the provider does not connect to real
+Harness processes, approve work, write files, or continue sessions. Raw source status,
+instance IDs, and model metadata are not sent to the renderer.
+
+Given repository-owned synthetic activity records, when a user switches between sources
+and opens a session, then the same world displays a bounded list/detail view with
+freshness preserved and no business-side effects. Automated tests cover the projection,
+navigation, stale view actions, empty states, and pagination; a real Codex/Claude data
+adapter remains a separate NOT_RUN boundary.
+
+To open the interactive synthetic view on the local host:
+
+```powershell
+python examples/integrations/agent-board/global_overview_provider.py --runtime "<actual descriptor path>" --duration-seconds 120
+```
+
 ## Validate the model
 
 From the repository root:
