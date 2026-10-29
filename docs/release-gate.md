@@ -14,7 +14,7 @@ This is a pre-release audit for the current working tree. It is not a release ap
 ## Claims allowed from current evidence
 
 - The current Windows worktree passed `npm run check:local`: 28 Node UI tests, 116 Rust workspace tests, 145 Python tests, offline contracts and 27 Provider Skill references; this does not replace native acceptance.
-- Windows Actions run `40855749607` passed for pushed commit `283c1b8`; it does not include the current uncommitted inventory/session-card changes.
+- Windows Actions run `40876095509` passed for pushed commit `32c8eee` in 11m42s; it validates automated source checks, not native GUI acceptance.
 - `npm run desktop:build` built `target/release/wincraft-desktop.exe` from the current working tree; a separately launched `--open-manager` release produced a real manager window.
 - Protocol, lease, revocation, reader/writer isolation, dynamic scene, theme, event subscription and anchor behavior have automated tests.
 - A real isolated Rust headless host passed a 41-check `lease_probe.py` run; the current workspace also passes its Rust core/server/Tauri automated suite.

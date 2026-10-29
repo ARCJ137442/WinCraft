@@ -25,7 +25,7 @@
 ## 当前验证与仓库状态（2026-10-29）
 
 - 当前可复现命令、环境、退出码与分层结果以 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md) 为准。当前工作树 `npm run check:local` 退出码 0：28 项 UI、Rust workspace 116 tests、145 项 Python tests、离线契约和 27 个 Provider Skill 引用检查通过。
-- 最近 GitHub Actions Windows run `40855749607`（commit `283c1b8`）通过；它验证推送提交，不覆盖当前尚未推送的 inventory 与 Agent Activity 改动，也不证明原生 UI。
+- 阶段提交 `32c8eee` 已推送到 `origin/dev`；对应 Windows Actions run `40876095509` 通过 `npm run check:local`，用时 11m42s。CI 不替代原生 GUI 验收。
 - B01-03 的 opt-in 0.4-preview endpoint-local provider inventory 已通过 loopback WebSocket/core/server/Python SDK 回归；0.3 `world.list` 不变，Host 不接受 grants、不会扫描其他 Host。
 - B08-01 活动聚合器与 B09-01 设备收件箱用合成 fixture 完成 L1-L2 验证。B08-02 保持 `BLOCKED`：Claude Code `agents --json`、Codex CLI `thread/list` 与 Codex App connector 分源；Codex App 真实 connector 快照尚未稳定进入 release Provider，原生 UUID 深链接也未确认。
 - B08-03 单窗口 Global Agent Overview 的 A6/A7 有合成 release 证据；本地 release UIA 还确认会话卡片能展示名称、状态、项目和最近文本。Codex App 真实 snapshot 仍未呈现，不能把本地合成卡片计作真实会话接入。

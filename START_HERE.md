@@ -10,6 +10,7 @@
 2. `docs/product/DECISIONS.md`：哪些是用户决定，哪些只是本轮实施取舍。
 3. `docs/engineering/VALIDATION.md`：已执行/未执行的真实状态。
 4. `CODEX_HANDOFF.md`：本地代理任务入口。
+5. `docs/release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md`：当前 Windows release 路径、哈希和人工验收清单。
 
 ## 给本地 Codex 的第一句话
 

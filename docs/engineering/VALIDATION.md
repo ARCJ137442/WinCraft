@@ -534,12 +534,13 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | Codex App connector 只读枚举 | PASS（来源读取） | `list_threads` 与 `list_projects` 返回独立于 Codex CLI state DB 的 Codex App 数据；active Agent 消息只读限长，不读取完整 turn/tool history。|
 | 三来源规范化、独立健康、新鲜度与 Codex App 四字段行 | PASS（L1-L2） | `tests.test_agent_live_sources` / `tests.test_agent_global_overview` 共 27 项定向测试通过；覆盖 App 标题/状态/项目/最近输出、受限链接、来源失败隔离、上次成功时间与 CLI/App 状态映射。|
 | `npm run check:local` | PASS | 28 Node UI tests、116 Rust workspace tests、145 Python tests、fmt/check/Clippy、离线契约与 27 个 Provider Skill 引用均通过，退出码 0。|
-| `npm run desktop:build` | PASS | Windows release `target/release/wincraft-desktop.exe` 构建成功；文件大小 12,429,312 bytes，SHA-256 `18D7288DE1D1C08AE2BD231692546679AB2E5924CA1DC5FD0EE364ED8EB732A0`。产物从 HEAD `283c1b8` 加当前未提交源码改动构建。|
+| `npm run desktop:build` | PASS | 提交 `32c8eee` 后重建 Windows release `target/release/wincraft-desktop.exe`；12,429,312 bytes，SHA-256 `77725D06515DAFFCBAAA7CFA928DDFF7D51B5B022DA8BA46A51D51547B68932E`。|
 | GitHub Actions run `40852232278` / commit `6a44c00` | PASS | Windows hosted `npm run check:local` 通过，用时 11m26s；workflow 不启动 Tauri 窗口，也不替代本机原生/人工验收。|
 | GitHub Actions run `40853925244` / commit `d5987b3` | PASS | 后续文档同步提交的 Windows hosted `npm run check:local` 通过，用时 11m12s；不增加原生 UI 验收证据。|
+| GitHub Actions run `40876095509` / commit `32c8eee` | PASS | Windows hosted `npm run check:local` 通过，用时 11m42s；workflow 不启动 Tauri 窗口，也不替代原生 UI 验收。|
 | Tauri release + 合成 ASCII bridge smoke | PASS（L3 可访问性） | Computer Use accessibility tree 在真实 release 窗口中看到会话名、状态、项目和输出四项，以及来源健康与相对更新时间。样例内容为合成 Smoke/Demo，不代表真实 Codex App 会话。|
-| 当前 release `--open-manager` 独立启动 | PASS（L3） | 本机启动 `target/release/wincraft-desktop.exe --open-manager` 后，Computer Use 枚举到真实管理器窗口；未运行 Vite 代理。默认不带参数的 tray-only 启动与托盘菜单未在本轮复验。|
-| 当前 release + PTY JSONL 合成快照 | PASS（L3 UIA） | `live_provider.py --codex-app-bridge` 接入真实 Rust/Tauri WebSocket；通过保持 stdin 的 PTY 注入合成 Codex App snapshot，UIA 树显示会话名称、状态、项目和最近 Agent 输出。超过 TTL 后显示断线/陈旧；未把合成字段记作真实 Codex App 数据。|
+| `--open-manager` release 启动 | PASS（L3，提交前同源码工作树） | Computer Use 枚举到真实管理器窗口；未运行 Vite 代理。随后从提交 `32c8eee` 重建了最终 EXE；默认不带参数的 tray-only 启动与托盘菜单未在本轮复验。|
+| 同源码 release + PTY JSONL 合成快照 | PASS（L3 UIA） | `live_provider.py --codex-app-bridge` 接入真实 Rust/Tauri WebSocket；通过保持 stdin 的 PTY 注入合成 Codex App snapshot，UIA 树显示会话名称、状态、项目和最近 Agent 输出。超过 TTL 后显示断线/陈旧；UIA smoke 在提交前同源码工作树的 EXE 上完成，未把合成字段记作真实会话接入。|
 | Codex App connector 实际快照进入 release Provider | BLOCKED | 经 Codex App connector 读取当前会话元数据/最近输出后，尝试送入持续 Provider；当前 release UI 仍显示等待桥接，未证明真实 connector payload 到达。合成 PTY 快照只验证接收与渲染路径，不能替代真实 Agent relay。|
 | Codex App 原生深链接点击与目标加载 | NOT_RUN | 只通过单元测试验证 UUID-only `codex://threads/<UUID>` allowlist；本轮没有确认实际点击和目标会话加载。|
 | Pixel screenshot / 最新来源列表的人工观感 | NOT_RUN | Computer Use 可读到当前 release 的 accessibility tree；其 native screenshot capture 返回黑帧，本轮没有可审阅的像素截图。|
@@ -563,10 +564,10 @@ Claude `agents --json` 的含义是后台 Agent 记录，不是全部交互式 C
 | `python scripts/check_contracts.py` | PASS | 退出码 0；活动 draft schema 接受来源预览类型，离线契约及 fixtures 通过。|
 | `npm run check:python` | PASS | Python 3.11.4；145 tests 通过，27 个 Provider Skill 引用通过，退出码 0。|
 | `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 最后同步 1 个后续变更文件；85 files、2,136 nodes；索引 current。Node.js v22.23.4。|
-| 当前 Windows release + PTY synthetic snapshot | PASS（L3 UIA） | `npm run desktop:build` 后独立 EXE 启动；真实 Rust/Tauri WebSocket provider 注入合成 Codex App snapshot，Computer Use accessibility tree 看到会话名称、状态、项目、Agent 输出和 TTL stale 状态。输入/输出值只用合成数据；像素截图不可用，因此不作截图级结论。|
+| 同源码 release + PTY synthetic snapshot | PASS（L3 UIA） | `npm run desktop:build` 后独立 EXE 启动；真实 Rust/Tauri WebSocket provider 注入合成 Codex App snapshot，Computer Use accessibility tree 看到会话名称、状态、项目、Agent 输出和 TTL stale 状态。输入/输出值只用合成数据；像素截图不可用，因此不作截图级结论。|
 | 当前 release manager | PASS（启动/可访问性） | `target/release/wincraft-desktop.exe --open-manager` 启动后 Computer Use 读取到管理器窗口；该参数是显式自动化入口，不证明默认 tray-only 启动或托盘退出。|
 | 当前 `npm run check:local` | PASS | 28 Node UI、116 Rust workspace、145 Python tests；fmt/check/test/Clippy、离线契约、27 Provider Skill references 均通过，退出码 0。|
-| 当前 `npm run desktop:build` | PASS | `target/release/wincraft-desktop.exe`，12,429,312 bytes，SHA-256 `18D7288DE1D1C08AE2BD231692546679AB2E5924CA1DC5FD0EE364ED8EB732A0`。构建时 HEAD 为 `283c1b8`，且工作树包含未提交源码改动。|
+| 当前 `npm run desktop:build` | PASS | 提交 `32c8eee` 后重建 `target/release/wincraft-desktop.exe`，12,429,312 bytes，SHA-256 `77725D06515DAFFCBAAA7CFA928DDFF7D51B5B022DA8BA46A51D51547B68932E`。当前 hash 尚未重新做像素复验。|
 | Codex App connector 当前会话进入 release Provider | BLOCKED | Agent 读取了当前 Codex App 会话字段并尝试经 PTY 发送受限快照，但 release UI 仍显示“等待 Agent 桥接”；不声称真实会话已显示。真实 UUID 深链接仍 `NOT_RUN`。|
 | 当前 release pixel screenshot | NOT_RUN | Computer Use accessibility tree 可读；Tauri screenshot API 返回黑帧，没有可审阅的像素证据。|
 | 临时 Provider/Host 清理 | PARTIAL | PTY Provider 收到 Ctrl+C 并确认销毁自己的 world；一次 stdin 已关闭的早期测试留下同标题 stale world，随后 WinCraft host 停止。一个匹配该已停止 Host PID 的本机 runtime descriptor 仍待清理；路径与内容未写入证据。|

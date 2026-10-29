@@ -12,13 +12,15 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `eb40996b7eade99125ad5d36ae24001b1896e49a` |
+| 源码提交 | `32c8eee63b107f5380d22c16dd26081886790ebd` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 12,251,648 bytes |
-| SHA-256 | `66C7F5B9E87CE469636A58746369AE49D4AFA87DF03121AD43DFBD62FAD29CBE` |
+| 文件大小 | 12,429,312 bytes |
+| SHA-256 | `77725D06515DAFFCBAAA7CFA928DDFF7D51B5B022DA8BA46A51D51547B68932E` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物由源码提交 `eb40996` 构建；本机 `npm run check:local` 与 `npm run desktop:build` 均退出码 0。GitHub Actions Windows run `40852232278`（commit `6a44c00`，包含同一源码树）也通过 `npm run check:local`，用时 11m26s。该 workflow 不启动 Tauri 窗口；托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单人工验收。
+这是单个 Windows 可执行文件，不是安装器。可用资源管理器直接启动。该产物在提交 `32c8eee` 后由 `npm run desktop:build` 构建，退出码 0；当前工作树 `npm run check:local` 也退出码 0（28 Node UI、116 Rust、145 Python tests）。GitHub Actions run `40876095509` 对提交 `32c8eee` 的 `npm run check:local` 通过，用时 11m42s。该 workflow 不启动 Tauri 窗口；托盘菜单、窗口像素与 Windows 原生行为仍须按下方清单验收。
+
+提交前的同一源码工作树曾用 Computer Use 启动独立 release，并以合成 Agent Activity snapshot 验证会话卡片的名称、状态、项目和输出字段；随后从已提交的 `32c8eee` 重建了本指南所列 EXE。最终这份 hash 尚未重新做像素验收，且真实 Codex App connector snapshot 尚未进入 release Provider；不要把合成字段 smoke 计作真实会话接入。
 
 ## 快速启动
 
@@ -46,6 +48,7 @@ audience: maintainer, Windows tester
 | 动态组件与动作回执（W04/W05/W06） | 在 Python focus demo 中点击“替换组件区”和一个按钮；结构实时更新，动作显示当前 provider 的实际回执；provider 断线不冒充成功。 | ____ |
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；只有 Codex App `agent_message` 标为最近 Agent 输出，CLI 发言方未知的 preview 单独标识。当前真实 Codex App connector snapshot 仍 `BLOCKED`；不得用合成行替代真实会话验收。 | 合成 UIA：PASS；真实 Codex App：BLOCKED |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
