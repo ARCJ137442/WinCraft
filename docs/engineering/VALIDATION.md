@@ -404,6 +404,7 @@ Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两�
 | Obsidian Obsidian Workspace fixed CLI query | PASS | Obsidian CLI 在已打开的活动 vault 找到 Obsidian Workspace dashboard，返回结构通过 provider 解析。vault 名、笔记标题、事项与提醒内容不写入日志或 evidence。|
 | `composition_probe.py` + real headless Rust WebSocket | PASS | 两个真实来源先写入分离 scope；停止 staged TrafficMonitor 后，仅 traffic scope 变 stale，Obsidian Workspace scope 数据完全相同；临时 world 销毁成功。未连接 Tauri renderer。|
 | `npm run check:local` | PASS | 28 Node UI tests、offline schema/contracts、Rust fmt/check/test/Clippy、90 Python tests 与 19 Provider Skill references 全部通过；Rust workspace 共 107 tests（core unit 10、core invariants 60、desktop 18、server 19）。|
+| GitHub Actions run `40814128343` | PASS | Windows hosted `npm run check:local` succeeded; source job completed in 6m03s. This verifies the committed source checks, not native GUI acceptance. |
 | B07-04 Tauri release/native UI | NOT_RUN | 此验收检查 scope 权限与业务数据隔离；窗口几何仍只由 root authority 控制。|
 
 本地 evidence：`evidence/local/nextgen-2026-10-29/b07-04-validation.json`。原始 TrafficMonitor installation/config 没有改动；新 x64 copy 是临时 stage，provider bridge 文件只保存在该 stage。不要把它当成已完成安装升级；用户要求后续引导其把旧版正式升级换代。
