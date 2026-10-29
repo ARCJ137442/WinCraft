@@ -347,11 +347,16 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | Windows `RegisterHotKey`/IME/UIA/真实冲突 | NOT_RUN | 当前只完成核心意图层；接入 OS 前需用户授权与人工原生验收 |
 
 回退边界：移除 registry 模块即可回到没有快捷键资源意图的旧行为；没有修改系统全局配置或注册任何后台键盘监听。
-## 2026-10-27 交接包 planner/maintenance suite
+## 交接包 planner/maintenance suite（2026-10-27 实施，2026-10-30 验收）
 
-当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。单独运行结果为 **34 tests passed**，覆盖：full/optional/required/no-grant/ambiguous inventory、显式选择、过期/陈旧来源、未来时钟、重复身份、provider contract 版本、输入不变性、digest 稳定性、pack secret/path traversal、adapter 不执行、resolution plan schema，以及验收标准改变/显式 reset 后旧结果失效。
+当前契约检查会执行交接包 `docs/strategy/2026-10-26/tests` 的完整 unittest suite。单独运行结果为 **37 tests passed**，覆盖：full/optional/required/no-grant/ambiguous inventory、显式选择、过期/陈旧来源、未来时钟、重复身份、provider contract 版本、输入不变性、digest 稳定性、pack secret/path traversal/artifact rejection、缺失来源说明、adapter 不执行、resolution plan schema，以及验收标准改变/显式 reset 后旧结果失效。
 
-这组结果为 B06-02 和 B06-03-A1 的纯规划证据：inventory generation/digest/expiry 变化会使旧计划不可直接复用。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
+| 验收 | 状态 | 证据范围 |
+|---|---|---|
+| B06-01-A1/A2/A3 配置包格式 | PASS（draft schema/fixtures） | Schema 与反例拒绝 provider binary、descriptor、lease、install hook、秘密字段与路径穿越；缺少来源映射为 blocker/degraded 说明。没有 runtime archive exporter/importer。|
+| B06-02-A1/A2/A3 纯规划器 | PASS（L0-L2 demo） | 确定性 digest、必选/可选缺源、歧义要求用户选择、权限≠能力、`mutates_host=false`、需要确认、外部 adapter 不执行。输入为显式 fixture JSON，不扫描本机。|
+
+这些结果验证的是集成进 `docs/strategy/2026-10-26` 的 draft contract 与纯规划演示；B06-01/02 的 task state 仍为 `IMPLEMENTED_UNVERIFIED`，因为 runtime export/import 与 Host apply adapter 尚未实现。它不证明 WinCraft runtime 已有计划提交器、资源账本或 rollback；B06-03 提交/回退仍未实现。
 
 ## 2026-10-28 标题栏轴线与折叠尺寸
 

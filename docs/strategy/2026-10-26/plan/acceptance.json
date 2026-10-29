@@ -1030,7 +1030,8 @@
       ],
       "level": "L1-L2",
       "criterion": "包不包含提供者二进制/descriptor/lease",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS at draft-schema level: additionalProperties=false and targeted test_pack_rejects_provider_binary_descriptor_lease_and_install_hook reject top-level provider_binary, descriptor, lease, install_hook and nested adapter binary. This verifies the pack contract, not a runtime archive exporter."
     },
     {
       "id": "B06-01-A2",
@@ -1044,7 +1045,8 @@
       ],
       "level": "L1-L2",
       "criterion": "缺少Provider是可解释需求而非安装指令",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS in the pure planner: required missing bindings return blocked with a binding-specific reason; optional missing bindings return degraded with a warning. Targeted test checks no install_command/download_url and confirms mutates_host=false plus requires_confirmation=true. No Host apply or installer is involved."
     },
     {
       "id": "B06-01-A3",
@@ -1058,7 +1060,8 @@
       ],
       "level": "L1-L2",
       "criterion": "读取恶意路径/未知字段失败且未执行文件",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS at draft-validation/planner level: path traversal is rejected by semantic validation; schema negatives reject unknown/runtime artifact fields; adapter reference remains non-executable and planner reports external_adapter_not_executed. No package importer or adapter process is implemented or run."
     },
     {
       "id": "B06-02-A1",
@@ -1070,7 +1073,8 @@
       ],
       "level": "L0-L2",
       "criterion": "同输入同计划，缺失必选block/可选degrade",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: the 37-test handoff suite covers a stable input digest, required-missing=blocked, optional-missing=degraded, inventory/source freshness expiry, and bounded plan expiry."
     },
     {
       "id": "B06-02-A2",
@@ -1082,7 +1086,8 @@
       ],
       "level": "L0-L2",
       "criterion": "两个同等来源不会任意选一个",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: test_ambiguous_does_not_choose_first returns ambiguous with no provider_instance_id; explicit eligible selection becomes selected, and an ineligible explicit selection blocks."
     },
     {
       "id": "B06-02-A3",
@@ -1094,7 +1099,8 @@
       ],
       "level": "L0-L2",
       "criterion": "适配程序不能通过计划扩大权限或读取全机",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS for the pure planning demonstrator: permission requirements must be present in grants (test_permission_is_not_capability), the plan declares mutates_host=false/requires_confirmation=true, top-level secret fields are rejected, and external program references are never executed. Inputs are explicit bounded JSON; this does not verify a runtime apply adapter."
     },
     {
       "id": "B06-03-A1",

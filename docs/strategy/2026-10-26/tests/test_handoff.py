@@ -31,6 +31,26 @@ class PlannerTests(unittest.TestCase):
     def test_optional_missing_degrades(self):
         self.inv = load("examples/inventory/optional-missing.json")
         self.assertEqual(self.result()["status"], "degraded")
+    def test_missing_provider_is_explained_without_install_instruction(self):
+        required_by_id = {binding["id"]: binding["required"] for binding in self.pack["bindings"]}
+        for fixture, expected_status in (
+            ("examples/inventory/required-missing.json", "blocked"),
+            ("examples/inventory/optional-missing.json", "degraded"),
+        ):
+            with self.subTest(fixture=fixture):
+                result = P.plan(self.pack, load(fixture), self.now)
+                self.assertEqual(result["status"], expected_status)
+                missing = [b for b in result["bindings"] if b["status"] == "missing"]
+                self.assertTrue(missing)
+                for binding in missing:
+                    self.assertEqual(binding["reason"], "no_online_fresh_authorized_compatible_provider")
+                    collection = "blockers" if required_by_id[binding["binding_id"]] else "warnings"
+                    self.assertIn(binding["binding_id"] + ":missing", result[collection])
+                self.assertIs(result["mutates_host"], False)
+                self.assertIs(result["requires_confirmation"], True)
+                serialized = json.dumps(result, ensure_ascii=False).casefold()
+                self.assertNotIn("install_command", serialized)
+                self.assertNotIn("download_url", serialized)
     def test_required_missing_blocks(self):
         self.inv = load("examples/inventory/required-missing.json")
         self.assertEqual(self.result()["status"], "blocked")
@@ -108,6 +128,33 @@ class ContractTests(unittest.TestCase):
                 errors = list(jsonschema.Draft202012Validator(load("contracts/"+case["schema"]+".schema.json"), format_checker=jsonschema.FormatChecker()).iter_errors(v))
                 semantic = [] if errors else V.semantic_errors(case["schema"], v)
                 self.assertEqual(not errors and not semantic, case["expected_valid"])
+    def test_pack_rejects_provider_binary_descriptor_lease_and_install_hook(self):
+        validator = jsonschema.Draft202012Validator(
+            load("contracts/pack.schema.json"),
+            format_checker=jsonschema.FormatChecker(),
+        )
+        base = load("examples/packs/workday.pack.json")
+        forbidden_fields = (
+            ("provider_binary", "fixture-provider.exe"),
+            ("descriptor", {"token": "synthetic-negative-fixture"}),
+            ("lease", {"id": "synthetic-negative-fixture"}),
+            ("install_hook", "run this command"),
+        )
+        for key, value in forbidden_fields:
+            with self.subTest(key=key):
+                candidate = copy.deepcopy(base)
+                candidate[key] = value
+                self.assertTrue(list(validator.iter_errors(candidate)))
+        adapter_payload = copy.deepcopy(base)
+        adapter_payload["adapter"] = {
+            "kind": "external-program-reference",
+            "id": "fixture.adapter",
+            "reference": "fixture-only",
+            "sha256": "0" * 64,
+            "execution": "separate-user-approval",
+            "binary": "fixture-provider.exe",
+        }
+        self.assertTrue(list(validator.iter_errors(adapter_payload)))
     def test_other_not_author_supplied(self):
         v=load("examples/ephemeral/question.json")
         v["payload"]["questions"][0]["options"][1]["label"]="Other"
