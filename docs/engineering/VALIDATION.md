@@ -1042,7 +1042,8 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | Linux `cargo check --locked -p wincraft-desktop` | PASS | 退出码 0，无平台专用 unused warning。|
 | Linux `cargo build --locked -p wincraft-desktop` | PASS（debug ELF） | 退出码 0；ELF 为 288,532,064 bytes，SHA-256 `eb5529e4890d2ae5bb85783256844395fa3b1427a77aeb57e2bc4e28f58211a8`，临时产物在 WSL `/tmp`。没有启动该 ELF。|
 | Windows `npm run check:local` 当前工作树 | PASS | 退出码 0：UI 28、Rust 146、Python 205（1 项 symlink 能力跳过）、Clippy、离线契约与 Provider Skill 检查均通过。|
-| Windows `npm run desktop:build` 当前工作树 | PASS | 退出码 0；`target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `764FBB942A0CA019A87E2967DD38606163D23A5455AC57B564FE804286F5CB99`。这是提交前工作树构建，提交后将从干净 HEAD 重建交付 EXE。|
+| Windows commit [`c836802`](https://github.com/exomind-team/WinCraft/commit/c8368023fba08ef620c56bb1a436e1c5e2d87ed6) `npm run desktop:build` / Actions [41140899841](https://github.com/exomind-team/WinCraft/actions/runs/41140899841) | PASS | Release build 退出码 0；EXE 为 13,595,648 bytes，SHA-256 `A09C1CA0E1D5CCB86131A94AE51EC2BEAE1592530952880EFB3CCDB5E48EB6CB`。Windows source job 的 `npm run check:local` 通过（11m43s）。没有启动窗口，故不增加原生 UI 验收证据。|
+| 本机 Windows EXE + 中文验收包 | PASS | `evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery-b11-03.zip`，4,352,029 bytes，SHA-256 `19C6CA0EAD96A86213E90A76B09597DA04A69D45E0115B9B96CA6054731D45F0`；仅含 EXE、中文验收指南与 BUILD.txt，包内 EXE SHA 与上方提交一致。runtime descriptor、凭据和业务数据均未打入包。|
 | Linux WSLg/X11/Wayland 原生交互、macOS 构建/交互 | NOT_RUN | WSLg 有 `DISPLAY=:0` 与 `WAYLAND_DISPLAY=wayland-0`，但没有启动 GUI 或读取窗口树；X11/Wayland 分别验收与 macOS host 均未运行。 |
 | B11-03-A1/A2/A3 | PASS / PARTIAL / PASS（受限） | A1 明确区分 Tauri 编译与原生交互。A2 已给出源代码与 Linux 构建能力矩阵，但原生 Linux GUI 与 macOS 仍 NOT_RUN，故 PARTIAL。A3 Windows 全门禁与 release build 通过；改动仅收窄 Windows-only helper 编译边界并新增平台 capability 回归，未改变 Windows API 路径。B11-03 保持 `IMPLEMENTED_UNVERIFIED`，B11-01 性能基线仍单独未关闭。|
 
