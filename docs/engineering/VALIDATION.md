@@ -947,6 +947,7 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 |---|---|---|
 | `python -m unittest tests.test_agent_global_overview -v` | PASS（15 tests） | 覆盖 Codex 并行量、Claude 有界状态预览、Codex/Claude 列表字段、source/detail/back 导航、每来源保存详情、跨来源往返恢复、缺失 tombstone、新鲜度与 unknown 撤销状态、过期 detail 拒绝和分页。|
 | `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 145 项、Python 204 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| Provider 视图提交 [`0696cbeb`](https://github.com/exomind-team/WinCraft/commit/0696cbeb9b3ef69cb9c6a9b43901fae6e922ea7b) / Actions [41128511607](https://github.com/exomind-team/WinCraft/actions/runs/41128511607) | PASS | 15 项总览测试含跨来源详情身份/page 与 tombstone 往返回归；Windows full local gate 通过（12m58s）。该提交只改仓库中的独立 Python Provider，不改 Tauri/Rust EXE。|
 | 当前标准 release + `global_overview_provider.py --duration-seconds 5` | PASS（L2 scene/cleanup） | 当前 Tauri Host 接受仓库合成总览场景；Provider 5 秒后退出并确认仅清理自己的临时世界。该 smoke 不含真实会话数据，也不提供新截图。|
 | B08-03-A4 判定 | PARTIAL | 新回归证明来源切换后可恢复各自 selected detail；如果快照不再包含该会话，则跨来源离开/返回仍保留显示身份与来源 freshness，明确标为撤销未知，记录恢复后回到实时详情。来源文件没有逐会话权威撤销信号，所以不伪判为 revoked；最新 build 的 source-switch/tombstone 像素仍 NOT_RUN。|
 | B08-03-A5 判定 | PASS（L1-L4） | 首屏 Codex 并行量与 Claude 状态预览由 15 项总览测试覆盖；A7 release 截图已记录 Overview `520×421`、Claude list `520×422`、Codex list `520×512`、detail `520×477`，并验证动作回执和受限窗口高度。当前 release synthetic scene/cleanup smoke 通过。|

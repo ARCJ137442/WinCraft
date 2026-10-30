@@ -12,13 +12,14 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `a78b3c9d4e9e19be7045faad4920d060f3c990c1` |
+| Tauri Host EXE 源码提交 | `a78b3c9d4e9e19be7045faad4920d060f3c990c1` |
+| Agent Activity Provider 示例 | `0696cbeb9b3ef69cb9c6a9b43901fae6e922ea7b`（仓库内 Python 示例，单独运行，不打包进 EXE）|
 | 程序路径 | `target/release/wincraft-desktop.exe` |
 | 文件大小 | 13,595,648 bytes |
 | SHA-256 | `64458EA768A36FE012230EA34D0E37936FB1ACF1FA74C1A49802C8D456BD7314` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。源码提交 `a78b3c9` 的 `npm run check:local` 退出码 0：28 项 UI、145 项 Rust、203 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过。`npm run desktop:build` 退出码 0，产物信息见上表。GitHub Actions run [41123291608](https://github.com/exomind-team/WinCraft/actions/runs/41123291608) 已通过，Windows source job 用时 9m59s。自动测试和 CI 不替代原生 GUI 验收。
+这是单个 Windows 可执行文件，不是安装器。Tauri Host EXE 来自源码提交 `a78b3c9`；`npm run check:local` 退出码 0：28 项 UI、145 项 Rust、203 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过。`npm run desktop:build` 退出码 0，产物信息见上表。GitHub Actions run [41123291608](https://github.com/exomind-team/WinCraft/actions/runs/41123291608) 已通过，Windows source job 用时 9m59s。Agent Activity Python Provider 的跨来源详情保留修复位于仓库提交 `0696cbe`，其 `npm run check:local` 在 Windows Actions run [41128511607](https://github.com/exomind-team/WinCraft/actions/runs/41128511607) 通过（12m58s）；该 Python 示例需从仓库单独运行，不在 EXE 内。自动测试和 CI 不替代原生 GUI 验收。
 
 首次 release 曾因在同步 Tauri setup 回调直接调用 `tokio::spawn` 而以 101 退出；现已改为通过 `tauri::async_runtime::spawn` 调度并通过完整本地门禁。当前 `a78b3c9` release EXE 构建完成，但本轮未启动该 Tauri EXE 做像素/托盘验收；临时 scope 生命周期验证使用真实 headless Rust Host。以下空白人工验收项仍需由维护者实测。
 
@@ -51,7 +52,7 @@ audience: maintainer, Windows tester
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
 | 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Rust 回归和 release build：PASS；当前构建的真实启用/按键/冲突/撤销/IME：NOT_RUN |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；无权威逐会话状态时显示未知。 | 三源同一 live Host scene、来源 freshness 与选择导航测试通过；当前 release 像素仍 NOT_RUN。Host scope lifecycle 的 L4 协议 smoke 通过，但不能映射成外部会话撤销；B08-03-A4 仍 PARTIAL。 |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；无权威逐会话状态时显示未知。 | 15 项总览测试覆盖来源切换时恢复各自详情 identity/page、missing tombstone 保留 freshness 与撤销 unknown；三源 live Host scene 和 scope lifecycle L4 smoke 通过。当前 release 像素仍 NOT_RUN；scope 撤销不能映射为外部会话撤销，B08-03-A4 仍 PARTIAL。|
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
