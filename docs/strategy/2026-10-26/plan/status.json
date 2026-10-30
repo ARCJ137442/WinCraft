@@ -234,6 +234,7 @@
     "2026-10-31: Commit 71d077c pushed to exomind-team/WinCraft/dev; Windows Actions run 41105044150 passed in 8m08s. Full local gate: UI 28, Rust 144, Python 198 with one Windows symlink-capability skip.",
     "2026-10-31: Current-release B02-03 tutorial launch returned no startup confirmation and was interrupted. Non-operator world.list cannot prove invite-world cleanup; A1 remains PARTIAL and the attempt is NOT_RUN for acceptance.",
     "2026-10-31: B02-03 bounded current-release tutorial smoke passed startup and own-world cleanup in five seconds using synthetic data. No lesson action was clicked. The earlier unbounded attempt remains cleanup-unconfirmed, so A1 stays PARTIAL.",
-    "2026-10-31: Added an optional provider_tutorial.py --duration-seconds bound (default remains interactive), flushable startup/cleanup confirmation, and a test for automatic own-world destruction. The current standard Tauri release passed a five-second synthetic tutorial startup/cleanup smoke; interactive lesson clicks and the earlier ambiguous cleanup remain pending."
+    "2026-10-31: Added an optional provider_tutorial.py --duration-seconds bound (default remains interactive), flushable startup/cleanup confirmation, and a test for automatic own-world destruction. The current standard Tauri release passed a five-second synthetic tutorial startup/cleanup smoke; interactive lesson clicks and the earlier ambiguous cleanup remain pending.",
+    "2026-10-31: Commit 69c3ec6 added an optional bounded duration to the provider tutorial (interactive by default). Current standard Tauri release bounded smoke passed synthetic startup and own-world destroy; lesson clicks remain unverified. Windows Actions run 41109395539 passed."
   ]
 }

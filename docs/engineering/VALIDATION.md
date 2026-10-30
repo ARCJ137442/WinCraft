@@ -984,5 +984,7 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | Windows Actions run [41100209526](https://github.com/exomind-team/WinCraft/actions/runs/41100209526) | PASS | Actions run、check suite 与 `source` job 均 `completed/success`；`gh run watch --exit-status` 退出码 0，job 用时 12m01s。Workflow 不替代原生 UIA、托盘、多屏与人工交互验收。|
 | Commit [`71d077c`](https://github.com/exomind-team/WinCraft/commit/71d077c5340ff2da59c7cc43d94ebdb5ddfa1f85) / `origin/dev` | PASS | B08-03-A4 missing-session detail behavior、本地回归与状态说明已提交推送；远端 `dev` 与该提交一致。|
 | Windows Actions run [41105044150](https://github.com/exomind-team/WinCraft/actions/runs/41105044150) | PASS | `gh run watch --exit-status` 退出码 0；Windows `source` job `completed/success`，用时 8m08s。Workflow 只验证源码门禁，不替代原生 A4 撤销/按钮验收。|
+| Commit [`69c3ec6`](https://github.com/exomind-team/WinCraft/commit/69c3ec668edb847153110bff352f4e508089ceab) / `origin/dev` | PASS | Provider 五课新增可选有界时长；默认交互模式不变，5 秒真实 Host synthetic smoke 已确认启动和自建世界清理。|
+| Windows Actions run [41109395539](https://github.com/exomind-team/WinCraft/actions/runs/41109395539) | PASS | `gh run watch --exit-status` 退出码 0；run 与 check suite `completed/success`。Workflow 不替代五课交互、管理器清理或人工原生验收。|
 
 阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery.zip`，包含 EXE、中文验收指南与 build/hash/待验收说明；不是仓库发布附件。
