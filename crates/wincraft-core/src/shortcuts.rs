@@ -6,12 +6,18 @@ const MAX_SHORTCUT_CHORD_BYTES: usize = 64;
 const MAX_SHORTCUT_ACTION_BYTES: usize = 128;
 const MAX_SHORTCUT_PARTS: usize = 5;
 const MODIFIER_ORDER: [&str; 4] = ["ctrl", "alt", "shift", "win"];
-const RESERVED_SHORTCUTS: [&str; 5] = [
+/// System and common East Asian IME combinations must not be captured globally.
+const RESERVED_SHORTCUTS: [&str; 10] = [
     "alt+tab",
     "ctrl+alt+delete",
     "ctrl+shift+escape",
+    "ctrl+.",
+    "ctrl+space",
+    "shift+space",
     "win+l",
     "win+u",
+    "win+space",
+    "win+/",
 ];
 
 /// Host-level shortcut intent. This registry deliberately does not listen for
@@ -280,6 +286,13 @@ mod tests {
                 .code,
             "RESERVED_SHORTCUT"
         );
+        for reserved in ["Ctrl+.", "Ctrl+Space", "Shift+Space", "Win+Space", "Win+/"] {
+            assert_eq!(
+                registry.register(session, spec(reserved)).unwrap_err().code,
+                "RESERVED_SHORTCUT",
+                "system or IME shortcut should be reserved: {reserved}"
+            );
+        }
         assert_eq!(
             registry.register(session, spec("F12")).unwrap_err().code,
             "INVALID_SHORTCUT"

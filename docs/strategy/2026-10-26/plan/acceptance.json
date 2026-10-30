@@ -832,7 +832,7 @@
       "level": "L1-L4",
       "criterion": "IME/输入框/平台组合键不被默认破坏",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: parser rejects unmodified/malformed chords and reserved Alt+Tab, Ctrl+Alt+Delete, Ctrl+Shift+Esc, Win+L/Win+U; no global OS hook is installed, so IME/input-field and OS key routing remain unverified."
+      "evidence": "PARTIAL: parser rejects unmodified/malformed/duplicate-modifier chords and Windows/system/IME combinations Alt+Tab, Ctrl+Alt+Delete, Ctrl+Shift+Esc, Win+L/U, Ctrl+Space, Shift+Space, Ctrl+., Win+Space and Win+/. No global OS hook is installed, so input delivery, IME interaction and actual focus behavior remain unverified."
     },
     {
       "id": "B04-04-A1",

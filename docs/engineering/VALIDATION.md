@@ -71,9 +71,9 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `cargo test -p wincraft-core shortcuts -- --nocapture` | PASS | 3 个 core 测试通过；现含 chord 大小写/空白/修饰顺序规范化、冲突不覆盖 owner、owner revoke/unregister、Windows 保留键与畸形 chord 拒绝。|
+| `cargo test -p wincraft-core shortcuts -- --nocapture` | PASS | 3 个 core 测试通过；现含 chord 大小写/空白/修饰顺序规范化、冲突不覆盖 owner、owner revoke/unregister，以及 Windows/IME chord 失败关闭：Alt+Tab、Ctrl+Alt+Delete、Ctrl+Shift+Esc、Win+L/U、Ctrl+Space、Shift+Space、Ctrl+.、Win+Space、Win+/。IME 组合参考 [Microsoft Simplified Chinese IME](https://support.microsoft.com/en-us/windows/hardware/input-devices/microsoft-simplified-chinese-ime) 与 [East Asian input methods](https://support.microsoft.com/en-us/windows/hardware/input-devices/advanced-input-methods-for-east-asian-languages)。|
 | `npm run check:local` | PASS | 退出码 0：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy/离线契约和 27 个 Provider Skill 引用通过。|
-| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `51C5D834844483F25BB931171F06CC2CA5EAEF7F7D3D1B218206DD96AFB5AEAC`。|
+| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `AB114CA6D2BDBA7716B20D73CF7D8ECB409879FF932E6A6755D577E4345C75C7`。|
 | 快捷键 acceptance | PARTIAL | A1/A2/A3 的 intent registry 边界正在实现；当前没有 OS 全局热键监听器、Manager 授权 UI 或真实 IME/输入框门控。它仍是纯 intent registry，不得宣传为已经注册系统快捷键。|
 
 ## 2026-10-28 开发工具链核验
