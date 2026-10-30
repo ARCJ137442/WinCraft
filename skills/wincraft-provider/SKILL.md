@@ -28,6 +28,8 @@ For a guided, real-host walkthrough, run `examples/python/provider_tutorial.py` 
 actual runtime descriptor path shown by the manager. It uses the shared `client.py`,
 ordinary components, and synthetic values; it does not read external business data.
 The tutorial creates one ordinary invited world and destroys only that world on exit.
+For a bounded real-host startup/cleanup smoke, pass `--duration-seconds 5`; without this
+option the tutorial stays interactive until a lesson action, user close, or Ctrl+C.
 If a create/destroy result times out, the outcome is unknown: inspect the manager before
 retrying. Do not treat this provider as the internal manager or an operator.
 

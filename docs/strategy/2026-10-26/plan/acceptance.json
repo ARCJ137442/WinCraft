@@ -411,7 +411,7 @@
       "level": "L1-L4",
       "criterion": "新用户可完成建窗/改字/按钮/主题/发现课程",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: The 2026-10-26 validation summary describes five-lesson release interactions and cleanup, while later notes still list the complete user journey as pending and no dedicated artifact covers all A1 actions; the ledger is reconciled to PARTIAL. On 2026-10-30 a fresh Computer Use selection found the collapsed manager; clicking its observed expand control and one fresh-selection recovery both failed with 'foreground window did not report a process id'. On 2026-10-31 a current-release tutorial launch returned no startup confirmation during observation and was interrupted; a non-operator world.list showed zero visible worlds but cannot prove invite-only/system-world cleanup. Do not count that run as a successful walkthrough. Evidence: evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json and evidence/local/nextgen-2026-10-31/b02-03-tutorial-current-host-attempt.json. Full user flow and cleanup remain unverified."
+      "evidence": "PARTIAL: The 2026-10-26 validation summary describes five-lesson release interactions and cleanup, while later notes still list the complete user journey as pending and no dedicated artifact covers all A1 actions; the ledger remains PARTIAL. On 2026-10-30 a fresh Computer Use selection found the collapsed manager; clicking its observed expand control and a fresh-selection recovery failed with 'foreground window did not report a process id'. On 2026-10-31 an unbounded tutorial launch returned no startup confirmation and was interrupted; a non-operator world.list could not prove invite-only cleanup. A later bounded current-release run with --duration-seconds 5 emitted startup confirmation, accepted the synthetic scene, and confirmed its own world.destroy response (L2 start/cleanup only). No lesson actions were clicked; the earlier ambiguous attempt's world is still not manager-verified. Evidence: evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json, evidence/local/nextgen-2026-10-31/b02-03-tutorial-current-host-attempt.json, and evidence/local/nextgen-2026-10-31/b02-03-tutorial-bounded-release-smoke.json. Full user flow remains unverified."
     },
     {
       "id": "B02-03-A2",
@@ -424,7 +424,7 @@
       "level": "L1-L4",
       "criterion": "教程fixture不接真实用户数据",
       "status": "PASS",
-      "evidence": "provider_tutorial.py uses synthetic state and local scene fixtures; discovery retains counts/policies only. Seven focused tutorial tests now cover all lesson scenes/schema, dynamic insertion, choice/text updates, theme apply/reset, count-only world.list discovery, and own-world cleanup. Discovery action calls world.list only and never join/snapshot. A real headless start/cleanup run also passed."
+      "evidence": "provider_tutorial.py uses synthetic state and local scene fixtures; discovery retains counts/policies only. Eight focused tutorial tests cover all lesson scenes/schema, dynamic insertion, choice/text updates, theme apply/reset, count-only world.list discovery, normal finish cleanup, and optional bounded-duration cleanup. Discovery action calls world.list only and never join/snapshot. A current standard Tauri release accepted the synthetic tutorial scene and confirmed its own-world cleanup in a five-second bounded run; no real user data was read."
     },
     {
       "id": "B02-03-A3",

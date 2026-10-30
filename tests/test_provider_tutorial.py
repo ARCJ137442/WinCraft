@@ -322,6 +322,55 @@ class ProviderTutorialTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result_call['world_id'], 'tutorial-world')
         self.assertTrue(result_call['ok'])
 
+    async def test_optional_duration_cleans_own_world_without_interaction(self) -> None:
+        created_clients: list[Any] = []
+
+        class FakeTimedTutorialClient:
+            def __init__(self, runtime: str, name: str, ws_url: str | None) -> None:
+                self.events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+                self.calls: list[tuple[str, dict[str, Any]]] = []
+                created_clients.append(self)
+
+            async def __aenter__(self) -> FakeTimedTutorialClient:
+                return self
+
+            async def __aexit__(self, *_args: object) -> None:
+                return None
+
+            def require_capabilities(self, **_kwargs: Any) -> None:
+                return None
+
+            async def call(
+                self,
+                method: str,
+                params: dict[str, Any],
+            ) -> dict[str, Any]:
+                self.calls.append((method, params))
+                if method == 'world.create':
+                    return {
+                        'world': {'id': 'timed-tutorial-world'},
+                        'lease': {'id': 'timed-tutorial-lease', 'epoch': 1},
+                    }
+                return {}
+
+            async def mutate(self, *_args: Any, **_kwargs: Any) -> dict[str, Any]:
+                return {}
+
+        args = SimpleNamespace(
+            runtime='synthetic-runtime',
+            ws_url=None,
+            title='bounded tutorial',
+            duration_seconds=1,
+        )
+        with patch.object(provider_tutorial, 'Client', FakeTimedTutorialClient):
+            await provider_tutorial.run(args)
+
+        calls = created_clients[0].calls
+        destroy_calls = [params for method, params in calls if method == 'world.destroy']
+        self.assertEqual(len(destroy_calls), 1)
+        self.assertEqual(destroy_calls[0]['world_id'], 'timed-tutorial-world')
+        self.assertFalse(any(method == 'action.result' for method, _ in calls))
+
 
 if __name__ == '__main__':
     unittest.main()

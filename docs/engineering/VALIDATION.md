@@ -26,9 +26,9 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `python -m unittest tests.test_provider_tutorial -v` | PASS | 7 项 synthetic unit/schema 测试；覆盖五课合法组件、动态插入、选择/文本状态、主题应用/复位、计数发现与清理。新增发现动作测试断言只调用 `world.list`，不调用 `world.join`/`world.snapshot`，也不保留标题或世界 ID。|
+| `python -m unittest tests.test_provider_tutorial -v` | PASS | 8 项 synthetic unit/schema 测试；覆盖五课合法组件、动态插入、选择/文本状态、主题应用/复位、计数发现、正常交互清理和有界运行时清理。发现动作只调用 `world.list`，不调用 `world.join`/`world.snapshot`，也不保留标题或世界 ID。|
 | `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；离线契约、Clippy 和 27 个 Provider Skill 引用检查通过，退出码 0。|
-| B02-03-A1 新用户完整旅程 | PARTIAL | 本轮增加了动作分支回归，但仍未用当前 release 连续完成五课；真实 Host 窗口无法由 Computer Use 激活，留待人工原生验收。|
+| B02-03-A1 新用户完整旅程 | PARTIAL | 当前 release 的 5 秒有界 smoke 确认 Provider 可创建 synthetic 世界并销毁自己的测试世界；五课按钮/输入/主题/发现动作尚未通过原生点击连续验收。|
 
 ## 2026-10-30 B02-04 键盘与 IME renderer 覆盖
 
@@ -287,14 +287,15 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 |---|---|---|
 | Release 宿主/描述文件选择 | PASS（只读准备） | 唯一 release 进程与其本机 runtime descriptor 通过 PID 匹配；不保存描述文件路径或内容。|
 | 五课 Provider 启动 | PARTIAL | 以合成数据启动 `provider_tutorial.py` 后，进程在后续观察前已退出，Computer Use 未观察到教程窗口；该启动本身不能证明课程交互。|
-| 2026-10-31 当前 release 教程启动复试 | NOT_RUN | 启动尝试没有返回确认；进程随后被中断并退出。只读非 operator `world.list` 返回 0 个可见世界，但邀请世界对该会话不可见，不能证明清理。此尝试不算通过。|
+| 2026-10-31 当前 release 有界启动/清理 | PASS（L2） | `python -u examples/python/provider_tutorial.py --duration-seconds 5 --title <synthetic QA title>` 退出码 0；收到启动行、时限到达和 `world.destroy` 清理确认。仅用合成课程数据，不代表课程交互通过。|
+| 2026-10-31 当前 release 无界启动复试 | NOT_RUN | 启动尝试没有返回确认；进程随后被中断并退出。只读非 operator `world.list` 返回 0 个可见世界，但邀请世界对该会话不可见，不能证明这次早先尝试是否清理。此尝试不算通过。|
 | 管理器窗口交互 | BLOCKED | 新枚举到唯一管理器后，Observed 的展开按钮 click 与一次重新枚举恢复均返回 `foreground window did not report a process id`；按 Computer Use 恢复规则停止后续输入。|
-| 教程世界清理 | NOT_RUN | 最新复试后的非 operator `world.list` 显示 0 个可见世界，但不能看见 invite-only/system 世界，故清理结果未确认。|
+| 有界 smoke 世界清理 | PASS（L2） | Provider 收到其 `world.destroy` 成功响应并打印确认；只证明本次 5 秒测试世界已清理。|
+| 早先中断尝试的世界清理 | NOT_RUN | 非 operator `world.list` 不能看见 invite-only/system 世界；该次创建结果未确认，管理器侧仍需核实。|
 | 教程动作分支回归 | PASS（synthetic unit） | 新增定向测试覆盖选择/文本输入经 `data.replace`、主题应用/复位经 `scene.replace`、动态插入经 `scene.patch`；发现只调用 `world.list`，场景只收到计数/加入策略、不加入或读取目标世界。`python -m unittest tests.test_provider_tutorial -v` 7 项通过。|
 | A1 新用户完整旅程 | PARTIAL | 建窗、改字、按钮、主题、课程发现未在本次连续完成；保留为人工验收/可用 UI 自动化路径待办。|
 
-脱敏运行摘要见忽略的 `evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json`；没有记录 runtime descriptor、token、真实会话或业务数据。
-2026-10-31 复试摘要见忽略的 `evidence/local/nextgen-2026-10-31/b02-03-tutorial-current-host-attempt.json`；保留为未确认，未保存 runtime descriptor 或窗口/会话内容。
+脱敏运行摘要见忽略的 `evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json`、`evidence/local/nextgen-2026-10-31/b02-03-tutorial-current-host-attempt.json` 和 `evidence/local/nextgen-2026-10-31/b02-03-tutorial-bounded-release-smoke.json`；没有记录 runtime descriptor、token、真实会话或业务数据。
 
 ## B03-01 Popup 兼容适配（2026-10-26）
 
@@ -930,7 +931,7 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `python -m unittest tests.test_agent_global_overview -v` | PASS（14 tests） | 覆盖 Codex 并行量、Claude 有界状态预览、Codex/Claude 列表字段、source/detail/back 导航、身份与 freshness、过期 detail 拒绝、分页，以及选中会话消失/恢复。|
-| `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 144 项、Python 198 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 144 项、Python 199 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
 | 当前标准 release + `global_overview_provider.py --duration-seconds 5` | PASS（L2 scene/cleanup） | 当前 Tauri Host 接受仓库合成总览场景；Provider 5 秒后退出并确认仅清理自己的临时世界。该 smoke 不含真实会话数据，也不提供新截图。|
 | B08-03-A4 判定 | PARTIAL | 新增回归证明选中会话不再因快照消失而静默清除：保留显示身份、刷新来源 freshness、显示撤销状态未知，且记录恢复后回到实时详情。会话消失不被伪判为撤销；真正的 Host scope 撤销事件仍未接入该视图，需端到端验证。|
 | B08-03-A5 判定 | PASS（L1-L4） | 首屏 Codex 并行量与 Claude 状态预览由测试覆盖；A7 release 截图已记录 Overview `520×421`、Claude list `520×422`、Codex list `520×512`、detail `520×477`，并验证动作回执和受限窗口高度。当前 release synthetic scene/cleanup smoke 通过。|

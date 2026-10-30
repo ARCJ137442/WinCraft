@@ -41,6 +41,8 @@ LESSONS: tuple[tuple[str, str], ...] = (
 
 POLL_INTERVAL_SECONDS: float = 1.0
 '''恢复隐藏世界时检查 host 快照的间隔。'''
+MAX_TUTORIAL_DURATION_SECONDS: int = 600
+'''可选有界教程时长上限；默认教程保持交互。'''
 
 
 class DiscoverySummary(TypedDict):
@@ -522,6 +524,9 @@ async def _handle_action(
 
 async def run(args: argparse.Namespace) -> None:
     '''运行教程；清理范围始终限定为本进程创建的唯一教学世界。'''
+    duration_seconds = getattr(args, 'duration_seconds', None)
+    if duration_seconds is not None and not 1 <= duration_seconds <= MAX_TUTORIAL_DURATION_SECONDS:
+        raise ValueError(f'duration_seconds must be in 1..{MAX_TUTORIAL_DURATION_SECONDS}')
     world_id: str | None = None
     lease: dict[str, Any] | None = None
     deleted = False
@@ -559,17 +564,33 @@ async def run(args: argparse.Namespace) -> None:
         }
         print(
             'WinCraft provider tutorial opened with synthetic data. '
-            'Ctrl+C disconnects; the script cleans up only its own world.'
+            'Ctrl+C disconnects; the script cleans up only its own world.',
+            flush=True,
         )
         try:
             await _publish_lesson(client, world_id, lease, state)
+            deadline = (
+                asyncio.get_running_loop().time() + duration_seconds
+                if duration_seconds is not None
+                else None
+            )
             while True:
+                timeout_seconds = POLL_INTERVAL_SECONDS
+                if deadline is not None:
+                    remaining = deadline - asyncio.get_running_loop().time()
+                    if remaining <= 0:
+                        print('Tutorial time limit reached; cleaning up.', flush=True)
+                        break
+                    timeout_seconds = min(timeout_seconds, remaining)
                 try:
                     message = await asyncio.wait_for(
                         client.events.get(),
-                        timeout=POLL_INTERVAL_SECONDS,
+                        timeout=timeout_seconds,
                     )
                 except TimeoutError:
+                    if deadline is not None and asyncio.get_running_loop().time() >= deadline:
+                        print('Tutorial time limit reached; cleaning up.', flush=True)
+                        break
                     if state['waiting_for_restore']:
                         snapshot = await client.call(
                             'world.snapshot',
@@ -648,7 +669,7 @@ async def run(args: argparse.Namespace) -> None:
                             'before retrying or closing a world.'
                         ) from error
                     deleted = True
-                    print('Tutorial world cleanup confirmed.')
+                    print('Tutorial world cleanup confirmed.', flush=True)
                     return
         finally:
             if world_id and lease and not deleted and not destroy_attempted:
@@ -660,11 +681,11 @@ async def run(args: argparse.Namespace) -> None:
                 )
                 try:
                     await asyncio.shield(cleanup)
-                    print('Tutorial world cleanup confirmed.')
+                    print('Tutorial world cleanup confirmed.', flush=True)
                 except asyncio.CancelledError:
                     with contextlib.suppress(Exception):
                         await asyncio.shield(cleanup)
-                        print('Tutorial world cleanup confirmed.')
+                        print('Tutorial world cleanup confirmed.', flush=True)
                     raise
                 except Exception:
                     print(
@@ -683,8 +704,16 @@ def main() -> None:
         default='WinCraft Agent 新手课程',
         help='用于管理器识别的教学窗口标题',
     )
+    parser.add_argument(
+        '--duration-seconds',
+        type=float,
+        default=None,
+        help='可选自动清理时限（1..600 秒）；省略时保持交互直到用户结束',
+    )
     args = parser.parse_args()
     require_runtime(parser, args)
+    if args.duration_seconds is not None and not 1 <= args.duration_seconds <= MAX_TUTORIAL_DURATION_SECONDS:
+        parser.error(f'--duration-seconds must be in 1..{MAX_TUTORIAL_DURATION_SECONDS}')
     try:
         asyncio.run(run(args))
     except KeyboardInterrupt:
