@@ -373,7 +373,7 @@
       "id": "B01-03",
       "batch": "B01",
       "title": "授权inventory与发现契约",
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "VERIFIED",
       "depends_on": [
         "B01-01",
         "B01-02"
@@ -1756,7 +1756,7 @@
       "id": "B07-01",
       "batch": "B07",
       "title": "资源树与单写子树租约",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B01-02",
         "B01-04"
@@ -1818,7 +1818,7 @@
       "id": "B07-02",
       "batch": "B07",
       "title": "结构事务、父子撤销与过滤",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B07-01"
       ],
@@ -1878,7 +1878,7 @@
       "id": "B07-03",
       "batch": "B07",
       "title": "类型状态槽与受控共享高级通道",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B07-02"
       ],
@@ -1937,7 +1937,7 @@
       "id": "B07-04",
       "batch": "B07",
       "title": "多来源组合性质与真实窄验收",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B07-02",
         "B07-03"
@@ -1999,7 +1999,7 @@
       "id": "B08-01",
       "batch": "B08",
       "title": "统一活动模型与只读聚合器",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B01-03",
         "B01-04"
@@ -2288,7 +2288,7 @@
       "id": "B09-01",
       "batch": "B09",
       "title": "设备消息信封与外部传输端口",
-      "status": "NOT_STARTED",
+      "status": "VERIFIED",
       "depends_on": [
         "B01-03",
         "B08-01"
