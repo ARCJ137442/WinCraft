@@ -956,3 +956,12 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B06-03-A1/A2/A3 判定 | PARTIAL / PARTIAL / PARTIAL | Rust Host 行为回归已复跑；不将单测或无界面 Host 请求记作 manager 的人工预览、回退 UI 通过。|
 
 忽略的本机回归摘要：`evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json`。
+
+## 2026-10-31 GitHub Actions checkpoint
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Commit `51be6bad6e3278a2888f2635f6510f06fd03f231` / `origin/dev` | PASS | 使用 `gh` 核对仓库为 `exomind-team/WinCraft` 私有仓库、默认分支 `dev`；提交推送成功，远端 `dev` 与本地 HEAD 一致。|
+| Windows Actions run [41091337537](https://github.com/exomind-team/WinCraft/actions/runs/41091337537) | PASS | `Prototype verification (not native GUI acceptance)` 完成，`source` job 的 `npm run check:local` 成功，耗时 12m02s。该 workflow 不执行原生 UIA/托盘/多屏等人工验收。|
+
+阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery.zip`，包含 EXE、中文验收指南与 build/hash/待验收说明；不是仓库发布附件。
