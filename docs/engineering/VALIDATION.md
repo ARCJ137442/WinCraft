@@ -1000,6 +1000,8 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `python scripts/check_contracts.py` | PASS | 退出码 0；请求/响应 schema、正反 fixture 与本地协议检查通过。|
 | `npm run check:local` | PASS | 退出码 0：Node UI 28 项、Rust workspace 145 项、Python 203 项（1 项因 Windows symlink 能力跳过）、Provider Skill 引用 33 项；含 Rust fmt/check/test/Clippy。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
 | `npm run desktop:build` | PASS | 退出码 0；`target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `64458EA768A36FE012230EA34D0E37936FB1ACF1FA74C1A49802C8D456BD7314`。旧 QA 宿主因锁定输出 EXE，已先按用户授权退出；本轮新构建未启动进行像素验收。|
+| Commit `a78b3c9d4e9e19be7045faad4920d060f3c990c1` / `origin/dev` | PASS | 提交已推送到已核实的私有仓库 `exomind-team/WinCraft`，远端 `dev` 与提交一致。|
+| Windows Actions run [41123291608](https://github.com/exomind-team/WinCraft/actions/runs/41123291608) | PASS | `gh run watch --exit-status` 退出码 0；Windows `source` job 完成，耗时 9m59s。Workflow 仅验证源码门禁，不替代原生 GUI 验收。|
 | `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 最终代码/格式化后同步 6 个变更文件；索引为 current（98 files、2,763 nodes、9,208 edges）。|
 | 新编译 headless Rust Host + `scoped_live_sources.py --duration-seconds 5` | PASS（L4 protocol/source integration） | `cargo build -p wincraft-server --bin wincraft-headless` 退出码 0；使用 authority-expiry 修正后的二进制，Provider smoke 退出码 0，两个独立本地来源 Provider lease 并发重叠 4.89 秒；Codex 为 `online → stale → revoked`，Claude Code 为 `online → stale → stale`；父 Provider 更新 lifecycle panel 并确认销毁临时世界。终端摘要只含汇总字段，无会话标题、项目、ID 或 Agent 输出。|
 | 首次撤销路径尝试 | FAIL（已修复并重跑） | 退出码 1，`SCOPE_REVISION_CONFLICT`：父 Provider 在写入 stale 状态后未使用返回的新 scope revision。修复为每次写入后传递新 revision；修复后的同一真实 Host smoke 退出码 0。|

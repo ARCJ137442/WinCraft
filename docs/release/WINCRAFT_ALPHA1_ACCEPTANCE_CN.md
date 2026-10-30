@@ -1,7 +1,7 @@
 ---
 title: WinCraft 0.1.0-alpha.1 Windows 验收指南
-updated_at: 2026-10-30
-last_verified_at: 2026-10-30
+updated_at: 2026-10-31
+last_verified_at: 2026-10-31
 status: local-release-acceptance-guide
 audience: maintainer, Windows tester
 ---
@@ -12,15 +12,15 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `c36e4afed0097329fdb6e282b229692cc299d1c1` |
+| 源码提交 | `a78b3c9d4e9e19be7045faad4920d060f3c990c1` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 13,559,808 bytes |
-| SHA-256 | `C949FC2359B5D36DA9FF3C2CAD395D07914699D13DF9130A985CC3160070BA25` |
+| 文件大小 | 13,595,648 bytes |
+| SHA-256 | `64458EA768A36FE012230EA34D0E37936FB1ACF1FA74C1A49802C8D456BD7314` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。`npm run check:local` 退出码 0：28 项 UI、141 项 Rust、174 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过；Windows Actions run [41024348330](https://github.com/exomind-team/WinCraft/actions/runs/41024348330) 对 `309af17` 通过，run [41026654580](https://github.com/exomind-team/WinCraft/actions/runs/41026654580) 对 `c36e4af` 也通过。当前 `target/release/wincraft-desktop.exe` 由 `npm run desktop:build` 以退出码 0 构建，哈希见上表。早先隔离候选与标准路径新构建分别在真实 Tauri-hosted `lease_probe.py` 上通过 41 项；旧目标路径 EXE 早于快捷键功能提交，已停止。标准路径 EXE 当前以 `--open-manager` 单实例运行。Provider Skill 校验器的本机变更通过最新 `npm run check:local`，但尚未推送或跑 CI。CI 与自动测试不替代原生 GUI 验收。
+这是单个 Windows 可执行文件，不是安装器。源码提交 `a78b3c9` 的 `npm run check:local` 退出码 0：28 项 UI、145 项 Rust、203 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过。`npm run desktop:build` 退出码 0，产物信息见上表。GitHub Actions run [41123291608](https://github.com/exomind-team/WinCraft/actions/runs/41123291608) 已通过，Windows source job 用时 9m59s。自动测试和 CI 不替代原生 GUI 验收。
 
-首次 release 启动时，管理器后台循环在同步 Tauri setup 回调直接调用 `tokio::spawn`，进程以 101 退出；已修复为通过 `tauri::async_runtime::spawn` 调度，并重新构建验证。旧运行进程所用 EXE 的构建时间早于快捷键功能提交，不能用来验证该功能。当前新版候选已运行；Computer Use 返回“native pipe is unavailable”，本轮未点击启用热键，也未完成托盘交互。本指南中的空白验收格仍须由维护者实际操作填写。
+首次 release 曾因在同步 Tauri setup 回调直接调用 `tokio::spawn` 而以 101 退出；现已改为通过 `tauri::async_runtime::spawn` 调度并通过完整本地门禁。当前 `a78b3c9` release EXE 构建完成，但本轮未启动该 Tauri EXE 做像素/托盘验收；临时 scope 生命周期验证使用真实 headless Rust Host。以下空白人工验收项仍需由维护者实测。
 
 2026-10-30 用户明确要求改用本机进程状态与磁盘会话数据，不需要与 Codex App 通信。当前源码包含 Codex App state DB/rollout 与 Claude Code JSONL/subagent 只读适配；count-only smoke 确认 Codex App 进程在线、Claude Code 进程离线但历史可读。标准 release 上的只读 live provider 以 `codex`、`codex-app`、`claude-code` 三源运行，真实提交了三次场景快照并清理自己的临时世界；来源摘要为 Codex CLI online/0、Codex App online/128、Claude Code offline/128。它证明三源进入同一个 Host scene 更新路径，不证明像素呈现：本机没有取得 Agent Activity 截图或 accessibility tree，所以标题/项目/Agent 输出卡片、freshness 展示和 UUID-only 深链接仍为 `NOT_RUN`。
 
@@ -50,22 +50,22 @@ audience: maintainer, Windows tester
 | 动态组件与动作回执（W04/W05/W06） | 在 Python focus demo 中点击“替换组件区”和一个按钮；结构实时更新，动作显示当前 provider 的实际回执；provider 断线不冒充成功。 | ____ |
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
-| 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Rust 回归、Windows CI 与 release build：PASS；新版 release 已启动；真实启用/按键/冲突/撤销/IME：NOT_RUN |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 三源同一标准 Host scene 更新与本机 count-only 来源 smoke：PASS（L2）；像素/freshness 卡片及 UUID 深链：用户要求的 Codex App 子目标仍停滞（NOT_RUN） |
+| 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Rust 回归和 release build：PASS；当前构建的真实启用/按键/冲突/撤销/IME：NOT_RUN |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；无权威逐会话状态时显示未知。 | 三源同一 live Host scene、来源 freshness 与选择导航测试通过；当前 release 像素仍 NOT_RUN。Host scope lifecycle 的 L4 协议 smoke 通过，但不能映射成外部会话撤销；B08-03-A4 仍 PARTIAL。 |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
 
-完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本轮新版候选上的真实 Tauri-hosted `lease_probe.py` 退出码 0，共 41 项通过，覆盖协议授权、组件动态 patch、租约过期、断线重连、旧 epoch fencing、慢消费者断开和原生窗口属性应用。它不替代托盘点击、全局快捷键按键、像素布局、真实 z-order、穿透救援及多显示器人工操作。当前 provider 从进程读取 Codex App/Claude 在线状态，从本机数据目录读取会话摘要；无进程仍显示可读历史，数据缺失明确显示未知/不可用。Computer Use 原生管道不可用，本轮没有截图；真实 Codex App 卡片和深链接仍未验收。
+完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。当前本地真实 Rust Host lifecycle smoke（`scoped_live_sources.py --duration-seconds 5`）退出码 0：两个独立 Provider scope 从 `online → stale`，父 authority 删除 Codex scope 后 Codex 为 `revoked`、Claude Code sibling 仍为 `stale`；临时世界清理成功。该 smoke 使用 headless Rust Host，验证协议与来源进程隔离，不证明 Tauri 像素、托盘点击、真实 z-order、穿透救援或多显示器行为。会话记录丢失仍显示撤销未知；scope 撤销状态不能替代来源会话状态。
 
 ## 记录与复现
 
-本次构建命令为 `npm run desktop:build`，产物位于 Cargo target release 目录。逐命令退出码、工具版本和脱敏探针结果保存在默认忽略的 `evidence/local/nextgen-2026-10-30/`。不要把 `.runtime.json`、令牌、Obsidian 笔记或 TrafficMonitor 遥测写入提交。
+本次构建命令为 `npm run desktop:build`，产物位于 Cargo target release 目录。工具版本、退出码和脱敏探针摘要保存在默认忽略的 `evidence/local/nextgen-2026-10-31/scope-status-lifecycle-smoke.json`。不要把 `.runtime.json`、令牌、Obsidian 笔记或 TrafficMonitor 遥测写入提交。
 
 ## B06-03 配置包导入人工验收
 
-当前 release 的管理器 accessibility tree 已读取，但 B06-03 的预览、授权重规划、应用、Provider 回执和回退操作尚未逐项实测；以下步骤可由维护者在“窗构 · 世界管理器”中完成。数据全部为合成样例；不使用真实 Provider 或用户世界。
+此前 release 的管理器 accessibility tree 已读取；当前 `a78b3c9` release 尚未启动，B06-03 的预览、授权重规划、应用、Provider 回执和回退操作仍未逐项实测。以下步骤可由维护者在“窗构 · 世界管理器”中完成。数据全部为合成样例；不使用真实 Provider 或用户世界。
 
 ### 样例与提供者
 
