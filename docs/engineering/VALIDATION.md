@@ -28,6 +28,18 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；离线契约、Clippy 和 27 个 Provider Skill 引用检查通过，退出码 0。|
 | B02-03-A1 新用户完整旅程 | PARTIAL | 本轮增加了动作分支回归，但仍未用当前 release 连续完成五课；真实 Host 窗口无法由 Computer Use 激活，留待人工原生验收。|
 
+## 2026-10-30 B03-02 Popup 状态机验收复核
+
+**Given** 一次 Popup-Ask 临时问题，**When** 用户提交、取消、关闭，或 Host/Provider 断线，**Then** 每个路径产生单一确定结果或清楚的 unknown，并只清理本次世界。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_popup_ask_provider -v` | PASS | 23 项测试覆盖 submit/cancel/escape/window-close/source-exit/host-exit、超过 10 秒等待、丢失 ACK、重复提交、busy 配额、原子位置保存与新 WindowSpec。|
+| 重复 submit 与清理次序 | PASS（provider model） | 重复 submit 仅产生一个最终 action result 和一次本世界 destroy；取消 ACK 先于 destroy。测试使用 fake Client。|
+| Popup 并发与可发现入口 | PARTIAL | Windows 跨进程互斥和 busy-before-client/create 通过测试；manager 逻辑列出 invite Popup world，但当前 release 可见性和不抢焦点未实测。|
+| 位置恢复与键盘路径 | PARTIAL | 观察到的边界内位置/尺寸可持久化，新 WindowSpec 从保存偏好生成；Chromium 编译 renderer 验证方向键、Tab→备注、Ctrl+Enter 与 Escape。当前 release 原生几何复用、IME、UIA 和读屏仍未验收。|
+| B03-02 acceptance | PARTIAL | A1/A2 由状态机与去重测试证明；A3/A4/A5 仍为 PARTIAL，完整 Tauri Popup 用户旅程待手动/原生验收。|
+
 ## 2026-10-28 开发工具链核验
 
 | 检查 | 状态 | 实际结果 |

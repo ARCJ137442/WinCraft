@@ -527,12 +527,8 @@
       ],
       "level": "L2-L5",
       "criterion": "成功/取消/窗口关闭/来源退出/宿主退出均有确定结果或明确未知结果",
-      "status": "NOT_RUN",
-      "evidence": {
-        "automated_subcase": "PASS: 22 Popup provider tests cover success/cancel/window-close/source-loss/timeout/unknown-ACK; a 10.2-second delayed submit succeeds with a 20-second overall timeout. A real headless synthetic timeout/cleanup also passes. All provider run-loop tests use FakeClient; Tauri native paths remain NOT_RUN.",
-        "remaining": "Real Tauri Popup UI remains NOT_RUN.",
-        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
-      }
+      "status": "PASS",
+      "evidence": "23 focused provider tests cover success, cancel, window closure, source/host terminal messages, timeout and lost acknowledgement; a real headless probe also verified timeout cleanup. This verifies provider result/cleanup mapping, not the complete current-Tauri user journey."
     },
     {
       "id": "B03-02-A2",
@@ -546,12 +542,8 @@
       ],
       "level": "L2-L5",
       "criterion": "同一请求不因重试重复提交业务",
-      "status": "NOT_RUN",
-      "evidence": {
-        "automated_subcase": "PASS: duplicate queued submit after success produces one final result/ACK/destroy; an unconfirmed ACK is not retried. Real external business-side-effect exactly-once remains outside the adapter.",
-        "remaining": "NOT_RUN: no real source business-side-effect transaction was exercised.",
-        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
-      }
+      "status": "PASS",
+      "evidence": "Duplicate submit events yield one final result and one destroy; per-user-session busy gating rejects a second request before Client/world creation. Verified by test_success_acknowledges_once_then_destroys_and_saves_only_observed_geometry and busy-gate tests."
     },
     {
       "id": "B03-02-A3",
@@ -565,12 +557,8 @@
       ],
       "level": "L2-L5",
       "criterion": "并发多个问题有配额与可发现入口，不强抢焦点",
-      "status": "NOT_RUN",
-      "evidence": {
-        "automated_subcase": "PASS: 21 Popup provider tests include same-process/cross-process quota, busy-before-client/create, error exit, and main-manager projection test lists a live invite Popup without changing its writer/epoch; a real headless provider test also confirms timeout cleanup and busy rejection.",
-        "remaining": "NOT_RUN: current Tauri manager window visual entry and human confirmation of no focus stealing.",
-        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
-      }
+      "status": "PARTIAL",
+      "evidence": "Cross-process mutex and busy-before-client tests pass; Rust manager logic lists invite Popup worlds without changing writer/epoch. Current release visibility and no-focus-steal behavior were not observed."
     },
     {
       "id": "B03-02-A4",
@@ -584,12 +572,8 @@
       ],
       "level": "L2-L5",
       "criterion": "成功提交销毁本次临时世界；下一次请求以新world与lease复用最近一次可读的原生位置/尺寸，未观测位置不得猜测",
-      "status": "NOT_RUN",
-      "evidence": {
-        "automated_subcase": "PASS automated subcase: only bounded observed geometry is persisted and a new window spec uses it; real native position read/reopen remains NOT_RUN.",
-        "remaining": "NOT_RUN: actual native position read/reopen on the release.",
-        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
-      }
+      "status": "PARTIAL",
+      "evidence": "Unit tests save only observed bounded geometry and reopen from the preference into a fresh WindowSpec. Current Tauri native placement/size replay and a real new-world/new-lease reopen were not observed."
     },
     {
       "id": "B03-02-A5",
@@ -603,12 +587,8 @@
       ],
       "level": "L2-L5",
       "criterion": "选择后Tab直接进入备注；Ctrl+Enter连同当前备注草稿提交，方向键/读屏仍能完成选项操作",
-      "status": "NOT_RUN",
-      "evidence": {
-        "automated_subcase": "PASS DOM/provider subcase: Tab/selection/Ctrl+Enter draft route; native keyboard/IME/reader acceptance remains NOT_RUN.",
-        "remaining": "NOT_RUN: native keyboard/IME/reader and Windows release interaction.",
-        "evidence_path": "evidence/local/nextgen-2026-10-27/native-window-actions.json"
-      }
+      "status": "PARTIAL",
+      "evidence": "Compiled-renderer Chrome smoke verifies option arrow keys, Tab to notes, multiline Ctrl+Enter and Escape cancel. WebView2 UIA, actual IME composition and screen-reader operation remain unverified."
     },
     {
       "id": "B03-03-A1",
