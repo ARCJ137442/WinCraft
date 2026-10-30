@@ -759,7 +759,8 @@
       ],
       "level": "L1-L4",
       "criterion": "Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "Windows-targeted logic test covers SetForegroundWindow API success, already-foreground verification, and the denied/not-foreground failure branch. Host integration test verifies a native action error is not broadcast or acknowledged to the provider. A real OS-denied activation against Obsidian was not exercised; retain PARTIAL until current-release native confirmation."
     },
     {
       "id": "B04-02-A4",
@@ -792,7 +793,8 @@
       ],
       "level": "L1-L4",
       "criterion": "真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "Provider unit test verifies title action is acknowledged only after the Host focus call succeeds; Host failure test verifies no interaction broadcast/ACK on native action failure. Current-release click against an existing Obsidian window and absence of process launch remain unverified after Computer Use activation failure."
     },
     {
       "id": "B04-03-A1",

@@ -77,9 +77,9 @@
 | B04-01-A3 | B04-01 | L1-L2 | 慢消费者重同步/断开可解释，重复事件不循环触发动作 | PASS |
 | B04-02-A1 | B04-02 | L1-L4 | 切显示器/DPI变化后位置可恢复 | NOT_RUN |
 | B04-02-A2 | B04-02 | L1-L4 | 用户接管立即停自动运动 | NOT_RUN |
-| B04-02-A3 | B04-02 | L1-L4 | Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。 | NOT_RUN |
+| B04-02-A3 | B04-02 | L1-L4 | Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。 | PARTIAL |
 | B04-02-A4 | B04-02 | L1-L4 | 仅原生host宣告 external_window_actions；应用ID/操作/title filter严格allowlist且有界；headless拒绝，disabled/stale/revoked按钮不执行 | PASS |
-| B04-02-A5 | B04-02 | L1-L4 | 真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执 | NOT_RUN |
+| B04-02-A5 | B04-02 | L1-L4 | 真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执 | PARTIAL |
 | B04-03-A1 | B04-03 | L1-L4 | 冲突注册失败不占用他人热键 | NOT_RUN |
 | B04-03-A2 | B04-03 | L1-L4 | 断线/撤销/退出后无残留绑定 | NOT_RUN |
 | B04-03-A3 | B04-03 | L1-L4 | IME/输入框/平台组合键不被默认破坏 | NOT_RUN |

@@ -406,11 +406,15 @@ fn select_external_window_match_index(
     }
 }
 
+fn foreground_activation_confirmed(api_reported_success: bool, target_is_foreground: bool) -> bool {
+    api_reported_success || target_is_foreground
+}
+
 #[cfg(test)]
 mod native_window_action_tests {
     use super::{
-        codex_thread_uri, executable_name_for_application, normalized_title_filter,
-        select_external_window_match_index, title_matches_filter,
+        codex_thread_uri, executable_name_for_application, foreground_activation_confirmed,
+        normalized_title_filter, select_external_window_match_index, title_matches_filter,
     };
     use uuid::Uuid;
     use wincraft_core::NativeWindowApplication;
@@ -456,6 +460,13 @@ mod native_window_action_tests {
             "Any existing title",
             &normalized_title_filter(Some("  "))
         ));
+    }
+
+    #[test]
+    fn rejected_foreground_request_is_not_reported_as_activation_success() {
+        assert!(foreground_activation_confirmed(true, false));
+        assert!(foreground_activation_confirmed(false, true));
+        assert!(!foreground_activation_confirmed(false, false));
     }
 
     #[test]
@@ -587,7 +598,9 @@ fn perform_window_action(action: &NativeWindowAction) -> Result<(), String> {
                     ShowWindow(hwnd, SW_RESTORE);
                 }
                 BringWindowToTop(hwnd);
-                if SetForegroundWindow(hwnd) == 0 && GetForegroundWindow() != hwnd {
+                let api_reported_success = SetForegroundWindow(hwnd) != 0;
+                let target_is_foreground = GetForegroundWindow() == hwnd;
+                if !foreground_activation_confirmed(api_reported_success, target_is_foreground) {
                     return Err(
                         "Windows did not allow activating the matching application window".into(),
                     );

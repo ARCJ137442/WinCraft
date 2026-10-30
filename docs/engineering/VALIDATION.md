@@ -6,6 +6,8 @@
 
 截至 2026-10-30，Codex App 与 Claude Code 的 Agent Activity 数据路径是：本机进程只判在线/离线；获准的数据目录提供会话详情，离线时仍可读历史；没有权威逐会话状态就显示 `unknown`。不连接 Codex App，不启动 Claude CLI。下面带日期的早期记录仍保留当时的真实结果，但其中 MCP/connector bridge 与 `agents --json` 是被后续决定取代的历史方案；当前结果见文末最新 B08-02 记录和 `plan/status.json`。
 
+本文件按时间追加，不回写早期观察。对同一验收项，较新的明确复核段落与生成的 `plan/acceptance.json`、`plan/status.json` 是当前状态；旧日期段落只保留发生当时的事实。
+
 TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：前者读本机 state SQLite 与 rollout token 事件；后者在 TeamSense 本机 collector 内存使用已有凭据查询额度服务。它们都不等于实时会话状态。未来的 Codex、MiniMax、DeepSeek 图形化额度悬浮窗仍是 IDEA；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
 
 ## 2026-10-30 B02-02 主题与无障碍偏好验收
@@ -39,6 +41,19 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | Popup 并发与可发现入口 | PARTIAL | Windows 跨进程互斥和 busy-before-client/create 通过测试；manager 逻辑列出 invite Popup world，但当前 release 可见性和不抢焦点未实测。|
 | 位置恢复与键盘路径 | PARTIAL | 观察到的边界内位置/尺寸可持久化，新 WindowSpec 从保存偏好生成；Chromium 编译 renderer 验证方向键、Tab→备注、Ctrl+Enter 与 Escape。当前 release 原生几何复用、IME、UIA 和读屏仍未验收。|
 | B03-02 acceptance | PARTIAL | A1/A2 由状态机与去重测试证明；A3/A4/A5 仍为 PARTIAL，完整 Tauri Popup 用户旅程待手动/原生验收。|
+
+## 2026-10-30 B04-02 前台激活失败栅栏
+
+**Given** 提供者请求经由用户点击触发的受限原生窗口动作，**When** `SetForegroundWindow` 报告拒绝且目标并未成为 foreground window，**Then** Host 返回明确错误，不写成功回执，也不把这次交互发布给 Provider。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-desktop rejected_foreground_request_is_not_reported_as_activation_success -- --nocapture` | PASS（Windows logic） | 当前 Windows 构建上验证 API success、API false 但 HWND 已为 foreground、API false 且仍非 foreground 三种分支；最后一种必须判定失败。|
+| `cargo test -p wincraft-server native_window_action_failure_does_not_dispatch_or_ack_the_provider_event -- --nocapture` | PASS（Host integration unit） | native action 错误保持 `NATIVE_WINDOW_ACTION_FAILED`；不广播 Provider interaction、不创建 pending action、不产生 action ACK。|
+| `cargo fmt --all -- --check` / `npm run check:local` | PASS | 退出码 0；28 项 UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy 与 27 个 Provider Skill 引用检查通过。|
+| `npm run desktop:build` | PASS | 退出码 0；`target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `4EFE3DC6E5990E5A5BEE69116190C270CF7CD49527E2626207E60772F36ED806`。未运行新 release 的窗口点击验收。|
+| B04-02-A3 Windows 前台拒绝 | PARTIAL | Win32 结果到 Host 的失败栅栏有定向回归；本轮没有强制 Windows 拒绝真实 Obsidian 激活。当前 release 标题动作的原生点击仍未通过 Computer Use/人工观察。|
+| B04-02-A5 Host action / Provider ACK 顺序 | PARTIAL | Obsidian Workspace Provider 测试只在 Host focus 调用成功后 ACK；Host native failure 测试不广播、不 ACK。真实 release 点击既有 Obsidian 窗口且不启动新进程仍未实测。|
 
 ## 2026-10-28 开发工具链核验
 
