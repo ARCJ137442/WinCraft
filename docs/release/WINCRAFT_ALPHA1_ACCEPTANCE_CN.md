@@ -12,13 +12,13 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `4bc3e81785f2aa5ae4f454e931ad50968c7e40c3` |
-| 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 13,558,784 bytes |
-| SHA-256 | `5E6061827A3B4527BFEEA1307A5945A8EAB8976C8BDC47A86BFE2F4B654B6F8F` |
+| 源码提交 | `309af176714ffaf4d76601124a32e43ab2dfdd0b` |
+| 程序路径 | `target/stage-309af17/release/wincraft-desktop.exe` |
+| 文件大小 | 13,559,808 bytes |
+| SHA-256 | `6840654D6DBEFB780B758618805B241AC96D22D57B8E7F4D49B102DFA3E58E10` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。`npm run check:local` 退出码 0：28 项 UI、141 项 Rust、174 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 27 个 Provider Skill 引用检查通过；`npm run desktop:build` 退出码 0。当前构建以 `--open-manager` 启动后保持运行，世界管理器窗口和可访问性树可见。
+这是单个 Windows 可执行文件，不是安装器。`npm run check:local` 退出码 0：28 项 UI、141 项 Rust、174 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 27 个 Provider Skill 引用检查通过；Windows Actions run [41024348330](https://github.com/exomind-team/WinCraft/actions/runs/41024348330) 对 `309af17` 也通过。设置隔离 `CARGO_TARGET_DIR=target/stage-309af17` 后，`npm run desktop:build` 退出码 0。该新 EXE 尚未另行启动：之前的 4bc3e81 候选仍开着世界管理器窗口，避免重复创建托盘宿主。CI 与自动测试不替代原生 GUI 验收。
 
 首次 release 启动时，管理器后台循环在同步 Tauri setup 回调直接调用 `tokio::spawn`，进程以 101 退出；已修复为通过 `tauri::async_runtime::spawn` 调度，并重新构建验证。Computer Use 随后被物理 Escape 停止：未输入或启用快捷键，也未完成托盘交互。本指南中的空白验收格仍须由维护者实际操作填写。
 
@@ -26,7 +26,7 @@ audience: maintainer, Windows tester
 
 ## 快速启动
 
-1. 打开 `target/release/wincraft-desktop.exe`。普通启动预期只有托盘图标，不自动打开业务窗口。
+1. 先从此前已运行的 WinCraft 实例托盘菜单选择“退出”，再打开 `target/stage-309af17/release/wincraft-desktop.exe`。普通启动预期只有托盘图标，不自动打开业务窗口。
 2. 从 WinCraft 托盘菜单打开“世界管理器”。多次点击应聚焦同一个管理器实例。
 3. 在管理器中新建空白世界；需要自动打开管理器时，可使用可选参数 `--open-manager`。这个参数是本机联调用入口，不代表默认启动行为。
 4. 从管理器复制它显示的 runtime descriptor 路径给本机 Python 示例，例如：

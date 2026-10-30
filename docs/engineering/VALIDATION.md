@@ -78,11 +78,13 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | `cargo test -p wincraft-server failed_native_unregistration -- --nocapture` | PASS | 1 项回归验证 native unregister 失败会保留 intent 并允许用户重试；实际 Windows OS unregister 仍未测。|
 | `cargo check -p wincraft-desktop --all-targets` | PASS | 桌面 Tauri crate 与所有目标编译检查通过。|
 | `npm run check:local` | PASS | 退出码 0：28 项 Node UI、141 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy/离线契约和 27 个 Provider Skill 引用通过。|
-| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,558,784 bytes，SHA-256 `5E6061827A3B4527BFEEA1307A5945A8EAB8976C8BDC47A86BFE2F4B654B6F8F`。|
-| Release 源码提交 | PASS（对应源码） | `4bc3e81785f2aa5ae4f454e931ad50968c7e40c3`；构建在提交前从同一工作树完成，随后提交的 Tauri/Rust/renderer 输入字节未再更改。|
-| Release 启动回归 | 修复后 PASS | 首次以 `--open-manager` 启动曾 exit 101：同步 Tauri setup 回调直接触发 `tokio::spawn`，panic 为 `there is no reactor running`。修复为从 `tauri::async_runtime::spawn` 调度 ManagerProvider；修复后 release 进程在 5 秒观察后仍响应，管理器窗口和可访问性树可读。失败运行生成的 stale descriptor 已在不读取内容的情况下删除。|
+| `CARGO_TARGET_DIR=target/stage-309af17 npm run desktop:build` | PASS | Exit 0；隔离产物 `target/stage-309af17/release/wincraft-desktop.exe`，13,559,808 bytes，SHA-256 `6840654D6DBEFB780B758618805B241AC96D22D57B8E7F4D49B102DFA3E58E10`；未覆盖仍运行的先前测试候选。|
+| Release 源码提交 | PASS（对应源码） | `309af176714ffaf4d76601124a32e43ab2dfdd0b`；release 在该提交后构建。|
+| Release 启动回归 | PARTIAL | 首次以 `--open-manager` 启动曾 exit 101：同步 Tauri setup 回调直接触发 `tokio::spawn`，panic 为 `there is no reactor running`。修复为从 `tauri::async_runtime::spawn` 调度 ManagerProvider；4bc3e81 候选在 5 秒观察后仍响应，管理器窗口和可访问性树可读。Clippy 修复后的 309af17 隔离 EXE 已构建但未另开第二个托盘宿主；须先退出当前旧候选再由用户/自动化验收。失败运行生成的 stale descriptor 已在不读取内容的情况下删除。|
 | Release 管理器原生交互 | PARTIAL | Computer Use 截取到当前 release 管理器窗口/可访问性树；用户在快捷键输入框聚焦操作时按物理 Escape 停止了 Computer Use。没有输入或启用热键；字段焦点结果不确定，托盘交互、真实 OS key delivery、冲突和撤销均未验收。截图未保存为证据，因为画面包含本机 runtime 路径。|
 | 快捷键 acceptance | PARTIAL | Manager 仅在本机 enable click 后注册 `manager.show`，并提供 disable；A1/A2/A3 的系统冲突、OS unregister 与 IME/输入焦点仍需真实 Tauri/Windows 验收。Provider 专属热键尚未开放。|
+| GitHub Actions `41022563172` | FAIL（已修复） | Windows Clippy 1.99 报 `collapsible_match`；把 `ExitRequested` 条件并入 match guard，保留显式退出/最后世界关闭的原语义。修复见提交 `309af17`。|
+| GitHub Actions `41024348330` | PASS | Windows `npm run check:local` 验证 `309af17`，所有步骤通过，耗时 12m22s；CI 不替代原生 GUI 验收。|
 
 ## 2026-10-28 开发工具链核验
 
