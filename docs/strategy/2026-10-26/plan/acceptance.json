@@ -1504,7 +1504,7 @@
       "level": "L1-L5",
       "criterion": "单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态",
       "status": "PARTIAL",
-      "evidence": "PARTIAL at L1-L4: 13 global-overview tests cover source switching, detail identity/status/freshness, back navigation, bounded pagination and stale-detail rejection; the prior native-release A7 capture confirms a single window and source/list/detail views. Current release synthetic provider scene/cleanup smoke also passes. The plan asks to preserve revocation state, which is not currently represented or verified end-to-end. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json."
+      "evidence": "PARTIAL at L1-L4: 14 global-overview tests cover source switching, detail identity/status/freshness, back navigation, bounded pagination, stale-detail rejection, and a selected-detail missing-snapshot tombstone. When a selected record disappears, the view retains its display identity, shows the source's latest freshness, and explicitly reports revocation as unknown/unreported; if the record returns, live detail is restored. It does not infer revocation from disappearance. Prior native-release A7 capture confirms a single window and source/list/detail views; current release synthetic provider scene/cleanup smoke also passes. An authoritative Host scope-revocation event is not yet integrated end-to-end, so A4 remains PARTIAL. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-missing-selection-retest.json and evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json."
     },
     {
       "id": "B08-03-A5",
@@ -1518,7 +1518,7 @@
       "level": "L1-L5",
       "criterion": "首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口",
       "status": "PASS",
-      "evidence": "PASS at L1-L4: 13 global-overview tests verify the Codex parallel count, bounded Claude status preview, Codex/Claude session fields and progressive detail. The existing current-source Windows release Computer Use evidence (B08-03-A7) captured overview 520x421, Claude list 520x422, Codex list 520x512 and detail 520x477, with action receipts and bounded window height. Current standard release accepted the synthetic overview scene and cleaned its world. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json."
+      "evidence": "PASS at L1-L4: 14 global-overview tests cover the Codex parallel count, bounded Claude status preview, Codex/Claude session fields, progressive detail, and selected-detail recovery after disappearance. The existing current-source Windows release Computer Use evidence (B08-03-A7) captured overview 520x421, Claude list 520x422, Codex list 520x512 and detail 520x477, with action receipts and bounded window height. Current standard release accepted the synthetic overview scene and cleaned its world. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json and evidence/local/nextgen-2026-10-31/b08-03-a4-missing-selection-retest.json."
     },
     {
       "id": "B08-03-A6",

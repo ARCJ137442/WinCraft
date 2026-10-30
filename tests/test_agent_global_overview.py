@@ -19,6 +19,7 @@ from global_overview import (  # noqa: E402
     GlobalOverviewState,
     build_global_overview_scene,
     load_synthetic_global_projection,
+    reconcile_view_state,
     transition_view,
 )
 from global_overview_provider import (  # noqa: E402
@@ -308,6 +309,86 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.assertEqual((back_state.source, back_state.selected_identity), ("claude-code", None))
         all_state = transition_view(back_state, "view.all", "", {}, page_count)
         self.assertEqual((all_state.source, all_state.page), ("all", 0))
+
+    def test_selected_detail_survives_missing_snapshot_with_unknown_revocation(self):
+        source_state = transition_view(
+            GlobalOverviewState(), "view.source.claude_code", "", {}, 1
+        )
+        _, detail_targets, page_count = build_global_overview_scene(
+            self.projection, source_state
+        )
+        component_id, target = next(iter(detail_targets.items()))
+        detail_state = transition_view(
+            source_state, "view.open_detail", component_id, detail_targets, page_count
+        )
+        selected_identity = detail_state.selected_identity
+        self.assertEqual(target.identity, selected_identity)
+
+        missing_projection = copy.deepcopy(self.projection)
+        missing_projection["sessions"] = [
+            session
+            for session in missing_projection["sessions"]
+            if tuple(session["identity"]) != tuple(selected_identity)
+        ]
+        missing_projection["data_mode_label"] = "本机进程与文件实时只读"
+        missing_projection["source_health"] = {
+            "codex": "online",
+            "codex-app": "online",
+            "claude-code": "offline",
+        }
+        missing_projection["source_freshness"] = {
+            "codex": "fresh",
+            "codex-app": "fresh",
+            "claude-code": "stale",
+        }
+        missing_projection["source_age_seconds"] = {
+            "codex": 1,
+            "codex-app": 4,
+            "claude-code": 45,
+        }
+        missing_state = reconcile_view_state(missing_projection, detail_state)
+        self.assertEqual(missing_state.selected_identity, selected_identity)
+        self.assertTrue(missing_state.selection_missing)
+        self.assertEqual(missing_state.revision, detail_state.revision + 1)
+
+        missing_scene, remaining_targets, _ = build_global_overview_scene(
+            missing_projection, missing_state
+        )
+        scene_schema = json.loads(
+            (ROOT / "protocol" / "scene.schema.json").read_text(encoding="utf-8")
+        )
+        Draft202012Validator(
+            scene_schema, format_checker=FormatChecker()
+        ).validate(missing_scene)
+        detail = missing_scene["data"]["detail"]
+        self.assertEqual(detail["source"], "Claude Code")
+        self.assertEqual(detail["session"], target.display_name)
+        self.assertEqual(detail["status"], "当前快照未显示")
+        self.assertEqual(detail["freshness"], "已过期 · 上次成功 45 秒前")
+        self.assertEqual(detail["freshness_tone"], "danger")
+        self.assertEqual(detail["revocation"], "撤销状态未知 · 来源未报告")
+        missing_title = next(
+            node for node in walk_nodes(missing_scene["root"])
+            if node["id"] == "global-detail-session"
+        )
+        self.assertEqual(missing_title["kind"], "text")
+        self.assertNotIn("action", missing_title["props"])
+        self.assertTrue(all(item.identity != selected_identity for item in remaining_targets.values()))
+        serialized = json.dumps(missing_scene, ensure_ascii=False)
+        self.assertNotIn(selected_identity[1], serialized)
+        self.assertNotIn(selected_identity[2], serialized)
+        self.assertNotIn(selected_identity[3], serialized)
+
+        recovered_state = reconcile_view_state(self.projection, missing_state)
+        self.assertEqual(recovered_state.selected_identity, selected_identity)
+        self.assertFalse(recovered_state.selection_missing)
+        self.assertEqual(recovered_state.revision, missing_state.revision + 1)
+        recovered_scene, _, _ = build_global_overview_scene(self.projection, recovered_state)
+        self.assertNotEqual(recovered_scene["data"]["detail"]["status"], "当前快照未显示")
+        self.assertEqual(
+            recovered_scene["data"]["detail"]["revocation"],
+            "撤销状态未知 · 来源未报告",
+        )
 
     def test_detail_action_must_belong_to_the_current_render(self):
         with self.assertRaisesRegex(ValueError, "current rendered view"):

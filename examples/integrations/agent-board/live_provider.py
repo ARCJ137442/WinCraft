@@ -18,6 +18,7 @@ if str(PYTHON_EXAMPLES) not in sys.path:
 
 from client import Client, add_runtime_args, event_world_id, require_runtime  # noqa: E402
 from global_overview import (  # noqa: E402
+    DetailTarget,
     GlobalOverviewState,
     build_global_overview_scene,
     reconcile_view_state,
@@ -58,10 +59,10 @@ async def update_view(
     lease: dict[str, Any],
     projection: dict[str, Any],
     state: GlobalOverviewState,
-    detail_targets: dict[str, tuple[str, str, str, str]],
+    detail_targets: dict[str, DetailTarget],
     page_count: int,
     event: dict[str, Any],
-) -> tuple[GlobalOverviewState, dict[str, tuple[str, str, str, str]], int]:
+) -> tuple[GlobalOverviewState, dict[str, DetailTarget], int]:
     '''只处理本地视图导航，不向来源发出任何命令'''
     action = str(event.get('action', ''))
     component_id = str(event.get('component_id', ''))
@@ -99,7 +100,7 @@ async def _refresh_scene(
     lease: dict[str, Any],
     snapshot: LiveSnapshot,
     state: GlobalOverviewState,
-) -> tuple[dict[str, tuple[str, str, str, str]], int]:
+) -> tuple[dict[str, DetailTarget], int]:
     '''Render the latest source projection with the shared renderer'''
     scene, detail_targets, page_count = build_global_overview_scene(snapshot.projection, state)
     await client.mutate('scene.replace', world_id, lease, scene=scene)

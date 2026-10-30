@@ -900,7 +900,7 @@ class LiveSourceFailureTests(unittest.TestCase):
         self.addCleanup(local_state.stop)
 
     # 🤖【2026-10-29】回归：延迟到达与未来的来源时间不能冒充新鲜快照
-    def test_refresh_drops_detail_for_a_session_that_disappeared(self):
+    def test_refresh_preserves_selection_when_a_session_disappears(self):
         state = GlobalOverviewState(
             source='claude-code',
             selected_identity=('device', 'provider', 'instance', 'old-session'),
@@ -911,8 +911,9 @@ class LiveSourceFailureTests(unittest.TestCase):
         next_state = reconcile_view_state({'sessions': []}, state)
 
         self.assertEqual(next_state.source, 'claude-code')
-        self.assertIsNone(next_state.selected_identity)
-        self.assertEqual(next_state.page, 0)
+        self.assertEqual(next_state.selected_identity, state.selected_identity)
+        self.assertTrue(next_state.selection_missing)
+        self.assertEqual(next_state.page, 2)
         self.assertEqual(next_state.revision, 8)
 
     def test_failure_marks_only_that_sources_last_snapshot_stale(self):

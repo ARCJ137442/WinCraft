@@ -13,6 +13,7 @@ if str(PYTHON_EXAMPLES) not in sys.path:
 
 from client import Client, add_runtime_args, destroy_world_safely, event_world_id, require_runtime  # noqa: E402
 from global_overview import (  # noqa: E402
+    DetailTarget,
     GlobalOverviewState,
     build_global_overview_scene,
     load_synthetic_global_projection,
@@ -26,10 +27,10 @@ async def handle_view_interaction(
     lease: Mapping[str, Any],
     projection: Mapping[str, Any],
     state: GlobalOverviewState,
-    detail_targets: Mapping[str, tuple[str, str, str, str]],
+    detail_targets: Mapping[str, DetailTarget],
     page_count: int,
     event: Mapping[str, Any],
-) -> tuple[GlobalOverviewState, dict[str, tuple[str, str, str, str]], int]:
+) -> tuple[GlobalOverviewState, dict[str, DetailTarget], int]:
     """Apply a local navigation event and acknowledge it without source-side effects."""
     action = str(event.get("action", ""))
     component_id = str(event.get("component_id", ""))

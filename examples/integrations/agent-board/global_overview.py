@@ -59,11 +59,24 @@ SOURCE_DATA_HEALTH_TONES = {
 
 
 @dataclass(frozen=True)
+class DetailTarget:
+    identity: tuple[str, str, str, str]
+    source_id: str
+    source_label: str
+    display_name: str
+    project_label: str
+    observed_at: str
+    relation: str
+
+
+@dataclass(frozen=True)
 class GlobalOverviewState:
     source: str = "all"
     selected_identity: tuple[str, str, str, str] | None = None
     page: int = 0
     revision: int = 0
+    selected_target: DetailTarget | None = None
+    selection_missing: bool = False
 
 
 def load_synthetic_global_projection(*, now: datetime | None = None) -> dict[str, Any]:
@@ -83,10 +96,29 @@ def reconcile_view_state(
     projection: Mapping[str, Any],
     state: GlobalOverviewState,
 ) -> GlobalOverviewState:
-    '''Drop a detail selection when its source session disappears'''
-    identities = {tuple(session['identity']) for session in projection['sessions']}
-    if state.selected_identity is not None and tuple(state.selected_identity) not in identities:
-        return replace(state, selected_identity=None, page=0, revision=state.revision + 1)
+    '''Retain a selected identity across snapshots without claiming why it disappeared'''
+    if state.selected_identity is None:
+        return state
+    sessions = {
+        tuple(session['identity']): session
+        for session in projection['sessions']
+    }
+    selected = sessions.get(tuple(state.selected_identity))
+    if selected is None:
+        if state.selection_missing:
+            return state
+        return replace(state, selection_missing=True, revision=state.revision + 1)
+
+    target = _detail_target(selected, projection.get('source_labels', SOURCE_LABELS))
+    if state.selection_missing:
+        return replace(
+            state,
+            selected_target=target,
+            selection_missing=False,
+            revision=state.revision + 1,
+        )
+    if state.selected_target != target:
+        return replace(state, selected_target=target)
     return state
 
 
@@ -221,6 +253,42 @@ def _session_project_value(session: Mapping[str, Any]) -> str:
     return f"项目：{project}" if project else "项目：来源未提供"
 
 
+def _detail_target(
+    session: Mapping[str, Any],
+    source_labels: Mapping[str, str],
+) -> DetailTarget:
+    source_type = str(session.get("source_type_label", ""))
+    source_id = SOURCE_IDS.get(source_type)
+    if source_id is None:
+        raise ValueError("selected session has an unknown source type")
+    relation = "child session" if session.get("has_parent") else "top-level session"
+    return DetailTarget(
+        identity=tuple(session["identity"]),
+        source_id=source_id,
+        source_label=str(source_labels.get(source_id, source_type)),
+        display_name=str(session.get("display_name") or "会话")[:128],
+        project_label=str(session.get("project_label") or "").strip()[:128],
+        observed_at=str(session.get("observed_at") or "")[:64],
+        relation=relation,
+    )
+
+
+def _register_detail_targets(
+    targets: dict[str, DetailTarget],
+    session: Mapping[str, Any],
+    source_labels: Mapping[str, str],
+    *component_ids: str,
+) -> None:
+    target = _detail_target(session, source_labels)
+    for component_id in component_ids:
+        targets[component_id] = target
+
+
+def _source_freshness_tone(source_id: str, projection: Mapping[str, Any]) -> str:
+    freshness = projection.get("source_freshness", {}).get(source_id)
+    return "danger" if freshness in {"stale", "disconnected", "unavailable"} else "muted"
+
+
 def _text(node_id: str, value: str | dict[str, str], size: str | None = None) -> dict[str, Any]:
     props: dict[str, Any] = {"text": value}
     if size is not None:
@@ -279,7 +347,7 @@ def build_global_overview_scene(
     state: GlobalOverviewState,
     *,
     page_size: int = MAX_VISIBLE_SESSIONS,
-) -> tuple[dict[str, Any], dict[str, tuple[str, str, str, str]], int]:
+) -> tuple[dict[str, Any], dict[str, DetailTarget], int]:
     """Render one compact overview, one source list, or one progressive detail view."""
     if page_size < 1:
         raise ValueError("page_size must be positive")
@@ -307,13 +375,20 @@ def build_global_overview_scene(
         raise ValueError("unknown source filter")
     state = reconcile_view_state(projection, state)
 
-    current_source = state.source
+    selected = None
     if state.selected_identity is not None:
         selected = next(
-            session for session in projection["sessions"]
-            if tuple(session["identity"]) == tuple(state.selected_identity)
+            (
+                session for session in projection["sessions"]
+                if tuple(session["identity"]) == tuple(state.selected_identity)
+            ),
+            None,
         )
+    current_source = state.source
+    if selected is not None:
         current_source = SOURCE_IDS.get(selected["source_type_label"], "all")
+    elif state.selected_target is not None:
+        current_source = state.selected_target.source_id
 
     visible = (
         sources.get(current_source, [])
@@ -324,7 +399,7 @@ def build_global_overview_scene(
     page = min(max(state.page, 0), page_count - 1)
     start = page * page_size
     page_sessions = visible[start : start + page_size]
-    detail_targets: dict[str, tuple[str, str, str, str]] = {}
+    detail_targets: dict[str, DetailTarget] = {}
 
     codex_app_summary = source_summaries["codex-app"]
     claude_summary = source_summaries["claude-code"]
@@ -523,36 +598,61 @@ def build_global_overview_scene(
     ]
 
     if state.selected_identity is not None:
-        detail = selected
-        timing = [f"Observed {detail['observed_at']}"]
-        if detail.get("expires_at"):
-            timing.append(f"valid until {detail['expires_at']}")
-        timing.append("child session" if detail["has_parent"] else "top-level session")
-        scene_data["detail"] = {
-            "source": str(source_labels.get(current_source, detail["source_type_label"])),
-            "session": detail["display_name"],
-            "project": detail.get("project_label", ""),
-            "summary_label": _session_output_label(detail),
-            "summary": (
-                _summary_preview(detail["summary"])
-                if detail["source_type_label"] != "Codex App"
-                else str(detail["summary"] or "")[:256]
-            ),
-            "status": detail["status_label"],
-            "status_tone": _status_tone(detail),
-            "freshness": detail["freshness_label"],
-            "freshness_tone": _freshness_tone(detail),
-            "timing": " · ".join(timing),
-            "relation": "child session" if detail["has_parent"] else "top-level session",
-        }
+        if selected is None:
+            target = state.selected_target
+            source_label = target.source_label if target else str(source_labels.get(current_source, "来源未知"))
+            detail = {
+                "source": source_label,
+                "session": target.display_name if target else "所选会话当前不可见",
+                "project": target.project_label if target else "",
+                "summary_label": "最近输出暂不可用",
+                "summary": "最新快照未返回这条会话；不会据此判定为已撤销。",
+                "status": "当前快照未显示",
+                "status_tone": "warning",
+                "freshness": _source_update_label(current_source, projection),
+                "freshness_tone": _source_freshness_tone(current_source, projection),
+                "timing": (
+                    f"最后可见于 {target.observed_at}"
+                    if target and target.observed_at
+                    else "最后可见时间未知"
+                ),
+                "relation": target.relation if target else "会话关系未知",
+                "revocation": "撤销状态未知 · 来源未报告",
+            }
+            session_node = _text("global-detail-session", detail["session"])
+        else:
+            timing = [f"Observed {selected['observed_at']}"]
+            if selected.get("expires_at"):
+                timing.append(f"valid until {selected['expires_at']}")
+            timing.append("child session" if selected["has_parent"] else "top-level session")
+            detail = {
+                "source": str(source_labels.get(current_source, selected["source_type_label"])),
+                "session": selected["display_name"],
+                "project": selected.get("project_label", ""),
+                "summary_label": _session_output_label(selected),
+                "summary": (
+                    _summary_preview(selected["summary"])
+                    if selected["source_type_label"] != "Codex App"
+                    else str(selected["summary"] or "")[:256]
+                ),
+                "status": selected["status_label"],
+                "status_tone": _status_tone(selected),
+                "freshness": selected["freshness_label"],
+                "freshness_tone": _freshness_tone(selected),
+                "timing": " · ".join(timing),
+                "relation": "child session" if selected["has_parent"] else "top-level session",
+                "revocation": "撤销状态未知 · 来源未报告",
+            }
+            session_node = _session_title_node(
+                selected,
+                "global-detail-session",
+                "view.open_detail",
+                codex_app_links_enabled=codex_app_links_enabled,
+            )
+        scene_data["detail"] = detail
         children.extend(
             [
-                _session_title_node(
-                    detail,
-                    "global-detail-session",
-                    "view.open_detail",
-                    codex_app_links_enabled=codex_app_links_enabled,
-                ),
+                session_node,
                 *(
                     [_text("global-detail-project", {"$path": "/detail/project"}, "small")]
                     if detail.get("project_label")
@@ -585,6 +685,7 @@ def build_global_overview_scene(
                         },
                     ],
                 },
+                _text("global-detail-revocation", {"$path": "/detail/revocation"}, "small"),
                 _text("global-detail-timing", {"$path": "/detail/timing"}, "small"),
                 _button("global-detail-back", "返回会话列表", "view.back"),
             ]
@@ -629,7 +730,7 @@ def build_global_overview_scene(
         codex_cli_preview = active_codex_sessions or codex_sessions
         for index, session in enumerate(codex_cli_preview[:MAX_CODEX_CLI_PREVIEW_SESSIONS]):
             button_id = f"global-codex-cli-preview-detail-{state.revision}-{index}"
-            detail_targets[button_id] = tuple(session["identity"])
+            _register_detail_targets(detail_targets, session, source_labels, button_id)
             scene_data["codex_cli_preview"].append(
                 {
                     "name": session["display_name"],
@@ -718,8 +819,13 @@ def build_global_overview_scene(
             for index, session in enumerate(codex_app_preview[:MAX_CODEX_APP_PREVIEW_SESSIONS]):
                 button_id = f"global-codex-app-preview-{state.revision}-{index}"
                 title_node_id = f"global-codex-app-preview-name-{state.revision}-{index}"
-                detail_targets[button_id] = tuple(session["identity"])
-                detail_targets[title_node_id] = tuple(session["identity"])
+                _register_detail_targets(
+                    detail_targets,
+                    session,
+                    source_labels,
+                    button_id,
+                    title_node_id,
+                )
                 project_label = str(session.get("project_label") or "未归属项目")
                 output = _session_output_value(session)
                 scene_data["codex_app_preview"].append(
@@ -805,7 +911,7 @@ def build_global_overview_scene(
             children.append(_text("global-claude-preview-empty", empty_text))
         for index, session in enumerate(claude_sessions[:MAX_CLAUDE_PREVIEW_SESSIONS]):
             button_id = f"global-claude-preview-detail-{state.revision}-{index}"
-            detail_targets[button_id] = tuple(session["identity"])
+            _register_detail_targets(detail_targets, session, source_labels, button_id)
             scene_data["claude_preview"].append(
                 {
                     "name": session["display_name"],
@@ -901,7 +1007,7 @@ def build_global_overview_scene(
             children.append(_text("global-source-empty", empty_text))
         for index, session in enumerate(page_sessions):
             button_id = f"global-session-detail-{state.revision}-{index}"
-            detail_targets[button_id] = tuple(session["identity"])
+            _register_detail_targets(detail_targets, session, source_labels, button_id)
             scene_data["sessions"].append(
                 {
                     "name": session["display_name"],
@@ -913,7 +1019,7 @@ def build_global_overview_scene(
             )
             if current_source == "codex-app":
                 title_node_id = f"global-session-name-{state.revision}-{index}"
-                detail_targets[title_node_id] = tuple(session["identity"])
+                _register_detail_targets(detail_targets, session, source_labels, title_node_id)
                 session_children = [
                     {
                         "id": f"global-session-heading-{state.revision}-{index}",
@@ -1051,7 +1157,7 @@ def transition_view(
     state: GlobalOverviewState,
     action: str,
     component_id: str,
-    detail_targets: Mapping[str, tuple[str, str, str, str]],
+    detail_targets: Mapping[str, DetailTarget],
     page_count: int,
 ) -> GlobalOverviewState:
     """Apply only local navigation actions; no Harness control capability exists here."""
@@ -1062,10 +1168,16 @@ def transition_view(
         source = action.removeprefix("view.source.").replace("_", "-")
         return GlobalOverviewState(source, None, 0, revision)
     if action == "view.open_detail":
-        identity = detail_targets.get(component_id)
-        if identity is None:
+        target = detail_targets.get(component_id)
+        if target is None:
             raise ValueError("detail action does not belong to the current rendered view")
-        return GlobalOverviewState(state.source, identity, state.page, revision)
+        return GlobalOverviewState(
+            state.source,
+            target.identity,
+            state.page,
+            revision,
+            selected_target=target,
+        )
     if action == "view.back":
         return GlobalOverviewState(state.source, None, state.page, revision)
     if action == "view.page.next":
