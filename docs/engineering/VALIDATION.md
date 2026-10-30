@@ -941,15 +941,17 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 ## 2026-10-31 B08-03-A4/A5 验收状态复核
 
+**Given** 用户已打开 Claude Code 的某条会话详情；**When** 在 Codex 来源与 Claude 来源之间切换、再切回，并且该快照暂时不再包含原会话；**Then** 总览恢复该来源自己的详情身份与页码，保留最后已知身份和最新来源新鲜度，明确显示撤销状态未知；记录回来后恢复实时详情。
+
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `python -m unittest tests.test_agent_global_overview -v` | PASS（14 tests） | 覆盖 Codex 并行量、Claude 有界状态预览、Codex/Claude 列表字段、source/detail/back 导航、身份与 freshness、过期 detail 拒绝、分页，以及选中会话消失/恢复。|
-| `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 144 项、Python 199 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| `python -m unittest tests.test_agent_global_overview -v` | PASS（15 tests） | 覆盖 Codex 并行量、Claude 有界状态预览、Codex/Claude 列表字段、source/detail/back 导航、每来源保存详情、跨来源往返恢复、缺失 tombstone、新鲜度与 unknown 撤销状态、过期 detail 拒绝和分页。|
+| `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 145 项、Python 204 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
 | 当前标准 release + `global_overview_provider.py --duration-seconds 5` | PASS（L2 scene/cleanup） | 当前 Tauri Host 接受仓库合成总览场景；Provider 5 秒后退出并确认仅清理自己的临时世界。该 smoke 不含真实会话数据，也不提供新截图。|
-| B08-03-A4 判定 | PARTIAL | 新增回归证明选中会话不再因快照消失而静默清除：保留显示身份、刷新来源 freshness、显示撤销状态未知，且记录恢复后回到实时详情。会话消失不被伪判为撤销；真正的 Host scope 撤销事件仍未接入该视图，需端到端验证。|
-| B08-03-A5 判定 | PASS（L1-L4） | 首屏 Codex 并行量与 Claude 状态预览由测试覆盖；A7 release 截图已记录 Overview `520×421`、Claude list `520×422`、Codex list `520×512`、detail `520×477`，并验证动作回执和受限窗口高度。当前 release synthetic scene/cleanup smoke 通过。|
+| B08-03-A4 判定 | PARTIAL | 新回归证明来源切换后可恢复各自 selected detail；如果快照不再包含该会话，则跨来源离开/返回仍保留显示身份与来源 freshness，明确标为撤销未知，记录恢复后回到实时详情。来源文件没有逐会话权威撤销信号，所以不伪判为 revoked；最新 build 的 source-switch/tombstone 像素仍 NOT_RUN。|
+| B08-03-A5 判定 | PASS（L1-L4） | 首屏 Codex 并行量与 Claude 状态预览由 15 项总览测试覆盖；A7 release 截图已记录 Overview `520×421`、Claude list `520×422`、Codex list `520×512`、detail `520×477`，并验证动作回执和受限窗口高度。当前 release synthetic scene/cleanup smoke 通过。|
 
-忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-03-a4-missing-selection-retest.json` 与 `evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json`。A4 仍待接入可信 Host scope 撤销信号并端到端复验。
+忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-03-a4-missing-selection-retest.json`、`evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json` 与 `evidence/local/nextgen-2026-10-31/b08-03-a4-source-switch-regression.json`。Host `scope.status` 描述的是 WinCraft component scope，不代表 Codex/Claude 会话撤销；A4 保持 PARTIAL，等待来源提供逐会话撤销权威事实与当前 build 原生 UI 验收。
 
 ## 2026-10-31 B06-04 合成配置包再验
 

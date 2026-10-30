@@ -310,6 +310,99 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         all_state = transition_view(back_state, "view.all", "", {}, page_count)
         self.assertEqual((all_state.source, all_state.page), ("all", 0))
 
+    def test_source_switch_preserves_each_detail_identity_and_missing_tombstone(self):
+        claude_list = transition_view(
+            GlobalOverviewState(), "view.source.claude_code", "", {}, 1
+        )
+        _, claude_targets, claude_pages = build_global_overview_scene(
+            self.projection, claude_list
+        )
+        claude_component, claude_target = next(iter(claude_targets.items()))
+        claude_detail = transition_view(
+            claude_list,
+            "view.open_detail",
+            claude_component,
+            claude_targets,
+            claude_pages,
+        )
+
+        codex_list = transition_view(
+            claude_detail, "view.source.codex", "", {}, 1
+        )
+        self.assertEqual(codex_list.source, "codex")
+        self.assertIsNone(codex_list.selected_identity)
+        _, codex_targets, codex_pages = build_global_overview_scene(
+            self.projection, codex_list
+        )
+        codex_component, _ = next(iter(codex_targets.items()))
+        codex_detail = transition_view(
+            codex_list,
+            "view.open_detail",
+            codex_component,
+            codex_targets,
+            codex_pages,
+        )
+
+        restored_claude = transition_view(
+            codex_detail, "view.source.claude_code", "", {}, 1
+        )
+        self.assertEqual(restored_claude.selected_identity, claude_target.identity)
+        restored_scene, _, _ = build_global_overview_scene(
+            self.projection, restored_claude
+        )
+        self.assertEqual(
+            restored_scene["data"]["detail"]["session"],
+            claude_target.display_name,
+        )
+
+        missing_projection = copy.deepcopy(self.projection)
+        missing_projection["sessions"] = [
+            session
+            for session in missing_projection["sessions"]
+            if tuple(session["identity"]) != claude_target.identity
+        ]
+        missing_projection["data_mode_label"] = "本机进程与文件实时只读"
+        missing_projection["source_health"] = {
+            "codex": "online",
+            "codex-app": "online",
+            "claude-code": "offline",
+        }
+        missing_projection["source_freshness"] = {
+            "codex": "fresh",
+            "codex-app": "fresh",
+            "claude-code": "stale",
+        }
+        missing_projection["source_age_seconds"] = {
+            "codex": 1,
+            "codex-app": 4,
+            "claude-code": 45,
+        }
+        missing_claude = reconcile_view_state(missing_projection, restored_claude)
+        self.assertTrue(missing_claude.selection_missing)
+        codex_again = transition_view(
+            missing_claude, "view.source.codex", "", {}, 1
+        )
+        missing_claude_again = transition_view(
+            codex_again, "view.source.claude_code", "", {}, 1
+        )
+        self.assertEqual(missing_claude_again.selected_identity, claude_target.identity)
+        self.assertTrue(missing_claude_again.selection_missing)
+        missing_scene, _, _ = build_global_overview_scene(
+            missing_projection, missing_claude_again
+        )
+        self.assertEqual(
+            missing_scene["data"]["detail"]["revocation"],
+            "撤销状态未知 · 来源未报告",
+        )
+        self.assertEqual(
+            missing_scene["data"]["detail"]["freshness"],
+            "已过期 · 上次成功 45 秒前",
+        )
+
+        recovered = reconcile_view_state(self.projection, missing_claude_again)
+        self.assertFalse(recovered.selection_missing)
+        self.assertEqual(recovered.selected_identity, claude_target.identity)
+
     def test_selected_detail_survives_missing_snapshot_with_unknown_revocation(self):
         source_state = transition_view(
             GlobalOverviewState(), "view.source.claude_code", "", {}, 1

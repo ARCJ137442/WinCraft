@@ -70,6 +70,15 @@ class DetailTarget:
 
 
 @dataclass(frozen=True)
+class SavedSourceView:
+    source_id: str
+    selected_identity: tuple[str, str, str, str] | None = None
+    selected_target: DetailTarget | None = None
+    page: int = 0
+    selection_missing: bool = False
+
+
+@dataclass(frozen=True)
 class GlobalOverviewState:
     source: str = "all"
     selected_identity: tuple[str, str, str, str] | None = None
@@ -77,6 +86,45 @@ class GlobalOverviewState:
     revision: int = 0
     selected_target: DetailTarget | None = None
     selection_missing: bool = False
+    saved_source_views: tuple[SavedSourceView, ...] = ()
+
+
+def _source_id_for_view(state: GlobalOverviewState) -> str | None:
+    if state.selected_target is not None:
+        return state.selected_target.source_id
+    return state.source if state.source in SOURCE_LABELS else None
+
+
+def _store_source_view(
+    saved_views: tuple[SavedSourceView, ...],
+    source_view: SavedSourceView,
+) -> tuple[SavedSourceView, ...]:
+    by_source = {view.source_id: view for view in saved_views}
+    by_source[source_view.source_id] = source_view
+    return tuple(by_source[source_id] for source_id in sorted(by_source))
+
+
+def _remember_source_view(state: GlobalOverviewState) -> tuple[SavedSourceView, ...]:
+    source_id = _source_id_for_view(state)
+    if source_id is None:
+        return state.saved_source_views
+    return _store_source_view(
+        state.saved_source_views,
+        SavedSourceView(
+            source_id=source_id,
+            selected_identity=state.selected_identity,
+            selected_target=state.selected_target,
+            page=state.page,
+            selection_missing=state.selection_missing,
+        ),
+    )
+
+
+def _saved_view_for_source(
+    saved_views: tuple[SavedSourceView, ...],
+    source_id: str,
+) -> SavedSourceView | None:
+    return next((view for view in saved_views if view.source_id == source_id), None)
 
 
 def load_synthetic_global_projection(*, now: datetime | None = None) -> dict[str, Any]:
@@ -1162,26 +1210,83 @@ def transition_view(
 ) -> GlobalOverviewState:
     """Apply only local navigation actions; no Harness control capability exists here."""
     revision = state.revision + 1
+    saved_source_views = _remember_source_view(state)
     if action == "view.all":
-        return GlobalOverviewState("all", None, 0, revision)
+        return GlobalOverviewState(
+            "all",
+            None,
+            0,
+            revision,
+            saved_source_views=saved_source_views,
+        )
     if action in {"view.source.codex", "view.source.codex_app", "view.source.claude_code"}:
         source = action.removeprefix("view.source.").replace("_", "-")
-        return GlobalOverviewState(source, None, 0, revision)
+        saved = _saved_view_for_source(saved_source_views, source)
+        if saved is None:
+            return GlobalOverviewState(
+                source,
+                None,
+                0,
+                revision,
+                saved_source_views=saved_source_views,
+            )
+        return GlobalOverviewState(
+            source,
+            saved.selected_identity,
+            saved.page,
+            revision,
+            saved.selected_target,
+            saved.selection_missing,
+            saved_source_views,
+        )
     if action == "view.open_detail":
         target = detail_targets.get(component_id)
         if target is None:
             raise ValueError("detail action does not belong to the current rendered view")
-        return GlobalOverviewState(
-            state.source,
-            target.identity,
-            state.page,
-            revision,
+        next_state = replace(
+            state,
+            selected_identity=target.identity,
+            revision=revision,
             selected_target=target,
+            selection_missing=False,
+        )
+        return replace(
+            next_state,
+            saved_source_views=_remember_source_view(next_state),
         )
     if action == "view.back":
-        return GlobalOverviewState(state.source, None, state.page, revision)
+        source_id = _source_id_for_view(state)
+        saved = state.saved_source_views
+        if source_id is not None:
+            saved = _store_source_view(
+                saved,
+                SavedSourceView(source_id=source_id, page=state.page),
+            )
+        return GlobalOverviewState(
+            state.source,
+            None,
+            state.page,
+            revision,
+            saved_source_views=saved,
+        )
     if action == "view.page.next":
-        return GlobalOverviewState(state.source, None, min(state.page + 1, page_count - 1), revision)
+        next_state = replace(
+            state,
+            selected_identity=None,
+            page=min(state.page + 1, page_count - 1),
+            revision=revision,
+            selected_target=None,
+            selection_missing=False,
+        )
+        return replace(next_state, saved_source_views=_remember_source_view(next_state))
     if action == "view.page.previous":
-        return GlobalOverviewState(state.source, None, max(state.page - 1, 0), revision)
+        next_state = replace(
+            state,
+            selected_identity=None,
+            page=max(state.page - 1, 0),
+            revision=revision,
+            selected_target=None,
+            selection_missing=False,
+        )
+        return replace(next_state, saved_source_views=_remember_source_view(next_state))
     raise ValueError("unknown local overview navigation action")
