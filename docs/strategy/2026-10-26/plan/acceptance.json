@@ -424,7 +424,7 @@
       "level": "L1-L4",
       "criterion": "教程fixture不接真实用户数据",
       "status": "PASS",
-      "evidence": "provider_tutorial.py uses synthetic state and local scene fixtures; discovery retains counts/policies only; 6 focused tutorial unit/schema tests and a real headless start/cleanup run passed."
+      "evidence": "provider_tutorial.py uses synthetic state and local scene fixtures; discovery retains counts/policies only. Seven focused tutorial tests now cover all lesson scenes/schema, dynamic insertion, choice/text updates, theme apply/reset, count-only world.list discovery, and own-world cleanup. Discovery action calls world.list only and never join/snapshot. A real headless start/cleanup run also passed."
     },
     {
       "id": "B02-03-A3",

@@ -18,6 +18,16 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | `.venv\Scripts\python.exe scripts\browser_smoke.py`（`CHROMIUM_PATH` 指向已有 Chrome） | PASS（浏览器 renderer） | 退出码 0，28 个检查通过。包括 theme token 与可信 chrome 隔离、非法主题回退、用户缩放覆盖 provider scale、forced-colors 高对比覆盖、reduced-motion 将动画/transition 降为 0。结果存于忽略的 `evidence/local/nextgen-2026-10-30/b02-02-theme-accessibility-browser-smoke.json`。|
 | B02-02-A1/A2/A3 | PASS（L1-L4 browser/contract） | 来源风格只影响 scene；宿主标题栏不被覆盖；高对比/用户放大/减少动画生效；非法主题不污染租约或业务数据。Windows 实际高对比设置、WebView2 UIA 与人工可访问性仍按 B02-04/B11-02 单独验收。|
 
+## 2026-10-30 B02-03 教程动作分支回归
+
+**Given** 新用户通过五课学习 Provider 的世界创建、数据更新、静态动作、主题和发现边界，**When** 合成事件进入 Provider 的动作处理器，**Then** 数据仍由 Provider 拥有、场景更新使用声明式协议，`world.list` 只用于汇总元数据，不加入或读取其他世界。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_provider_tutorial -v` | PASS | 7 项 synthetic unit/schema 测试；覆盖五课合法组件、动态插入、选择/文本状态、主题应用/复位、计数发现与清理。新增发现动作测试断言只调用 `world.list`，不调用 `world.join`/`world.snapshot`，也不保留标题或世界 ID。|
+| `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；离线契约、Clippy 和 27 个 Provider Skill 引用检查通过，退出码 0。|
+| B02-03-A1 新用户完整旅程 | PARTIAL | 本轮增加了动作分支回归，但仍未用当前 release 连续完成五课；真实 Host 窗口无法由 Computer Use 激活，留待人工原生验收。|
+
 ## 2026-10-28 开发工具链核验
 
 | 检查 | 状态 | 实际结果 |
@@ -206,6 +216,7 @@ python scripts/browser_smoke.py
 | 教程运行与清理 | PASS（历史 release 运行） | 先前一次 release 运行记录了五课窗口出现、提供者退出后管理器计数为 0；这证明该次运行的清理，不证明五课全流程用户验收。本轮新启动未观察到教程窗，清理状态另记为未确认。|
 | 焦点与待处理动作 | PASS（DOM） | pending 动作期间用 `aria-disabled` 保留键盘焦点，按组件阻止重复提交；回执只在原控件仍持有焦点时恢复，不把焦点从用户后来选中的控件抢回；Chromium smoke 回归通过。|
 | 连接状态可访问性语义 | PASS（DOM） | `#status` 标记 `role=status`、`aria-live=polite`、`aria-atomic=true`；主窗口移除无用途的额外 Tab 停靠，滚动组件区仍可键盘聚焦。|
+| 本地统一门禁 `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；契约、Clippy 与 27 个 Provider Skill 引用检查通过，退出码 0。|
 | Windows UIA/原生键盘/IME/读屏 | PARTIAL | 本轮通过当前 release 的 UIA 树验证教程五课、动态结构、回执、主题、窗口拖动及隐藏/管理器恢复；IME、真实键盘快捷键和读屏仍 NOT_RUN。|
 
 shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use 曾无法激活教程窗，未绕过该限制继续发送键鼠；人工 UIA/IME/读屏/五课验收仍待完成。
@@ -220,6 +231,7 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | 五课 Provider 启动 | PARTIAL | 以合成数据启动 `provider_tutorial.py` 后，进程在后续观察前已退出，Computer Use 未观察到教程窗口；该启动本身不能证明课程交互。|
 | 管理器窗口交互 | BLOCKED | 新枚举到唯一管理器后，Observed 的展开按钮 click 与一次重新枚举恢复均返回 `foreground window did not report a process id`；按 Computer Use 恢复规则停止后续输入。|
 | 教程世界清理 | NOT_RUN | 非 operator 的 `world.list` 显示 0 个可见世界，但不能看见 invite-only/system 世界，故清理结果未确认。|
+| 教程动作分支回归 | PASS（synthetic unit） | 新增定向测试覆盖选择/文本输入经 `data.replace`、主题应用/复位经 `scene.replace`、动态插入经 `scene.patch`；发现只调用 `world.list`，场景只收到计数/加入策略、不加入或读取目标世界。`python -m unittest tests.test_provider_tutorial -v` 7 项通过。|
 | A1 新用户完整旅程 | PARTIAL | 建窗、改字、按钮、主题、课程发现未在本次连续完成；保留为人工验收/可用 UI 自动化路径待办。|
 
 脱敏运行摘要见忽略的 `evidence/local/nextgen-2026-10-30/b02-03-tutorial-cua-recheck.json`；没有记录 runtime descriptor、token、真实会话或业务数据。

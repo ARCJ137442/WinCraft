@@ -54,6 +54,19 @@ class FakeMutationClient:
         return {'revision': len(self.mutations) + 1}
 
 
+class FakeDiscoveryClient(FakeMutationClient):
+    def __init__(self, worlds: list[dict[str, Any]]) -> None:
+        super().__init__()
+        self.worlds = worlds
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    async def call(self, method: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        self.calls.append((method, params))
+        if method != 'world.list':
+            raise AssertionError(f'unexpected tutorial discovery call: {method}')
+        return self.worlds
+
+
 class ProviderTutorialTests(unittest.IsolatedAsyncioTestCase):
     def test_world_request_creates_an_ordinary_invited_world(self) -> None:
         request = provider_tutorial.create_world_request('synthetic tutorial')
@@ -158,6 +171,95 @@ class ProviderTutorialTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('parent_id', operation)
         after = provider_tutorial.build_scene(state)
         self.assertTrue(any(node['id'] == 'inserted-badge' for node in walk(after['root'])))
+
+    async def test_choice_text_theme_and_discovery_actions_use_provider_owned_state(self) -> None:
+        state = new_state(lesson=2)
+        client = FakeMutationClient()
+
+        for event, expected in (
+            ({'action': 'choice.received'}, '提供者确认：已收到。'),
+            ({'action': 'message.submit', 'value': 'synthetic note'}, None),
+        ):
+            should_finish = await provider_tutorial._handle_action(
+                client,
+                'tutorial-world',
+                {'id': 'tutorial-lease'},
+                state,
+                event,
+            )
+            self.assertFalse(should_finish)
+            self.assertEqual(client.mutations[-1][0], 'data.replace')
+            if expected is not None:
+                self.assertEqual(state['choice'], expected)
+            else:
+                self.assertEqual(state['note'], 'synthetic note')
+
+        await provider_tutorial._handle_action(
+            client,
+            'tutorial-world',
+            {'id': 'tutorial-lease'},
+            state,
+            {'action': 'theme.apply'},
+        )
+        applied_scene = client.mutations[-1][2]['scene']
+        self.assertEqual(client.mutations[-1][0], 'scene.replace')
+        self.assertTrue(state['theme_enabled'])
+        self.assertIn('theme', applied_scene)
+
+        await provider_tutorial._handle_action(
+            client,
+            'tutorial-world',
+            {'id': 'tutorial-lease'},
+            state,
+            {'action': 'theme.reset'},
+        )
+        reset_scene = client.mutations[-1][2]['scene']
+        self.assertFalse(state['theme_enabled'])
+        self.assertNotIn('theme', reset_scene)
+
+        discovery_client = FakeDiscoveryClient([
+            {
+                'id': 'tutorial-world',
+                'system': False,
+                'join_policy': 'invite',
+                'title': 'own tutorial',
+            },
+            {
+                'id': 'other-invite-world',
+                'system': False,
+                'join_policy': 'invite',
+                'title': 'PRIVATE USER TITLE',
+            },
+            {
+                'id': 'other-open-world',
+                'system': False,
+                'join_policy': 'open_authenticated',
+                'title': 'PRIVATE DASHBOARD TITLE',
+            },
+            {
+                'id': 'manager-world',
+                'system': True,
+                'join_policy': 'invite',
+                'title': 'internal manager',
+            },
+        ])
+        await provider_tutorial._handle_action(
+            discovery_client,
+            'tutorial-world',
+            {'id': 'tutorial-lease'},
+            state,
+            {'action': 'discovery.refresh'},
+        )
+
+        self.assertEqual(discovery_client.calls, [('world.list', {})])
+        self.assertEqual(discovery_client.mutations[-1][0], 'data.replace')
+        self.assertEqual(
+            state['discovery'],
+            {'worlds': 2, 'open_authenticated': 1, 'joined_invite_worlds': 1},
+        )
+        self.assertNotIn('PRIVATE USER TITLE', json.dumps(state, ensure_ascii=False))
+        self.assertNotIn('PRIVATE DASHBOARD TITLE', json.dumps(state, ensure_ascii=False))
+        self.assertFalse(any(method in {'world.join', 'world.snapshot'} for method, _ in discovery_client.calls))
 
     async def test_finish_acknowledges_then_destroys_only_its_own_world_once(self) -> None:
         created_clients: list[Any] = []
