@@ -560,7 +560,7 @@
       "id": "B02-02",
       "batch": "B02",
       "title": "主题token与可信界面边界",
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "VERIFIED",
       "depends_on": [
         "B02-01",
         "B01-04"

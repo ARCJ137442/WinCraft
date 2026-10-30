@@ -386,7 +386,7 @@
       ],
       "level": "L1-L4",
       "criterion": "高对比/放大/减少动画生效",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B02-02-A3",

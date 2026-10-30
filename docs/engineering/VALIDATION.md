@@ -8,6 +8,16 @@
 
 TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：前者读本机 state SQLite 与 rollout token 事件；后者在 TeamSense 本机 collector 内存使用已有凭据查询额度服务。它们都不等于实时会话状态。未来的 Codex、MiniMax、DeepSeek 图形化额度悬浮窗仍是 IDEA；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
 
+## 2026-10-30 B02-02 主题与无障碍偏好验收
+
+**Given** 提供者主题 token 与宿主可信标题栏，**When** 浏览器运行实际编译的 renderer 并模拟用户高对比、放大和减少动画偏好，**Then** 主题只影响 provider scene，用户字号优先，高对比与减少动画覆盖主题样式，无效主题回退。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| 首次 `scripts/browser_smoke.py` | FAIL（环境缺件） | 退出码 1；Playwright 管理的 Chromium 未安装。随后改用机器上已有 Chrome 执行同一项目 smoke；未下载或安装新浏览器。|
+| `.venv\Scripts\python.exe scripts\browser_smoke.py`（`CHROMIUM_PATH` 指向已有 Chrome） | PASS（浏览器 renderer） | 退出码 0，28 个检查通过。包括 theme token 与可信 chrome 隔离、非法主题回退、用户缩放覆盖 provider scale、forced-colors 高对比覆盖、reduced-motion 将动画/transition 降为 0。结果存于忽略的 `evidence/local/nextgen-2026-10-30/b02-02-theme-accessibility-browser-smoke.json`。|
+| B02-02-A1/A2/A3 | PASS（L1-L4 browser/contract） | 来源风格只影响 scene；宿主标题栏不被覆盖；高对比/用户放大/减少动画生效；非法主题不污染租约或业务数据。Windows 实际高对比设置、WebView2 UIA 与人工可访问性仍按 B02-04/B11-02 单独验收。|
+
 ## 2026-10-28 开发工具链核验
 
 | 检查 | 状态 | 实际结果 |
