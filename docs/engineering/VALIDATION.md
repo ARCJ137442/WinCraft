@@ -52,6 +52,19 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | 位置恢复与键盘路径 | PARTIAL | 观察到的边界内位置/尺寸可持久化，新 WindowSpec 从保存偏好生成；Chromium 编译 renderer 验证方向键、Tab→备注、Ctrl+Enter 与 Escape。当前 release 原生几何复用、IME、UIA 和读屏仍未验收。|
 | B03-02 acceptance | PARTIAL | A1/A2 由状态机与去重测试证明；A3/A4/A5 仍为 PARTIAL，完整 Tauri Popup 用户旅程待手动/原生验收。|
 
+## 2026-10-31 B03-02 Popup 当前 release 超时清理 smoke
+
+**Given** 一份仅含合成选项的 Popup-Ask 请求；**When** 已安装的 Popup-Ask skill 经 Provider 适配器在当前标准 Tauri Host 创建临时世界，并在 1 秒内没有收到人类输入；**Then** Provider 返回明确 timeout 错误并确认销毁自己的世界，不生成答案或重放提交。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Popup-Ask `--validate-only` 合成请求 | PASS | 已安装 `popup_ask.py` 校验 synthetic choice / descriptions / recommended 字段并注入 Other；无 GUI。请求文件仅留在 Git 忽略的本机证据目录。|
+| 当前标准 Tauri release + `popup_ask_provider.py --timeout-seconds 1 --json --verbose` | PASS（L2 timeout/cleanup） | Provider 输出临时世界创建、timeout terminal JSON、`Popup-Ask temporary world cleanup confirmed.`；Provider 进程退出码 1 是预期的 timeout 结果，外层 smoke wrapper 捕获后返回 0。未提交答案；没有读取/保存用户内容。|
+| `python -m unittest tests.test_popup_ask_provider -v` | PASS（23 tests） | 覆盖 busy gate、取消/关闭/断线/超时、重复提交、ACK 丢失、位置持久化与新 WindowSpec。|
+| B03-02-A3/A4/A5 原生验收 | PARTIAL | 本 smoke 没观察焦点行为、位置复用、真实键盘/IME 或读屏。|
+
+忽略的脱敏本机证据：`evidence/local/nextgen-2026-10-31/b03-02-popup-bounded-host-smoke.json`；合成请求文件同在忽略目录，没有 bearer token/runtime descriptor。
+
 ## 2026-10-30 B04-02 前台激活失败栅栏
 
 **Given** 提供者请求经由用户点击触发的受限原生窗口动作，**When** `SetForegroundWindow` 报告拒绝且目标并未成为 foreground window，**Then** Host 返回明确错误，不写成功回执，也不把这次交互发布给 Provider。

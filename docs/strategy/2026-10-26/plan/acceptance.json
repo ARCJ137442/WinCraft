@@ -530,7 +530,7 @@
       "level": "L2-L5",
       "criterion": "成功/取消/窗口关闭/来源退出/宿主退出均有确定结果或明确未知结果",
       "status": "PASS",
-      "evidence": "23 focused provider tests cover success, cancel, window closure, source/host terminal messages, timeout and lost acknowledgement; a real headless probe also verified timeout cleanup. This verifies provider result/cleanup mapping, not the complete current-Tauri user journey."
+      "evidence": "23 focused provider tests cover success, cancel, window closure, source/host terminal messages, timeout and lost acknowledgement; a real headless probe also verified timeout cleanup. A current standard Tauri release was driven through the installed Popup-Ask script's validate-only path with a synthetic request; the Provider created its temporary world, returned the expected one-second timeout error (provider exit 1), and confirmed its own world.destroy. This verifies current-Host timeout/cleanup, not a user answer, focus behavior, or the complete journey. Evidence: evidence/local/nextgen-2026-10-31/b03-02-popup-bounded-host-smoke.json."
     },
     {
       "id": "B03-02-A2",
