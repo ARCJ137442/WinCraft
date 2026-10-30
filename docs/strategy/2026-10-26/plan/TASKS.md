@@ -1146,22 +1146,26 @@ cargo test --workspace
 
 **前置：** B08-01, B00-03；**需求：** R023, R024, R071, R074
 
-**输入：** Claude Code agents CLI、Codex CLI app-server状态库和明确授权的Codex App connector；不能自动读取任意session日志。
+**输入：** Codex CLI 的本机状态库只读 app-server 适配；Codex App 的 CODEX_HOME/state_*.sqlite 与已验证 session_meta UUID 的 rollout 尾部；Claude Code 的 ~/.claude/projects/*.jsonl 及已知 session/subagents 文件布局。Codex App 与 Claude Code 的在线状态只读 OS 进程元数据；不会启动 App/Claude CLI、调用 App/MCP connector 或读取不受限路径。所有文本只在本机内存中有界投影并脱敏。
 
 **定位：** `examples/integrations/agent-board/live_sources.py`；`examples/integrations/agent-board/live_provider.py`；`examples/integrations/agent-board/global_overview.py`
 
 ### 实施
-1. 将Claude Code、Codex CLI本机状态库与Codex App connector建成三个独立source_id和单独状态通道
-2. Claude Code使用agents --json；Codex CLI app-server thread/list始终启用useStateDbOnly=true；Codex App只接收授权Agent提供的connector快照
-3. 为每个来源保留独立健康、新鲜度、缺失身份与重连边界；失败不得把其他来源标陈旧
-4. 对重新启动、多实例、子会话和connector桥接做发现与重建测试；不扫描任意会话日志
+1. 将 Claude Code、Codex CLI 本机状态库与 Codex App 建成三个独立 source_id；来源状态、磁盘数据质量与读取新鲜度分开表达。
+2. Codex CLI 保持 useStateDbOnly=true 的只读 app-server 状态库适配，不扫描 rollout 历史、不调用控制方法。
+3. Codex App 直接只读最新 state_*.sqlite 中 originator=Codex Desktop 的行；仅对最近四个 rollout 验证 session_meta UUID 后读取有界 Agent 输出尾部；通过已知 Codex Desktop 映像与父进程观察在线状态。
+4. Claude Code 只读配置项目目录中的 JSONL 主会话与 session/subagents/agent-*.jsonl；验证文件名、sessionId/agentId 和限定根目录；通过已安装 Claude Code 映像观察在线状态，不执行 agents --json。
+5. 进程不存在时标记离线但继续展示可读取的历史记录；缺少权威逐会话状态时保持 unknown。读取失败保留原成功年龄并只影响对应来源。
+6. 标题导航只保留 Host 构造的 UUID-only codex://threads/<UUID> 动作；点击是用户显式导航，不用于采集或在线探测。
+7. 增加进程在线/离线/不可判定、离线历史保留、只读 JSONL、子 Agent 父子关系、目录遍历上限、恶意路径/ID、脱敏输出及 no-subprocess 回归。
+8. 合并多个来源时执行 256 条全局 activity 上限；按来源公平分配预算、保留所选叶会话的父链，并对被裁剪来源标记 partial。
 
 ### 验收
-- **B08-02-A1** Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲
-- **B08-02-A2** 不把全部任意既有CLI会话假定可枚举
-- **B08-02-A3** 适配失败仅对应来源stale
-- **B08-02-A4** Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开
-- **B08-02-A5** 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界
+- **B08-02-A1** Claude Code、Codex CLI 与 Codex App 三种独立来源在同一总览中表达；Codex App/Claude Code 在线状态由进程证据决定，缺失来源不伪造成空闲。
+- **B08-02-A2** 只读取显式配置的数据根与固定文件布局，设置项目/文件/输出上限；不把任意历史会话视为完整可枚举，范围受限时明确 partial。
+- **B08-02-A3** 进程不存在但本地历史可读时来源为 offline 且历史仍显示；进程状态、数据可读性和读取新鲜度分别呈现，单源读取失败只影响该来源。
+- **B08-02-A4** Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。
+- **B08-02-A5** 每个来源显示最近成功读取年龄及 stale/disconnected 边界；没有权威逐会话状态时显示 unknown，不将 source process online 等同所有会话 active。
 
 **验证层/目录：** L2-L5 / current WinCraft checkout
 
@@ -1173,7 +1177,7 @@ cargo test --workspace
 
 **说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED
 
-**回滚：** 卸载适配注册/停只读进程，不改Harness配置和业务会话。
+**回滚：** 停止只读 Provider 并恢复先前 local_sources.py 与场景投影；不启动/停止目标进程，不改 Harness 配置或会话文件。
 
 **证据：** baseline commit及工作区差异、实际命令/退出码与环境、用例状态和不含秘密的证据路径、未测项/阻塞来源、回滚验证结果
 
@@ -1213,7 +1217,7 @@ python -m unittest tests.test_agent_activity_board tests.test_agent_global_overv
 python examples/integrations/agent-board/global_overview_provider.py --runtime <actual local descriptor> --duration-seconds 120
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Read-only status aggregation may enumerate the explicitly selected source inventories; keep approval/write capability NOT_RUN until separately authorized. Codex App data still requires the authorized Agent bridge.
+**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Codex App/Claude Code collection uses local process metadata and bounded local files; no Agent bridge is required or invoked. Keep approval/write capability NOT_RUN until separately authorized.
 
 **回滚：** 回到只读聚合器单writer模式；不更改来源任务。
 

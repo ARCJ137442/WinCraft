@@ -125,11 +125,11 @@
 | B08-01-A1 | B08-01 | L1-L2 | 断线不是任务完成或空闲 | PASS |
 | B08-01-A2 | B08-01 | L1-L2 | 模型名/显示名不作身份 | PASS |
 | B08-01-A3 | B08-01 | L1-L2 | 只读面板没有批准/写文件/继续执行权限 | PASS |
-| B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源可在同一总览中表达；每种来源证据分开，缺失来源不伪造成空闲 | PARTIAL |
-| B08-02-A2 | B08-02 | L2-L5 | 不把全部任意既有CLI会话假定可枚举 | PASS |
-| B08-02-A3 | B08-02 | L2-L5 | 适配失败仅对应来源stale | PASS |
-| B08-02-A4 | B08-02 | L2-L5 | Codex App与Codex CLI保持独立来源；Codex App会话显示标题、状态、项目和最近Agent输出，且仅通过受限原生线程导航打开 | BLOCKED |
-| B08-02-A5 | B08-02 | L2-L5 | 来源可查询状态与会话/后台Agent状态不混淆；每个来源显示最近成功读取年龄及stale/disconnected边界 | BLOCKED |
+| B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源在同一总览中表达；Codex App/Claude Code 在线状态由进程证据决定，缺失来源不伪造成空闲。 | PARTIAL |
+| B08-02-A2 | B08-02 | L2-L5 | 只读取显式配置的数据根与固定文件布局，设置项目/文件/输出上限；不把任意历史会话视为完整可枚举，范围受限时明确 partial。 | PASS |
+| B08-02-A3 | B08-02 | L2-L5 | 进程不存在但本地历史可读时来源为 offline 且历史仍显示；进程状态、数据可读性和读取新鲜度分别呈现，单源读取失败只影响该来源。 | PASS |
+| B08-02-A4 | B08-02 | L2-L5 | Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。 | PARTIAL |
+| B08-02-A5 | B08-02 | L2-L5 | 每个来源显示最近成功读取年龄及 stale/disconnected 边界；没有权威逐会话状态时显示 unknown，不将 source process online 等同所有会话 active。 | PARTIAL |
 | B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | PASS |
 | B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | NOT_RUN |
 | B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | NOT_RUN |

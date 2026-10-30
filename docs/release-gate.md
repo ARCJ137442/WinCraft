@@ -21,7 +21,7 @@ This is a pre-release audit for the current working tree. It is not a release ap
 - A real isolated Rust headless host previously passed a 41-check `lease_probe.py` run; the current workspace also passes its Rust core/server/Tauri automated suite.
 - B06-01/B06-02 are VERIFIED at draft-export/pure-planner scope; B06-03/B06-04 are `IMPLEMENTED_UNVERIFIED` with PARTIAL acceptance. The new `.wcp` manual flow and two-user sharing checks are documented in the Chinese acceptance guide and remain NOT_RUN.
 - A preceding Tauri release host reported native application of `always_on_top=false/true`; the current 2026-10-30 build has not repeated that setter test, and actual z-order against ordinary and other topmost windows remains NOT_RUN.
-- An earlier release UIA smoke showed four session-card fields with a synthetic Codex App snapshot; the current release window could not be captured by Computer Use, so no current-build pixel/UIA claim is made. The real connector snapshot is still BLOCKED, and Codex App deep-link click/load remains NOT_RUN.
+- An earlier release UIA smoke showed four session-card fields with a synthetic Codex App snapshot; the current release window could not be captured by Computer Use, so no current-build pixel/UIA claim is made. The current working-tree source now uses process presence plus bounded local files for Codex App/Claude Code; native release presentation and UUID-only deep-link click/load remain NOT_RUN.
 - TrafficMonitor and Obsidian Obsidian Workspace providers have documented read-only/source boundaries and prior current-release evidence.
 - Native external actions are allowlisted and fail closed in service tests; real Windows click success/failure remains unverified.
 

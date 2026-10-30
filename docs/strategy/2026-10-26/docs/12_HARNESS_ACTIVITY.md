@@ -31,7 +31,7 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 ## 全局悬浮总览与渐进披露
 
-首屏使用一个全局悬浮世界呈现用户选定的 Harness 来源。Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App 两种采集通道必须保留独立 source identity 和采集状态：Claude `agents --json` 返回后台 Agent 记录，不等于列出全部交互式会话；Codex CLI `thread/list` 固定限制为本机 state DB；Codex App 可由有权 Agent connector 提供快照，也可只读读取本机 `state_*.sqlite` 中 `originator=Codex Desktop` 的有限会话元数据。后者不能证明运行状态；打开 Codex App 本身也不代表 connector 快照已到达 Provider。来源“可查询”与其中会话“运行/阻塞/空闲”分开展示，并显示每个来源最近成功读取年龄。Codex App 会话行展示标题、状态、项目和最近 Agent 输出，详情逐步披露同一会话的更多信息。
+首屏使用一个全局悬浮世界呈现用户选定的 Harness 来源。Claude Code、Codex CLI 与 Codex App 保留独立 source identity 和采集状态。Codex CLI 继续用 `thread/list` 并固定 `useStateDbOnly=true`；Codex App 只读本机 `state_*.sqlite` 中 `originator=Codex Desktop` 的有限行，并在 `session_meta` UUID 匹配后读最近 rollout 的有界 Agent 输出；Claude Code 从配置项目目录里的会话 JSONL 与已知 `session/<UUID>/subagents/agent-*.jsonl` 读取历史。Codex App 与 Claude Code 的在线/离线只由 OS 进程元数据决定；采集不会启动它们，也不调用 App MCP、Claude CLI 状态命令或连接器。进程离线时仍保留可读历史，逐会话状态没有权威字段时显示 `unknown`，不伪造成 idle。来源进程状态、磁盘数据可读性和最近成功读取年龄分别呈现。
 
 用户可切换来源、实例或会话，进入选中范围后再展开任务/依据详情。切换视图不得另开每来源常驻窗口，也不得丢失来源身份、新鲜度、父子关系或撤销状态。完整提示词和会话日志不默认进入总览；观察本身不授予批准、写入或继续执行权限。长列表按需披露，窗口高度应适配当前视图而不过度撑高。Codex App 的 `codex://threads/<UUID>` 导航只能经宿主声明能力和用户点击触发。
 
@@ -45,20 +45,19 @@ B07 完成后，每个 Harness adapter 获得自己的子树/数据 scope；布�
 
 `protocol/activity.schema.json` (`draft-2026-10-29`) 将原始 `source_status`、映射后的 `normalized_status` 与 `freshness` 分开；它是原始 handoff `draft-2026-10-26` 的仓库实现提案，未替换已保留的 handoff schema。身份键只由 `device_id / provider_id / source_instance_id / session_id` 组成；显示名与模型名仅作标签。若 freshness 为 `stale` 或 `disconnected`，normalized status 必须为 `stale`；未知新鲜度对应 `unknown`，不能回落到 `idle`。
 
-当前 Global Overview 为三个来源统一呈现会话名称、状态、项目标签与来源文本预览。项目只显示 `cwd` 的末级目录名，不输出完整路径。Codex CLI 的 `thread/list.preview` 发言方未标注，卡片标为“会话预览（发言方未标注）”；Claude Code `agents --json` 不提供最近输出，卡片明确显示来源缺少该字段。Codex App 的 connector `agent_message`，或通过 `session_meta.payload.id` 与本地线程 UUID 精确匹配后读取的有界 rollout `agent_message`/`task_complete.last_agent_message`，才可标为“最近 Agent 输出”。本机回退最多读取最近四条 rollout 的尾部 1 MiB；不匹配时不显示输出。短文本先经过凭据/路径脱敏并作为纯文本渲染；这不授权读取完整 rollout、全量日志或批准/执行会话操作。
+当前 Global Overview 为三个来源统一呈现会话名称、状态、项目标签与来源文本预览。项目只显示 `cwd` 的末级目录名，不输出完整路径。Codex CLI 的 `thread/list.preview` 发言方未标注，卡片标为“会话预览（发言方未标注）”。Codex App 标题与项目来自 Desktop-originator 状态行；最近 Agent 输出只来自 `session_meta.payload.id` 与本机线程 UUID 精确匹配后的有界 rollout 尾部。Claude Code 会话名优先取本地 `custom-title`/`ai-title`，输出只取匹配会话日志尾部的 assistant text；`thinking`、user prompt、tool output 不显示。主会话与已知子 Agent 日志都使用有界文件数/输出数，越界或身份不匹配显示 partial/unknown。短文本经过凭据/路径脱敏并作为纯文本渲染；不读取完整会话、执行批准或继续会话动作。
 
-`activity_board.py` 的基础聚合和 B08-01 回归仍使用仓库 synthetic fixtures。`live_sources.py`、`live_provider.py` 实现 Claude/Codex CLI 只读适配、Codex App connector 快照桥和 Desktop 本机状态回退；本机回退仅读 query-only SQLite、筛选精确 Desktop originator，并在 rollout 身份匹配后读取有限尾部，不扫描完整会话日志。当前 release 对持续 Codex App connector relay 的验收仍为 `BLOCKED`，不能把合成 fixture 或一次性 provider 协议回执视为实时 UI 接入。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。仓库 schema 是 `draft-2026-10-29` 提案；原始 handoff `draft-2026-10-26` 保持不变，二者都不是 protocol 0.3 接口或真实 Harness 适配。
+`activity_board.py` 的基础聚合和 B08-01 回归仍使用仓库 synthetic fixtures。`live_sources.py` 对 Codex Desktop 执行 query-only SQLite 与身份核验后的 bounded rollout 读取；对 Claude Code 只扫配置项目目录下的 JSONL 主会话与固定子 Agent 布局。Windows 用 Toolhelp32 读取进程名/父进程，并只为 Codex/Claude 候选查询映像路径；不取 command line、不启动 Harness。来源 health、data health 与读取新鲜度不互相替代。来源失败只使该来源的历史标陈旧/不可用。当前实现不再需要 Codex App connector relay；`codex://threads/<UUID>` 只在用户点击标题后由 Host 执行受限导航。聚合器要求每个来源批次带完整父子树，遇到重复身份、缺失父项或循环就失败关闭；父节点仍可呈现，但统计只计叶会话。B08-01 的 `control_capabilities` 必须为空，界面只用现有只读组件，不带批准、写文件或继续执行动作。仓库 schema 是 `draft-2026-10-29` 提案；原始 handoff `draft-2026-10-26` 保持不变，二者都不是 protocol 0.3 接口或真实 Harness 适配。
 
-Codex App connector 快照若带 `captured_at`，Provider 用它计算来源年龄及会话 TTL；缺少时间的旧格式回退为本机接收时刻。无时区、格式错误或未来时间戳只使 Codex App 这一路失败关闭；到达 TTL 边界即标 stale。不能把消息到达 Provider 的时间冒充来源刚刚读取。
+Codex App/Claude Code 的本机读取时刻用于来源 freshness；磁盘文件的活动时刻只作 bounded session evidence，不冒充在线状态。进程存在也不能让所有会话显示 running；无权威逐会话状态时保持 unknown。读取失败保留最后成功年龄，数据目录仍可读时即使进程离线也继续显示历史。
 
 ## Harness 适配证据表
 
 | 来源 | 本轮一手资料支持的入口 | 首轮只做 | 不承诺 |
 |---|---|---|---|
 | Codex CLI · 本机状态库 | Codex App Server `thread/list` | `useStateDbOnly=true` 的名称、状态、cwd 末级项目名与发言方未标注的短 preview | 将 preview 冒充 Agent 输出、读取 rollout JSONL 或完整 turn 内容 |
-| Codex App connector | 经用户授权的 Agent 从 Codex App MCP connector 提供 `list_threads` / `list_projects`；active 项的 `read_thread` 限量取最近 Agent 消息 | 权威状态/快照，显示标题、状态、项目与限长输出；链接只带 UUID 并由 Host 构造 `codex://threads/<UUID>` | App 打开即自动连入、任意 URL/命令、批准或继续执行 |
-| Codex App · 本机回退 | 只读 `state_*.sqlite` 中精确标记为 `Codex Desktop` 的有限行；可选读取 UUID 匹配 rollout 的有界尾部 | 补充标题/项目；无权威状态时为 `unknown`；无匹配 Agent 输出时显示不可用 | 推断运行状态、读取完整会话、把用户消息或工具输出当 Agent 输出 |
-| Claude Code | 本机 `agents --json` 后台 Agent 状态接口；Hooks/Notification 是其他适配模式 | 显示后台 Agent 名称、状态、cwd 末级项目名与 CLI 可查询状态；无输出字段时明确显示缺失 | 把后台 Agent 记录当作全部交互会话，推断其最近输出，或用 CLI 查询成功推断 GUI 会话在线 |
+| Codex App | 只读最新 `state_*.sqlite` 的 Desktop-originator 行；校验 rollout `session_meta` 与 UUID 后读取有界尾部；进程状态匹配已知 Codex Desktop 映像/父进程 | 标题、项目、最近 Agent 输出、进程 online/offline、数据可读性与读取年龄；链接只带 UUID 并由 Host 构造 `codex://threads/<UUID>` | App MCP/API、启动 App Server、从进程存在推断每个会话运行、读取完整会话或工具输出 |
+| Claude Code | 从 `~/.claude/projects` 或 `CLAUDE_CONFIG_DIR` 的项目 JSONL 主会话与固定子 Agent 文件布局读取；进程匹配本机安装映像 | 会话标题/项目/最近 assistant 文本；进程 online/offline 与读取新鲜度分开展示；离线仍可查看历史 | 调用 `claude agents --json`、扫描任意目录、展示 prompt/thinking/tool output、把缺失状态伪造成 idle |
 | OpenCode | 服务/事件流与插件 session/permission 事件 | 指定服务只读订阅 | 非授权服务可被自动读写 |
 | DeepSeek Harness | 插件服务、session/agent/capability 事件与可撤销注册 | 只读插件 Adapter | 预览 API 稳定或完全兼容当前所有版本 |
 | omp | 项目 README 的 SDK/RPC/ACP 入口 | 固定版本与模式的事件映射 | 所有模式都能回答同样的 UI/approval 请求 |
@@ -71,9 +70,9 @@ Codex App connector 快照若带 `captured_at`，Provider 用它计算来源年�
 
 | Harness / source ID | 本机版本检查 | 已有适配证据 | 未完成边界 |
 |---|---|---|---|
-| Codex CLI / `codex` | `codex-cli 0.138.0-alpha.7` | `thread/list` 只读 adapter 与当前 release smoke：source `online`，本次 0 条可列会话 | 此次没有可呈现的会话行；不能把空列表推成无任务或把 CLI 状态套到 Codex App。|
-| Codex App / `codex-app` | NOT_RUN | 一次授权 connector 快照曾到达 Provider；本轮明确 `not_requested` | 持续 relay、真实 release 列表、Agent 输出和 UUID 深链接仍 STALLED / NOT_RUN。|
-| Claude Code / `claude-code` | `2.1.302` | `agents --json` 只读 adapter 与当前 release smoke：source `online`，2 条后台 Agent 状态为 `blocked` | CLI 返回的后台 Agent 集合不等于全部交互会话；此证据没有验证最近 Agent 输出。|
+| Codex CLI / `codex` | `codex-cli 0.138.0-alpha.7` | `thread/list` 固定 `useStateDbOnly=true`；本机 read-only smoke 返回来源状态与可列会话数 | 空列表不等于无任务；不把 CLI 状态套到 Codex App。|
+| Codex App / `codex-app` | 本机进程观察 | 只读 Desktop-originator state DB 与 UUID-verified rollout；进程在线、磁盘数据 partial 的 count-only smoke 通过 | 当前 release 窗口四字段呈现与真实 UUID-only 导航目标加载仍 NOT_RUN；不需要持续 connector relay。|
+| Claude Code / `claude-code` | `2.1.302` | 本地项目 JSONL 主会话/子 Agent reader smoke 返回 `local_state`；进程 offline 时仍保留历史，不运行 `agents --json` | 只有日志可证的字段会展示；逐会话状态无权威证据时为 `unknown`；release UI 仍 NOT_RUN。|
 | OpenCode / source ID 未分配 | `1.1.14` | 本地版本命令可用；设计入口是指定服务事件流/插件事件 | 本仓库没有 OpenCode adapter 实测；session、permission 事件和授权边界均 NOT_RUN。|
 | DeepSeek Harness (`dsh`) / source ID 未分配 | `dsh --version` 失败，版本未知 | 本地命令存在；设计入口是插件服务与可撤销注册 | 当前安装无法报告版本；插件事件与只读 adapter 均 NOT_RUN。|
 | omp / source ID 未分配 | `omp/15.5.7` | 本地版本命令可用；设计入口来自项目 README 的 SDK/RPC/ACP | 本仓库没有 omp adapter 实测；固定模式的事件映射与权限边界均 NOT_RUN。|
@@ -90,4 +89,6 @@ Codex App connector 快照若带 `captured_at`，Provider 用它计算来源年�
 
 ## 第一条真实验收
 
-分别验证 Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App connector 和 Codex Desktop 本机回退。先确认来源健康、session 状态与更新时间彼此独立；单源断开只影响自身投影。Codex App 后续还须验证持续授权快照、四字段行与 UUID-only 深链接；本机回退须保持状态未知并在身份不匹配时拒绝输出。当前 Codex App 子目标标记为 `STALLED`：一次性快照曾到达 Provider，但持续 relay、release UI 和原生深链接尚未验收；Computer Use 激活失败后不重复 UI 操作。其他 Harness 仍在路线内，不要求第一批同时完成。
+分别验证 Claude Code 本地会话文件、Codex CLI 本机状态库与 Codex App 本机状态文件。来源进程状态、数据目录可读性、session 状态与更新时间彼此独立；单源读取失败只影响自身投影。Codex App 标题点击只通过 Host 构造的 UUID-only 深链接；该点击和 release 可见 UI 仍需验收。Computer Use 激活失败时不重放旧句柄或坐标；在可用的 UIA 路径恢复后继续。
+
+**2026-10-30 决策更新：** 用户明确不需要与 Codex App 实时通信，也不需要为采集启动 Codex App 或 Claude Code。先前“持续 connector relay / Codex App STALLED”是阶段性记录，现由本节的进程 + 本机文件方案取代；B08-02 状态为 `IN_PROGRESS`，原生 UI/UUID 深链接仍是独立未验项。

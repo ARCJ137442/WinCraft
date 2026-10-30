@@ -2,8 +2,8 @@
   "updated_at": "2026-10-30",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence; fix commit e3a4 passed hosted Windows CI and a current-source release is built/launched. The 10d5881 documentation sync also passed Windows hosted CI. Manager UI remains PARTIAL. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 remains BLOCKED/Codex App STALLED per user checkpoint; B09-02 remains BLOCKED pending explicit source selection.",
-  "next_action": "The e3a4 fix commit passed Windows Actions run 40979104886 (11m26s), and documentation sync commit 10d5881 passed run 40982406047 (11m46s; Node 22, CPython 3.12.10, Rust 1.99.1). Current release target/release/wincraft-desktop.exe is 13,279,232 bytes, SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A; its read-only Tauri capability handshake passed with no inventory/world writes. Computer Use capture failed on the prior feature-equivalent candidate and was not retried on e3a4; B06-03 A1-A3 remain PARTIAL pending manual manager UI acceptance. Then complete B06-04 two-independent-environment import/re-authorization. Keep Codex App STALLED and B09-02 waiting for explicit source selection.",
+  "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence; the latest Windows CI passed and the current source release builds. Manager UI remains PARTIAL. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 now follows process + local-disk collection: 40 focused source/overview tests, count-only live read and full local gate pass; the 256-record merge cap reports partial. The current release manager window enumerates, but Computer Use activation failed, so visual rendering and UUID click navigation remain NOT_RUN. B09-02 remains BLOCKED pending explicit source selection.",
+  "next_action": "Finish B08-02 local process/disk regression and real count-only smoke, then verify current Tauri release rendering and restricted codex:// navigation when native UIA is available. B06-03 manager UI and B06-04 two-user acceptance remain partial. B09-02 remains blocked pending explicit source selection.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -39,7 +39,7 @@
     "B07-03": "VERIFIED",
     "B07-04": "VERIFIED",
     "B08-01": "VERIFIED",
-    "B08-02": "BLOCKED",
+    "B08-02": "IN_PROGRESS",
     "B08-03": "IN_PROGRESS",
     "B08-04": "NOT_STARTED",
     "B09-01": "VERIFIED",
@@ -62,7 +62,7 @@
     "B03-03 SysTorch M1 source is an unpublished local candidate; actual runtime address and managed caller token are unavailable, so no live request was attempted.",
     "TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权，未做在线请求。其他Harness、TouchAI和跨设备适配仍未实现，不用mock冒充。",
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
-    "Codex App subgoal STALLED per user instruction after the stage checkpoint: one real authorized snapshot reached the Provider, but no persistent relay exists; the local fallback provides bounded title/project metadata, cannot prove runtime status, and only shows UUID-matched Agent output. Current release visible UI and native UUID click/load remain unverified after Computer Use window activation failed.",
+    "B08-02: local process/disk collection and merge limits pass focused tests and current count-only smoke; current release visual rendering and UUID-only native navigation remain NOT_RUN after Computer Use returned failed to activate captured window twice. No live App bridge or target-app launch is required.",
     "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization.",
     "B06-03 pre-fix/e3e8 feature-equivalent manager capture failed twice with GetCursorPos access denied (0x80070005); the e3a4 release was rebuilt/launched and its read-only capability handshake passed, but UI capture was not retried. Preview/apply/provider receipt/rollback UI remains NOT_RUN.",
     "B06-04: static pack/fixture checks pass, but the required two independent user environments and fresh-install no-auto-download/re-authorization flow have not been exercised."
@@ -191,6 +191,7 @@
     "2026-10-30: GitHub Actions run 40976867333 for e3e8df4 passed fmt/check/workspace tests but failed Clippy 1.99 lint chunks_exact_to_as_chunks in self_provider.rs. Replaced fixed chunks_exact(2) with as_chunks::<2>(), added malformed/odd/invalid-UTF8 action-segment regression, and reran local fmt, workspace Clippy and npm run check:local successfully; hosted rerun awaits the fix commit.",
     "2026-10-30: Fix commit e3a4c4de4e345ac2230dec8f1aef6f62d049fc93 replaced chunks_exact(2) with as_chunks::<2>() after Actions run 40976867333 failed Clippy 1.99; decoder regression, local fmt/Clippy/full npm run check:local passed. Windows Actions run 40979104886 for the fix commit passed in 11m26s.",
     "2026-10-30: After fix commit e3a4, target/release/wincraft-desktop.exe rebuilt at 13,279,232 bytes (SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), launched with --open-manager; read-only Python SDK hello/capability smoke passed with no inventory write/world creation. No further Computer Use UI capture was attempted after the prior recovery limit.",
-    "2026-10-30: Fix commit e3a4c4de4e345ac2230dec8f1aef6f62d049fc93 passed Windows Actions run 40979104886 in 11m26s. Rebuilt the release from e3a4 (13,279,232 bytes, SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), launched --open-manager, and passed a read-only 0.4-preview.1 capability handshake without inventory writes or world creation. UI remained NOT_RUN."
+    "2026-10-30: Fix commit e3a4c4de4e345ac2230dec8f1aef6f62d049fc93 passed Windows Actions run 40979104886 in 11m26s. Rebuilt the release from e3a4 (13,279,232 bytes, SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), launched --open-manager, and passed a read-only 0.4-preview.1 capability handshake without inventory writes or world creation. UI remained NOT_RUN.",
+    "2026-10-30: User clarified B08-02 to use process presence plus read-only local data directories; no live Codex App/Claude CLI or connector is needed. Codex Desktop state/rollout and Claude project/subagent JSONL readers are implemented with bounded output and offline history retention; focused tests passed. Current native release rendering/deep-link acceptance remains unverified."
   ]
 }

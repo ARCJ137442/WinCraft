@@ -1,6 +1,6 @@
 # 决定账本
 
-日期：2026-10-29。本文区分用户已经决定、AI 本轮实施取舍和尚未实现，不把讨论过视为验证通过。
+日期：2026-10-30。本文区分用户已经决定、AI 本轮实施取舍和尚未实现，不把讨论过视为验证通过。
 
 2026-10-26 的下一世代取舍、追踪账本与未验收项见 [平台演进交接包](../strategy/2026-10-26/START_HERE.md)。该包中的新契约仍是提案；决定账本的状态标签不会替代本仓库实现与验收证据。
 
@@ -10,7 +10,7 @@
 |---|---|
 | 世界就是窗口 | UUID 寻址一个窗口实例；不暗含永久存档 |
 | 业务状态外置、运行状态可重建 | 宿主不维护外心计时/任务/笔记的另一份权威业务状态 |
-| 全局 Harness 纵览单窗切换与渐进披露 | 一个悬浮世界聚合用户选定的来源/实例/会话；Claude Code 后台 Agent、Codex CLI 本机状态库、Codex App connector 是三种独立来源，采集方式、来源健康和会话状态分别表达。会话卡片显示名称、状态、项目与最近 Agent 输出；按来源/实例/会话切换并按需展开详情；身份、新鲜度与撤销状态可辨，完整日志和操作权限不默认披露 |
+| 全局 Harness 纵览单窗切换与渐进披露 | 一个悬浮世界聚合用户选定的来源/实例/会话；Claude Code 本地会话文件、Codex CLI 本机状态库、Codex App 本机状态文件是三种独立来源。Codex App/Claude Code 进程状态由本机进程证据决定，详情由各自有界磁盘读取提供；不依赖 live App/CLI connector。会话卡片显示名称、状态、项目与最近 Agent 输出；来源状态、磁盘可读性和新鲜度分开，完整日志和操作权限不默认披露 |
 | 多读单写，先窗口再组件 | 首版整个世界只有一个活动写租约；其他会话只能看不可变快照 |
 | 无固定绑定/常客 | 加入、租约、动作路由仅在内存中；断线即清理会话 |
 | 宿主托盘化、管理界面自用 | 不需常驻主窗口；管理器是内部提供者生成的世界 |
@@ -52,7 +52,7 @@
 - 首批 10 个组件；前端采用无框架 TypeScript，而非搬入整个外心 React 应用。Tauri 原生窗口与外心窗口模式保留。
 - 限制 16 个世界（包含内部管理器）、每世界 256 节点/深度 16、单消息 256 KiB，以便先验证完整链路。
 - 管理器为进程内可信提供者，与外部同用 Engine/Scene/事件语义；它有明确的本地操作员权限，不要求绕本机 WebSocket 自发 HTTP。
-- Agent Activity 总览最多预览两条 Codex CLI、两条 Codex App、三条 Claude Code 会话；Codex CLI 只读取最近四个线程的 `agentMessage`，Claude 仅在 session ID 唯一匹配本地 transcript 时读取其有界尾部。Codex App 可从本机只读 state DB 的 `Codex Desktop` originator 取得标题/项目，并只解析经过 session meta 匹配的有限 rollout 尾部；该路径不提供运行状态，状态保持未知；授权 Agent bridge 按 thread ID 补充或覆盖实时字段。来源不给出或不能唯一匹配输出时明确显示不可用，不从用户提示或工具结果推断。
+- Agent Activity 总览最多预览两条 Codex CLI、两条 Codex App、三条 Claude Code 会话；Codex CLI 只读取最近四个线程的 `agentMessage`。Codex App 从本机只读 state DB 的 `Codex Desktop` originator 读取标题/项目，并只解析经过 session meta 匹配的有限 rollout 尾部；Claude Code 从项目 JSONL 与固定子 Agent 路径读取本机历史。两者用 OS 进程映像状态区分在线/离线，进程离线仍可浏览历史；没有权威逐会话状态时显示 unknown。来源不给出或不能唯一匹配输出时明确显示不可用，不从用户提示或工具结果推断。
 - Popup-Ask provider 按上述可读性要求把自身窗口默认不透明度设为 `0.92`；这是本轮实施值，其他窗口仍按全局默认 `0.8` 或各自 provider 配置。
 - 协议接受表示权威模型已更新，不保证 OS 已应用；native report 单独说明成功/失败。
 

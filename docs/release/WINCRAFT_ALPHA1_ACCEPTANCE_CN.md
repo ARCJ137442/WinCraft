@@ -22,7 +22,7 @@ audience: maintainer, Windows tester
 
 2026-10-29 的旧版 `a0366e1` release 为 12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`；同日稍后的预修复 `e3e8df4` 候选也已被本表中的 `e3a4c4d` 构建替换。旧 hash 均不代表本表 EXE。
 
-此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。最新 live Provider smoke 以 `--sources codex claude-code` 读取这两个来源，明确不查询 Codex App；两次真实 Tauri 协议运行提交了 4/2 个只读场景并正常退出。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仍限于标题/项目和身份匹配的 Agent 输出，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把 synthetic UIA 或两来源 smoke 计作真实 Codex App UI 接入。
+此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故该 hash 没有像素级 UI 验收。2026-10-30 用户明确要求改用本机进程状态与磁盘会话数据，不需要实时 Codex App connector。工作树已实现 Codex App state DB/rollout 与 Claude Code JSONL/subagent 只读适配；本机 count-only smoke 确认 Codex App 进程在线、Claude Code 进程离线但历史可读。当前 release 尚未重建该源码，故其 UI 呈现和 UUID-only 深链接保持 `NOT_RUN`；不把 synthetic UIA 或协议 smoke 计作真实 UI 接入。
 
 ## 快速启动
 
@@ -50,13 +50,13 @@ audience: maintainer, Windows tester
 | 动态组件与动作回执（W04/W05/W06） | 在 Python focus demo 中点击“替换组件区”和一个按钮；结构实时更新，动作显示当前 provider 的实际回执；provider 断线不冒充成功。 | ____ |
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；只有身份匹配的 Codex App `agent_message` 标为最近 Agent 输出，CLI 发言方未知的 preview 单独标识。本机回退没有权威运行状态时显示未知。Codex App 子目标已 `STALLED`；不得用合成行替代真实会话验收。 | 定向/全量测试：PASS；真实 snapshot→Provider：曾 PASS 一次；持续 relay：BLOCKED；像素与 UUID 深链：NOT_RUN |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 工作树定向测试与本机 count-only 进程/磁盘 smoke：PASS；当前 release 像素与 UUID 深链：NOT_RUN |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
 
-完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本次构建的真实 Tauri-hosted `lease_probe.py` 返回 `PASS`、退出码 0；B07-02 scope probe 也通过。这些协议探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。Codex App connector 在无 Agent 桥接时显示“等待 Agent 桥接”，本机回退不会伪造 live 状态。该 release 尚未取得可信像素截图或真实 Codex App 深链接加载证据。
+完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本次构建的真实 Tauri-hosted `lease_probe.py` 返回 `PASS`、退出码 0；B07-02 scope probe 也通过。这些协议探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。当前 provider 从进程读取 Codex App/Claude 在线状态，从本机数据目录读取会话摘要；无进程仍显示可读历史，数据缺失明确显示未知/不可用。该 release 尚未取得新源码对应的可信像素截图或真实 Codex App 深链接加载证据。
 
 ## 记录与复现
 

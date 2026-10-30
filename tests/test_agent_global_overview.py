@@ -40,13 +40,13 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.now = datetime(2026, 10, 29, 10, 2, tzinfo=timezone.utc)
         self.projection = load_synthetic_global_projection(now=self.now)
 
-    def test_provider_source_selection_can_skip_the_stalled_app_bridge(self):
+    def test_provider_source_selection_uses_only_known_local_sources(self):
         self.assertEqual(
-            validate_source_options(['codex', 'claude-code'], codex_app_bridge=False),
+            validate_source_options(['codex', 'claude-code']),
             ('codex', 'claude-code'),
         )
         with self.assertRaises(ValueError):
-            validate_source_options(['codex', 'claude-code'], codex_app_bridge=True)
+            validate_source_options(['codex', 'unknown'])
 
     def test_default_scene_shows_global_counts_and_bounded_claude_status_preview(self):
         scene, detail_targets, page_count = build_global_overview_scene(

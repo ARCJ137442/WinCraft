@@ -2,6 +2,12 @@
 
 本地开发与 CI 的统一命令、CodeGraph 使用方式及证据边界见 [开发规范与工具链](DEVELOPMENT_TOOLCHAIN.md)。该命令的 CI 结果不替代本文件记录的真实宿主、release 和人工验收。
 
+## 当前来源结论与历史记录阅读方式
+
+截至 2026-10-30，Codex App 与 Claude Code 的 Agent Activity 数据路径是：本机进程只判在线/离线；获准的数据目录提供会话详情，离线时仍可读历史；没有权威逐会话状态就显示 `unknown`。不连接 Codex App，不启动 Claude CLI。下面带日期的早期记录仍保留当时的真实结果，但其中 MCP/connector bridge 与 `agents --json` 是被后续决定取代的历史方案；当前结果见文末最新 B08-02 记录和 `plan/status.json`。
+
+TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：前者读本机 state SQLite 与 rollout token 事件；后者在 TeamSense 本机 collector 内存使用已有凭据查询额度服务。它们都不等于实时会话状态。未来的 Codex、MiniMax、DeepSeek 图形化额度悬浮窗仍是 IDEA；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
+
 ## 2026-10-28 开发工具链核验
 
 | 检查 | 状态 | 实际结果 |
@@ -652,28 +658,28 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 
 来源输出只在 Provider 进程内短暂保留、裁剪与脱敏，不写入仓库、日志或证据。Codex CLI 的 `thread/read` 响应可能带有更早 turns，但只保留最多四个最近线程中的最后一条 `agentMessage`；`thread/list.preview`（通常是初始用户消息）不会显示。Claude 只读取唯一匹配 session ID 的日志尾部。无输出或身份无法匹配时 UI 明示不可用，不将用户提示、工具返回或其他会话内容伪装成 Agent 输出。Codex App 一次性 MCP 快照到 Provider 已实测；持续自动 relay、release 像素/深链接验收和 Claude 实际 transcript 映射仍未验收。
 
-## 2026-10-29 TeamSense 本机 Codex 数据源对照
+## 历史对照：2026-10-29 TeamSense 本机 Codex 数据源
 
-**Given** TeamSense 既有 Codex 本机采集代码与其 App 用量静态调查；**When** 评估是否可替代 WinCraft 的 Codex App connector；**Then** 只复用已证明的只读字段和来源边界，不把用量采集器说成实时会话/消息采集器。
+**Given** TeamSense 既有 Codex 本机采集代码与其 App 用量静态调查；**When** 对照 WinCraft 的会话/用量来源；**Then** 区分本机 rollout 用量、会话 metadata 与账号额度，不把其中任一项冒充实时 Agent 状态。
 
 | 检查 | 状态 | 结论 |
 |---|---|---|
 | Codex rollout 与 state SQLite 采集实现 | PASS（源码审阅） | TeamSense `codex-usage-collector` 扫描 `sessions` / `archived_sessions` 的 JSONL，只解析 `event_msg.token_count`，用只读 `state_*.sqlite` 查询会话名、cwd、模型、source 与时间；游标状态本机持久化。它不读对话正文、Agent 输出或实时运行状态。 |
 | Codex 账号额度采集 | PASS（源码/契约审阅） | 独立 `codex_quota` 模块从本机 `auth.json` 在内存中取 access token/account ID，读取 `/backend-api/wham/usage`，再核对请求期间账号是否切换；报告不含访问令牌。该私有 quota 路径与 rollout 历史分开，不等于 Codex App 分析图表 API。 |
 | Codex Desktop 静态分析 | PARTIAL | TeamSense 调查文档记录了 App bundle 中的模块及若干相对 API 路径；没有实际请求验证个人账号图表端点、完整响应 Schema 或更新时间。现有本机采集器没有实现这些 analytics 路径。 |
-| 能否替代 WinCraft 的会话卡片 | NO | TeamSense 现有本机采集器可供研究本机 thread metadata，但不提供状态与最后 Agent 输出；自身 SQL 也未取 `originator` 作为 App/CLI 来源区分。WinCraft 的真实 App snapshot bridge 仍需单独打通。 |
+| TeamSense 是否是实时会话卡片来源 | NO（当时的证据边界） | TeamSense 的 quota/usage collector 与 WinCraft Agent Activity 是不同用途；本机用量 collector 不提供实时逐会话状态。后续 WinCraft 采用独立的 process + local-file reader，不再依赖 App snapshot bridge。 |
 
-本次只读审阅了 TeamSense 源码、设计记录与本机 Codex 状态数据库字段；另对当前会话对应的 rollout 尾部做了 256 KiB 的结构检查，仅输出事件类别与文本长度，不展示或持久化消息正文。没有读取 `auth.json`、修改 TeamSense 或对 TeamSense 服务发起写入。TeamSense 的后续来源字段与 rollout 输出读取可作为 WinCraft 新适配器的设计参考，不能直接视为已接入或已验收。
+本次只读审阅了 TeamSense 源码、设计记录与本机 Codex 状态数据库字段；没有读取 `auth.json`、修改 TeamSense 或对 TeamSense 服务发起写入。TeamSense 的本机 quota 方法与 session metadata 方法彼此分开，分别可作为后续 WinCraft Agent Activity 与 TeamSense quota HUD 的参考；它们不代表 TeamSense 服务已接入 WinCraft。
 
 ### Codex Desktop 本机元数据回退场景
 
-**Given** 本机 Codex `state_*.sqlite` 中唯一标记为 `originator=Codex Desktop` 的线程元数据，**When** Agent bridge 没有快照而本机数据库可读，**Then** 默认总览仍显示经脱敏的会话名与项目；没有受信状态时显示“状态未知”，只有 rollout 中精确匹配 session meta 的 `agent_message` 才可显示为最近 Agent 输出。Bridge 对同一 thread 提供权威字段时优先采用它；数据库缺字段、线程 ID 不匹配或 rollout 路径无法验证时失败关闭。
+**Given** 本机 Codex `state_*.sqlite` 中唯一标记为 `originator=Codex Desktop` 的线程元数据，**When** Codex App 进程在线或离线而本机数据目录可读，**Then** 总览显示脱敏会话名与项目；进程状态独立显示，缺少逐会话权威状态时显示“状态未知”，只有 rollout 中精确匹配 `session_meta` 的 Agent 消息才显示为最近 Agent 输出。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | Codex Desktop `state_*.sqlite` local-state adapter | PASS（合成与本机只读） | SQLite 以 read-only/query-only 打开；只选 `originator=Codex Desktop`、最近有界行、非 archived 记录。title/name 与 cwd 末级项目进入会话卡片，原始路径/ID不进入 scene；没有实时 App status 时明确为未知。本机查询因来源数量到达上限标 partial。 |
 | rollout 尾部 Agent 输出 | PASS（合成） / PARTIAL（本机） | 只接受 sessions/archived_sessions 中以 `rollout-*.jsonl` 命名、且头部 `session_meta.payload.id` 与线程 UUID 匹配的文件；最多读取尾部 1 MiB，仅抽取 `event_msg.agent_message` 或 `task_complete.last_agent_message`，输出裁剪/脱敏并只保存在进程内。本机最近四条有界尾部未找到可呈现 Agent 消息，故真实输出仍不可验证。 |
-| MCP bridge 与本机状态合并 | PASS（合成） | 同一 thread ID 不重复；connector 状态/项目/输出优先，本机可见但 connector 未覆盖的线程保留并使来源标为 partial。 |
+| 旧 connector 与本机状态合并 | 历史实现，已移出当前 runtime | 该纯合成路径曾验证同 ID 去重；2026-10-30 用户改为本机进程/磁盘采集后，不再需要 connector bridge，相关 provider stdin 通道与合并函数已从当前 runtime 删除。 |
 | 当前源码 release / 实时 APP 卡片 | NOT_RUN | 本地 Agent Activity 窗口的重新激活返回 `failed to activate captured window`；按 Computer Use 恢复规则停止进一步 UI 输入。Tauri Host 仍运行，临时 Provider 已到时限退出；没有截图级 PASS。 |
 
 ## 2026-10-29 阶段性 release checkpoint
@@ -691,9 +697,13 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 
 阶段提交与构建证明不替代托盘启动/退出、拖动、折叠、点击穿透救援、置顶、不同 DPI/显示器及真实 Codex App UI 验收；分项结果继续按 `PASS`/`FAIL`/`BLOCKED`/`NOT_RUN` 保留。
 
-## 2026-10-30 B08-03 按授权范围选择实时来源
+**2026-10-30 后续决定（取代上方当时的 `STALLED` 状态）：** 用户明确不需要和 Codex App 通信，也不需要启动 Claude Code；以本机进程状态判断在线，以数据目录提供会话详情。B08-02 已按 process + local-file 模型继续实现；当前 release 的可见呈现与 Codex UUID-only 导航仍待验收。
 
-**Given** Codex CLI 与 Claude Code 是本次获准读取的本机来源，Codex App connector 目标保持 `STALLED`，**When** Provider 使用 `--sources codex claude-code`，**Then** 只轮询这两个只读适配器；Codex App 本机状态库与 connector bridge 均不读取，界面明确标记“本轮未查询”，不显示旧 App 行或伪造空闲状态。
+## 历史记录：2026-10-30 B08-03 按当时授权范围选择来源（后续已澄清）
+
+**当时记录：** 用户随后明确要求 Codex App 与 Claude Code 通过本机进程和数据目录呈现，因此本节的“未查询 Codex App”仅描述该次 smoke 的选择，不再代表当前来源合同。
+
+**Given** 该次 smoke 明确只选 Codex CLI 与 Claude Code，**When** Provider 使用 `--sources codex claude-code`，**Then** 只轮询这两个来源；这不证明当前 Codex App 本机文件适配已在 release 验收。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
@@ -704,3 +714,21 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 | 当前真实 Codex CLI / Claude 只读 adapter | PASS（本机只读） | 一次聚合快照显示 Codex CLI 来源 `online`、0 条可列会话；Claude `agents --json` 来源 `online`、2 条 `blocked` 后台 Agent。仅将来源健康和状态计数写入本机摘要，没有保存会话名称、项目、ID、输出或原始响应。|
 | 当前 Tauri release global overview | PASS（协议/scene） | 当前 release 上以 `--sources codex claude-code` 运行实时只读 Provider：较早 60 秒 smoke 提交 4 次场景，最新 30 秒 smoke 提交 2 次；均退出 0 并走自身世界清理路径。Codex CLI 来源 `online`/0 条列表行，Claude 来源 `online`/2 条 `blocked` 后台 Agent；Codex App 标记 `not_requested` 且未读取。该 run 不提供像素截图或托盘验收。|
 | 当前 release 像素验收 | NOT_RUN | Computer Use 窗口重新激活仍失败；不重试旧句柄/坐标，列表密度、真实点击和 DPI/多屏由人工按指南验收。|
+
+## 2026-10-30 B08-02 本机进程与磁盘采集回归
+
+**Given** Codex App 与 Claude Code 的本机进程状态和获准数据目录，**When** 两个来源合并成 Agent Activity 快照，**Then** 采集不启动目标 App/CLI，保留可读历史，遵守 256 条全局上限，并在裁剪时显示 `partial`。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `.venv\Scripts\python.exe -m py_compile examples\integrations\agent-board\live_sources.py tests\test_agent_live_sources.py` | PASS | Python 3.11.4，退出码 0。|
+| `python -m unittest tests.test_agent_live_sources tests.test_agent_global_overview` | PASS | 40 项定向测试通过，退出码 0；新回归覆盖双来源超过上限、轮转保留及子 Agent 父链。|
+| 初次 `scripts/local_harness_source_smoke.py` | FAIL（已修复） | 退出码 1；Codex App 128 条与 Claude Code 134 条合并后超出总览 256 条上限，导致整份快照失败。|
+| 修复后本机 count-only smoke | PASS（本机只读） | `.venv\Scripts\python.exe scripts\local_harness_source_smoke.py` 退出码 0、耗时 0.3367 秒：Codex App 进程 `online` / 数据 `partial` / 128 条 / 2 条有界 Agent 输出；Claude Code 进程 `offline` / 数据 `partial` / 128 条 / 23 条有界 Agent 输出；两来源读取年龄均为 0 秒。无目标 Harness 启动，没有打印或持久化标题、ID、路径、prompt 或消息正文。|
+| CodeGraph | PASS | `npm run codegraph:sync` 后 `npm run codegraph:status` 显示 91 files、2,469 nodes、current；count-only 结果另存于忽略的 `evidence/local/nextgen-2026-10-30/b08-02-local-process-disk-smoke.json`。|
+| `npm run check:local` | PASS | 退出码 0：28 项 UI、116 项 Rust workspace、173 项 Python（1 项环境能力跳过），离线契约和 27 个 Provider Skill 引用检查通过。Node v22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| `npm run desktop:build` | PASS（重试） | 首次退出码 1，已有同仓 release 进程占用 EXE；按既有授权停止该进程后重建成功，退出码 0。产物 `<repo>\target\release\wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `C7371C98B747A58D3F5F9FB8B9967B12BBBF66D797B3C89DFE3E9B1578BDEE90`。|
+| 独立 release 启动 `--open-manager` | PARTIAL | 新 release 进程启动，`窗构 · 世界管理器` 被窗口枚举器发现；Computer Use 初次及一次重新枚举恢复均报 `failed to activate captured window`，未取得截图，像素/交互验收为 `NOT_RUN`。|
+| 当前 release 可见呈现与 UUID 深链接 | NOT_RUN | 上述 smoke 只证明本机采集与合并；不证明 Tauri release 像素、原生点击或目标会话加载。|
+
+多来源裁剪按来源等额分配初始预算，依 `source_sequence` 选择较新的叶会话，并把被选中子 Agent 的父链一并保留；最终不足额可用时再扩展预算。被裁剪来源的可读数据健康改为 `partial`。TeamSense 本机用量/额度收集仅作为后续额度 HUD 的来源研究；WinCraft 不读取其 `auth.json` 或供应商凭据，待 TeamSense 提供经授权的本机脱敏只读汇总后再实现 Codex、MiniMax、DeepSeek 卡片。

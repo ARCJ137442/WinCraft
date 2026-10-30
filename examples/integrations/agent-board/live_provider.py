@@ -1,6 +1,7 @@
 '''运行 Codex App、Codex CLI 与 Claude Code 的只读状态纵览
 - 🎯复用通用 Agent Board renderer，不让宿主执行 Harness 控制动作
-- ⚠️Codex App 连接器快照由有权 Agent 通过 stdin 推送；本地 CLI 不伪装该连接器
+- 📌Codex App 与 Claude Code 的状态来自本机进程观察，详情来自受限磁盘读取
+- 🚩不会为采集而启动 Codex App 或 Claude Code
 '''
 from __future__ import annotations
 
@@ -8,7 +9,6 @@ import argparse
 import asyncio
 import json
 import sys
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -27,9 +27,7 @@ from global_overview_provider import cleanup_global_overview_world  # noqa: E402
 from live_sources import (  # noqa: E402
     LIVE_SOURCE_LABELS,
     LiveSnapshot,
-    SourceReadError,
     load_live_snapshot,
-    merge_codex_app_snapshot,
     normalize_live_source_selection,
     summarize_live_snapshot,
 )
@@ -42,75 +40,16 @@ MAX_REFRESH_SECONDS: float = 120.0
 '''📜刷新间隔上限'''
 DEFAULT_DURATION_SECONDS: int = 600
 '''📜Provider 窗口的默认运行时长'''
-CODEX_APP_SNAPSHOT_MAX_CHARS: int = 262_144
-'''📜Agent-fed Codex App 快照的最大单行字符数'''
 
 
 def validate_source_options(
     values: list[str] | tuple[str, ...] | None,
-    *,
-    codex_app_bridge: bool,
 ) -> tuple[str, ...]:
     '''验证启动前的来源选择
-    - 🤖默认查询全部来源；显式选择可跳过停滞或未授权的来源
-    - 📌Codex App bridge 必须明确包含 codex-app 来源
+    - 🤖默认查询全部来源；显式选择可跳过未选择的本机数据源
     '''
     enabled_sources = tuple(values) if values is not None else None
-    selected = normalize_live_source_selection(enabled_sources)
-    if codex_app_bridge and 'codex-app' not in selected:
-        raise ValueError('the Codex App bridge requires codex-app in --sources')
-    return selected
-
-
-def _start_codex_app_snapshot_reader(
-    event_loop: asyncio.AbstractEventLoop,
-    snapshots: asyncio.Queue[dict[str, Any] | None],
-) -> threading.Thread:
-    '''将有权 Agent 推送的 JSONL 状态快照送入 asyncio 队列
-    - ⚠️不会打印、存盘或执行快照中的文本字段
-    - 🚩超大或非法行变为无正文的 disconnected 事件
-    '''
-    def offer_snapshot(payload: dict[str, Any] | None) -> None:
-        if snapshots.full():
-            try:
-                snapshots.get_nowait()
-            except asyncio.QueueEmpty:
-                pass
-        snapshots.put_nowait(payload)
-
-    def read_lines() -> None:
-        try:
-            while True:
-                line = sys.stdin.readline(CODEX_APP_SNAPSHOT_MAX_CHARS + 1)
-                if not line:
-                    break
-                if not line.strip():
-                    continue
-                if len(line) > CODEX_APP_SNAPSHOT_MAX_CHARS:
-                    while line and not line.endswith('\n'):
-                        line = sys.stdin.readline(CODEX_APP_SNAPSHOT_MAX_CHARS + 1)
-                    payload = {'source_health': 'disconnected', 'threads': []}
-                else:
-                    try:
-                        payload = json.loads(line)
-                    except json.JSONDecodeError:
-                        payload = {'source_health': 'disconnected', 'threads': []}
-                if isinstance(payload, dict):
-                    event_loop.call_soon_threadsafe(offer_snapshot, payload)
-                else:
-                    event_loop.call_soon_threadsafe(
-                        offer_snapshot,
-                        {'source_health': 'disconnected', 'threads': []},
-                    )
-        finally:
-            try:
-                event_loop.call_soon_threadsafe(offer_snapshot, None)
-            except RuntimeError:
-                pass
-
-    thread = threading.Thread(target=read_lines, name='codex-app-snapshot-reader', daemon=True)
-    thread.start()
-    return thread
+    return normalize_live_source_selection(enabled_sources)
 
 
 async def update_view(
@@ -174,16 +113,12 @@ def _report_snapshot(snapshot: LiveSnapshot) -> None:
 
 
 async def run(args: argparse.Namespace) -> None:
-    '''Run a read-only overview with local CLI polls and optional Agent-fed Codex App snapshots'''
-    selected_sources = validate_source_options(
-        args.sources,
-        codex_app_bridge=args.codex_app_bridge,
-    )
+    '''Run a read-only overview using local process status and bounded disk snapshots'''
+    selected_sources = validate_source_options(args.sources)
     world_id: str | None = None
     lease: dict[str, Any] | None = None
     world_deleted = False
     event_task: asyncio.Task[dict[str, Any]] | None = None
-    app_snapshot_task: asyncio.Task[dict[str, Any] | None] | None = None
     async with Client(args.runtime, 'python.agent-board.global-overview.live', args.ws_url) as client:
         codex_app_links_enabled = False
         try:
@@ -232,19 +167,12 @@ async def run(args: argparse.Namespace) -> None:
             print(f'Live Agent Overview selected sources: {source_labels}.', flush=True)
             if 'codex-app' in selected_sources:
                 print(
-                    'Codex Desktop fallback is bounded and read-only; connector snapshots are accepted '
-                    'only from the authorized Agent stdin bridge.',
+                    'Codex App and Claude Code details are read from bounded local files; process presence '
+                    'is reported separately. No Harness process is started for these sources.',
                     flush=True,
                 )
-            else:
-                print('Codex App data was not queried in this run.', flush=True)
 
             loop = asyncio.get_running_loop()
-            snapshot_queue: asyncio.Queue[dict[str, Any] | None] | None = None
-            if args.codex_app_bridge:
-                snapshot_queue = asyncio.Queue(maxsize=4)
-                _start_codex_app_snapshot_reader(loop, snapshot_queue)
-                app_snapshot_task = asyncio.create_task(snapshot_queue.get())
             event_task = asyncio.create_task(client.events.get())
             deadline = loop.time() + args.duration_seconds
             next_refresh = loop.time() + args.refresh_seconds
@@ -254,11 +182,8 @@ async def run(args: argparse.Namespace) -> None:
                 if remaining <= 0:
                     break
                 timeout = min(remaining, max(0.0, next_refresh - loop.time()))
-                waiters = [event_task]
-                if app_snapshot_task is not None:
-                    waiters.append(app_snapshot_task)
                 done, _ = await asyncio.wait(
-                    waiters,
+                    [event_task],
                     timeout=timeout,
                     return_when=asyncio.FIRST_COMPLETED,
                 )
@@ -304,37 +229,9 @@ async def run(args: argparse.Namespace) -> None:
                             data,
                         )
 
-                if app_snapshot_task is not None and app_snapshot_task in done:
-                    payload = app_snapshot_task.result()
-                    app_snapshot_task = (
-                        asyncio.create_task(snapshot_queue.get()) if payload is not None else None
-                    )
-                    sequence += 1
-                    if payload is None:
-                        payload = {'source_health': 'disconnected', 'threads': []}
-                    try:
-                        snapshot = merge_codex_app_snapshot(
-                            snapshot,
-                            payload,
-                            sequence=sequence,
-                            links_enabled=codex_app_links_enabled,
-                        )
-                    except SourceReadError:
-                        snapshot = merge_codex_app_snapshot(
-                            snapshot,
-                            {'source_health': 'disconnected', 'threads': []},
-                            sequence=sequence,
-                            links_enabled=codex_app_links_enabled,
-                        )
-                    _report_snapshot(snapshot)
-                    state = reconcile_view_state(snapshot.projection, state)
-                    detail_targets, page_count = await _refresh_scene(
-                        client, world_id, lease, snapshot, state
-                    )
         finally:
-            for task in (event_task, app_snapshot_task):
-                if task is not None and not task.done():
-                    task.cancel()
+            if event_task is not None and not event_task.done():
+                event_task.cancel()
             if world_id is not None and lease is not None and not world_deleted:
                 await cleanup_global_overview_world(client, world_id, lease)
 
@@ -353,7 +250,7 @@ def main() -> None:
         '--refresh-seconds',
         type=float,
         default=DEFAULT_REFRESH_SECONDS,
-        help='Refresh interval for local CLI status sources (5..120 seconds)',
+        help='Refresh interval for local process and session data sources (5..120 seconds)',
     )
     parser.add_argument(
         '--title',
@@ -364,17 +261,12 @@ def main() -> None:
         '--sources',
         nargs='+',
         choices=tuple(LIVE_SOURCE_LABELS),
-        help='Sources to query; default is all. Select codex and claude-code to skip Codex App.',
-    )
-    parser.add_argument(
-        '--codex-app-bridge',
-        action='store_true',
-        help='Accept JSONL snapshots from an authorized Codex App connector Agent over stdin',
+        help='Sources to query; default is all. Codex App and Claude Code are read from local files.',
     )
     args = parser.parse_args()
     require_runtime(parser, args)
     try:
-        validate_source_options(args.sources, codex_app_bridge=args.codex_app_bridge)
+        validate_source_options(args.sources)
     except ValueError as error:
         parser.error(str(error))
     if not 1 <= args.duration_seconds <= 3600:

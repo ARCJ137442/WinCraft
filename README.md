@@ -75,7 +75,7 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
 Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
 
-只读 Agent Activity 总览示例见 [`examples/integrations/agent-board/README.md`](examples/integrations/agent-board/README.md)。它把 Claude Code 后台 Agent、Codex CLI 本机状态库和 Codex App 来源分开采集；来源页统一显示会话名称、状态、项目和可用文本。Codex App 可由授权 Agent connector 提供快照，也可从只读本机状态库有限补充 `Codex Desktop` 会话标题/项目；本机状态不能证明运行状态，最近 Agent 输出只从 UUID 匹配的有限 rollout 尾部提取。单纯打开 Codex App 不会建立实时 connector 桥接。Codex CLI preview 不标注发言方；Claude `agents --json` 没有最近输出字段。该示例不读取完整会话日志，也不提供批准、写文件或继续执行动作。
+只读 Agent Activity 总览示例见 [`examples/integrations/agent-board/README.md`](examples/integrations/agent-board/README.md)。它把 Claude Code、Codex CLI 本机状态库和 Codex App 本机状态文件分成独立来源；Codex App 从 Desktop-originator state DB 与 UUID 匹配的有限 rollout 尾部读取标题、项目和最近 Agent 输出，Claude Code 从本地项目 JSONL/固定子 Agent 目录读取历史。Codex App 与 Claude Code 的在线状态来自只读进程元数据，进程离线时仍可显示历史，不会因读取磁盘而假报在线。采集不启动 App/Claude、不使用 App connector/MCP 或 `agents --json`；源文本有界、脱敏，不读取完整会话、thinking、用户提示或工具输出。会话状态没有权威文件证据时显示未知；Codex App 标题导航只在用户点击后走 Host 限制的 UUID-only `codex://threads/<UUID>`。
 
 ## 单独看前端
 

@@ -21,6 +21,8 @@ WinCraft uses a per-checkout CodeGraph index for source navigation. The database
 
 硬约束：Rust/Tauri；不要求提供者提交前端源码；世界即窗口；托盘宿主；悬浮窗默认置顶且提供者可配置；业务真相外置；无永久窗口绑定；先窗口级独占租约、后组件级；动态组件搭建；内部管理器也用通用组件和事件通路；用户可本地接管，不能被旧租约夺回。
 
+本机 Harness 数据规则：Codex App 与 Claude Code 的来源在线状态只通过宿主读取 OS 进程元数据判断，详情只读其明确数据目录；不得为采集而启动 Codex App/Claude CLI 或调用 App/MCP connector。Codex CLI 的 app-server 状态库适配是独立来源，固定 `useStateDbOnly=true`。进程离线时仍可展示有界历史，来源进程状态、数据目录可读性、新鲜度和逐会话状态分开；本机文件无权威逐会话状态时保留 `unknown`，不得伪造成 idle。Codex App 输出须校验 `session_meta` UUID；Claude 子 Agent 只能从已知 session/subagents 文件布局读取并校验父会话与 agentId。文本脱敏后仅留在本机 Provider/Host 内存，不写到日志或公开证据；Codex thread 导航只由用户点击受限 `codex://threads/<UUID>` Host 动作触发。
+
 默认允许：在解压工作目录中修改源码、安装正常开发依赖、构建、运行本项目测试与创建临时测试世界。先列计划并分步报告依据，不重复问用户已经决定的问题。
 
 默认不允许：创建远程仓库、改外心安装目录或真实业务数据、用外心写 API 测试、将 token 写入证据、开放公网端口、悄悄改变许可、宣称未经实测的资源占用或原生能力。提交/推送需用户当轮明确授权；获得授权后也只操作已核实的既有仓库与 remote。

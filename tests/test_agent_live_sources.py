@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import sys
 import tempfile
@@ -13,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE_DIR = ROOT / 'examples' / 'integrations' / 'agent-board'
 sys.path.insert(0, str(EXAMPLE_DIR))
 
-from activity_board import ACTIVITY_VALIDATOR, aggregate_activities  # noqa: E402
+from activity_board import ACTIVITY_VALIDATOR, MAX_ACTIVITIES, aggregate_activities  # noqa: E402
 from global_overview import (  # noqa: E402
     GlobalOverviewState,
     build_global_overview_scene,
@@ -21,11 +22,8 @@ from global_overview import (  # noqa: E402
 )
 from live_sources import (  # noqa: E402
     LIVE_SOURCE_LABELS,
-    LiveSnapshot,
     SourceReadError,
     load_live_snapshot,
-    merge_codex_app_snapshot,
-    normalize_codex_app_snapshot,
     normalize_claude_agents,
     normalize_codex_threads,
     normalize_live_source_selection,
@@ -35,7 +33,13 @@ from live_sources import (  # noqa: E402
     _read_claude_last_agent_output,
     _read_codex_rollout_agent_output,
     _read_codex_latest_outputs,
+    _activity_record,
+    _claude_code_process_running,
+    _codex_app_process_running,
+    _normalized_executable_path,
+    _local_process_states,
     read_codex_app_local_threads,
+    read_claude_local_sessions,
 )
 
 NOW = datetime(2026, 10, 29, 8, 0, tzinfo=timezone.utc)
@@ -97,6 +101,12 @@ def create_codex_app_state_fixture(root, rows):
 
 class LiveSourceNormalizationTests(unittest.TestCase):
     def setUp(self):
+        process_states = patch(
+            'live_sources._local_process_states',
+            return_value={'codex-app': True, 'claude-code': True},
+        )
+        process_states.start()
+        self.addCleanup(process_states.stop)
         local_state = patch(
             'live_sources.read_codex_app_local_threads',
             return_value=([], 'unavailable'),
@@ -104,121 +114,111 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         local_state.start()
         self.addCleanup(local_state.stop)
 
-    def test_codex_app_snapshot_keeps_requested_fields_and_redacts_preview(self):
-        thread_id = '00000000-0000-4000-8000-000000000001'
-        payload = {
-            'snapshot_version': 1,
-            'source_health': 'online',
-            'captured_at': '2026-10-29T08:00:00Z',
-            'threads': [
-                {
-                    'thread_id': thread_id,
-                    'title': 'Synthetic Codex App thread',
-                    'status': 'active',
-                    'project_label': 'Synthetic project',
-                    'last_agent_output': '继续推进。' + 'token=' + 'synthetic-secret-value C:\\Synthetic\\private\\file.txt',
-                    'last_output_kind': 'agent_message',
-                    'source_sequence': 0,
-                }
-            ],
+    def test_combined_local_sources_respect_global_limit_and_keep_parent_rows(self):
+        codex_records = [
+            _activity_record(
+                source_id='codex-app',
+                raw_id=f'codex-app-{index}',
+                parent_raw_id=None,
+                status='unknown',
+                normalized_status='unknown',
+                authority='unknown',
+                sequence=index + 1,
+                observed_at=NOW,
+                provenance='local-state-db',
+            )
+            for index in range(129)
+        ]
+        codex_records.extend((
+            _activity_record(
+                source_id='codex-app',
+                raw_id='codex-app-parent',
+                parent_raw_id=None,
+                status='unknown',
+                normalized_status='unknown',
+                authority='unknown',
+                sequence=1000,
+                observed_at=NOW,
+                provenance='local-state-db',
+            ),
+            _activity_record(
+                source_id='codex-app',
+                raw_id='codex-app-child',
+                parent_raw_id='codex-app-parent',
+                status='unknown',
+                normalized_status='unknown',
+                authority='unknown',
+                sequence=0,
+                observed_at=NOW,
+                provenance='local-state-db',
+            ),
+        ))
+        for index, record in enumerate(codex_records):
+            record['codex_app_thread_id'] = (
+                f'00000000-0000-4000-8000-{index:012d}'
+            )
+        claude_records = [
+            _activity_record(
+                source_id='claude-code',
+                raw_id=f'claude-code-{index}',
+                parent_raw_id=None,
+                status='unknown',
+                normalized_status='unknown',
+                authority='unknown',
+                sequence=index,
+                observed_at=NOW,
+                provenance='approved-log',
+            )
+            for index in range(130)
+        ]
+
+        with (
+            patch(
+                'live_sources.read_codex_app_local_threads',
+                return_value=(codex_records, 'local_state'),
+            ),
+            patch(
+                'live_sources.read_claude_local_sessions',
+                return_value=(claude_records, 'local_state'),
+            ),
+        ):
+            snapshot = load_live_snapshot(
+                sequence=1,
+                now=NOW,
+                enabled_sources=('codex-app', 'claude-code'),
+            )
+
+        self.assertEqual(
+            snapshot.projection['summary']['total_sessions'],
+            MAX_ACTIVITIES,
+            msg=(
+                f"source counts={{{', '.join(f'{key}:{len(value)}' for key, value in snapshot.records_by_source.items())}}}, "
+                f"data health={snapshot.projection['source_data_health']}"
+            ),
+        )
+        self.assertEqual(
+            snapshot.projection['source_data_health']['codex-app'],
+            'partial',
+        )
+        self.assertEqual(
+            snapshot.projection['source_data_health']['claude-code'],
+            'partial',
+        )
+        codex_parent_ids = {
+            record['session_id']
+            for record in snapshot.records_by_source['codex-app']
         }
-
-        records, health = normalize_codex_app_snapshot(
-            payload,
-            observed_at=NOW,
-            sequence=3,
+        codex_child = next(
+            record
+            for record in snapshot.records_by_source['codex-app']
+            if record['parent_session_id'] is not None
         )
-
-        self.assertEqual(health, 'online')
-        self.assertEqual(len(records), 1)
-        record = records[0]
-        self.assertEqual(record['source_type'], 'codex-app')
-        self.assertEqual(record['normalized_status'], 'running')
-        self.assertEqual(record['display_name'], 'Synthetic Codex App thread')
-        self.assertEqual(record['project_label'], 'Synthetic project')
-        self.assertEqual(record['codex_app_thread_id'], thread_id)
-        self.assertEqual(record['last_output_kind'], 'agent_message')
-        self.assertIn('[凭据已隐藏]', record['summary'])
-        self.assertIn('[本机路径]', record['summary'])
-        ACTIVITY_VALIDATOR.validate(record)
-
-    def test_codex_app_preview_shows_title_status_project_and_latest_agent_output(self):
-        records, _ = normalize_codex_app_snapshot(
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'threads': [
-                    {
-                        'thread_id': '00000000-0000-4000-8000-000000000001',
-                        'title': 'Synthetic Codex App thread',
-                        'status': 'active',
-                        'project_label': 'Synthetic project',
-                        'last_agent_output': '最近 Agent 输出片段',
-                        'last_output_kind': 'agent_message',
-                        'source_sequence': 0,
-                    }
-                ],
-            },
-            observed_at=NOW,
-            sequence=1,
-        )
-        projection = aggregate_activities(records, now=NOW)
-        projection.update(
-            {
-                'source_health': {
-                    'codex': 'online',
-                    'codex-app': 'online',
-                    'claude-code': 'online',
-                },
-                'source_labels': LIVE_SOURCE_LABELS,
-                'data_mode_label': 'Codex App + CLI 实时只读',
-                'codex_app_links_enabled': True,
-                'source_age_seconds': {'codex': 2, 'codex-app': 1, 'claude-code': 3},
-                'source_freshness': {
-                    'codex': 'fresh',
-                    'codex-app': 'fresh',
-                    'claude-code': 'fresh',
-                },
-            }
-        )
-
-        scene, _, _ = build_global_overview_scene(projection, GlobalOverviewState())
-        preview = scene['data']['codex_app_preview'][0]
-        self.assertEqual(preview['project'], '项目：Synthetic project')
-        self.assertEqual(preview['output'], '最近 Agent 输出：最近 Agent 输出片段')
-        self.assertTrue(preview['status'])
-
-        nodes = list(walk_nodes(scene['root']))
-        title = next(node for node in nodes if node['id'] == 'global-codex-app-preview-name-0-0')
-        self.assertEqual(title['props']['label'], 'Synthetic Codex App thread')
-        self.assertEqual(title['props']['native_window_action']['operation'], 'open_thread')
-
-        source_scene, _, _ = build_global_overview_scene(
-            projection,
-            GlobalOverviewState(source='codex-app'),
-        )
-        source_row = source_scene['data']['sessions'][0]
-        self.assertEqual(source_row['name'], 'Synthetic Codex App thread')
-        self.assertTrue(source_row['status'])
-        self.assertEqual(source_row['project'], '项目：Synthetic project')
-        self.assertEqual(source_row['output'], '最近 Agent 输出：最近 Agent 输出片段')
-        source_nodes = list(walk_nodes(source_scene['root']))
-        freshness = next(node for node in source_nodes if node['id'] == 'global-source-freshness')
-        self.assertEqual(freshness['props']['text'], '数据新鲜度：刚刚更新（1 秒前）')
-        title = next(node for node in source_nodes if node['id'].startswith('global-session-name-'))
-        self.assertEqual(title['props']['label'], 'Synthetic Codex App thread')
-        status = next(node for node in source_nodes if node['id'].startswith('global-session-status-'))
-        self.assertEqual(status['props']['text'], {'$path': '/sessions/0/status'})
-        project = next(node for node in source_nodes if node['id'].startswith('global-session-project-'))
-        self.assertEqual(project['props']['text'], {'$path': '/sessions/0/project'})
-        output = next(node for node in source_nodes if node['id'].startswith('global-session-output-'))
-        self.assertEqual(output['props']['text'], {'$path': '/sessions/0/output'})
-        self.assertNotIn('size', output['props'])
+        self.assertIn(codex_child['parent_session_id'], codex_parent_ids)
 
     def test_source_freshness_tracks_last_success_and_disconnect_age(self):
         with (
             patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
+            patch('live_sources.read_claude_local_sessions', return_value=([], 'online')),
         ):
             first = load_live_snapshot(sequence=1, now=NOW)
 
@@ -228,7 +228,7 @@ class LiveSourceNormalizationTests(unittest.TestCase):
                 side_effect=SourceReadError('codex', 'timeout'),
             ),
             patch(
-                'live_sources.read_claude_agents',
+                'live_sources.read_claude_local_sessions',
                 side_effect=SourceReadError('claude-code', 'timeout'),
             ),
         ):
@@ -243,65 +243,6 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         self.assertEqual(later.projection['source_freshness']['codex'], 'disconnected')
         self.assertEqual(later.projection['source_freshness']['claude-code'], 'disconnected')
         self.assertIsNone(later.projection['source_age_seconds']['codex-app'])
-
-    def test_codex_app_snapshot_rejects_arbitrary_fields_and_bad_thread_ids(self):
-        base = {
-            'snapshot_version': 1,
-            'source_health': 'online',
-            'threads': [
-                {
-                    'thread_id': 'not-a-uuid',
-                    'title': 'thread',
-                    'status': 'active',
-                    'project_label': 'Synthetic project',
-                    'last_agent_output': '',
-                    'last_output_kind': 'unavailable',
-                }
-            ],
-        }
-        with self.assertRaises(SourceReadError):
-            normalize_codex_app_snapshot({**base, 'arbitrary_url': 'https://example.invalid'}, observed_at=NOW, sequence=1)
-        records, health = normalize_codex_app_snapshot(base, observed_at=NOW, sequence=1)
-        self.assertEqual(records, [])
-        self.assertEqual(health, 'partial')
-
-    def test_codex_app_snapshot_preserves_connector_order(self):
-        records, health = normalize_codex_app_snapshot(
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'threads': [
-                    {
-                        'thread_id': '00000000-0000-4000-8000-000000000002',
-                        'title': 'Second in connector order',
-                        'status': 'idle',
-                        'project_label': 'Project',
-                        'last_agent_output': 'Second',
-                        'last_output_kind': 'connector_summary',
-                        'source_sequence': 1,
-                    },
-                    {
-                        'thread_id': '00000000-0000-4000-8000-000000000001',
-                        'title': 'First in connector order',
-                        'status': 'active',
-                        'project_label': 'Project',
-                        'last_agent_output': 'First',
-                        'last_output_kind': 'agent_message',
-                        'source_sequence': 0,
-                    },
-                ],
-            },
-            observed_at=NOW,
-            sequence=1,
-        )
-        from activity_board import aggregate_activities
-
-        projection = aggregate_activities(records, now=NOW)
-        self.assertEqual(health, 'online')
-        self.assertEqual(
-            [session['display_name'] for session in projection['sessions']],
-            ['First in connector order', 'Second in connector order'],
-        )
 
     def test_codex_desktop_local_state_adds_safe_metadata_and_agent_output(self):
         desktop_id = '00000000-0000-4000-8000-000000000101'
@@ -365,22 +306,29 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         )
         ACTIVITY_VALIDATOR.validate(record)
         with (
+            patch('live_sources._local_process_states', return_value={'codex-app': False, 'claude-code': False}),
             patch('live_sources.read_codex_app_local_threads', return_value=(records, 'local_state')),
             patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
+            patch('live_sources.read_claude_local_sessions', return_value=([], 'local_state')),
         ):
             live_snapshot = load_live_snapshot(sequence=7, now=NOW)
-        self.assertEqual(live_snapshot.projection['source_health']['codex-app'], 'local_state')
+        self.assertEqual(live_snapshot.projection['source_health']['codex-app'], 'offline')
+        self.assertEqual(live_snapshot.projection['source_data_health']['codex-app'], 'local_state')
         self.assertEqual(
             live_snapshot.projection['data_mode_label'],
-            '本机 Codex Desktop 状态库只读 · Agent 状态待桥接',
+            'Codex CLI 本机状态库只读 · Codex App 状态库与 rollout 只读 · 进程离线 · Claude Code 会话索引只读 · 进程离线',
         )
         self.assertEqual(len(live_snapshot.records_by_source['codex-app']), 2)
 
         projection = aggregate_activities(records, now=NOW)
         projection.update(
             {
-                'source_health': {'codex': 'online', 'codex-app': 'local_state', 'claude-code': 'online'},
+                'source_health': {'codex': 'online', 'codex-app': 'offline', 'claude-code': 'offline'},
+                'source_data_health': {
+                    'codex': 'not_applicable',
+                    'codex-app': 'local_state',
+                    'claude-code': 'local_state',
+                },
                 'source_labels': LIVE_SOURCE_LABELS,
                 'data_mode_label': '本机 Codex Desktop 状态库只读',
             }
@@ -392,7 +340,8 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             preview['output'],
             '最近 Agent 输出：Synthetic Agent reply [凭据已隐藏] [本机路径]',
         )
-        self.assertEqual(scene['data']['summary']['codex_app_health'], '本机状态库可读')
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '进程离线')
+        self.assertEqual(scene['data']['summary']['codex_app_data_health'], '本机数据可读')
         self.assertEqual(scene['data']['summary']['codex_parallel'], '—')
         app_scene, _, _ = build_global_overview_scene(
             projection,
@@ -408,43 +357,6 @@ class LiveSourceNormalizationTests(unittest.TestCase):
         for forbidden in (desktop_id, cli_id, 'C:/Private/', 'synthetic-secret', 'Private note'):
             self.assertNotIn(forbidden, serialized)
 
-        previous = LiveSnapshot(
-            projection,
-            {'codex-app': records, 'codex': [], 'claude-code': []},
-            6,
-            {'codex-app': NOW},
-        )
-        merged = merge_codex_app_snapshot(
-            previous,
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'captured_at': '2026-10-29T08:00:00Z',
-                'threads': [
-                    {
-                        'thread_id': desktop_id,
-                        'title': 'Connector title',
-                        'status': 'active',
-                        'project_label': 'Connector project',
-                        'last_agent_output': 'Connector Agent output',
-                        'last_output_kind': 'agent_message',
-                    }
-                ],
-            },
-            sequence=7,
-            now=NOW,
-            links_enabled=True,
-        )
-        merged_records = merged.records_by_source['codex-app']
-        self.assertEqual(len(merged_records), 2)
-        connector_record = next(item for item in merged_records if item['codex_app_thread_id'] == desktop_id)
-        local_only_record = next(item for item in merged_records if item['codex_app_thread_id'] != desktop_id)
-        self.assertEqual(connector_record['provider_id'], 'codex-app-connector')
-        self.assertEqual(connector_record['display_name'], 'Connector title')
-        self.assertEqual(connector_record['normalized_status'], 'running')
-        self.assertEqual(connector_record['summary'], 'Connector Agent output')
-        self.assertEqual(local_only_record['provider_id'], 'codex-app-local-state')
-        self.assertEqual(merged.projection['source_health']['codex-app'], 'partial')
 
     def test_codex_desktop_local_rollout_path_fails_closed_without_session_meta_match(self):
         thread_id = '00000000-0000-4000-8000-000000000111'
@@ -771,30 +683,37 @@ class LiveSourceNormalizationTests(unittest.TestCase):
             sequence=1,
             latest_outputs={'claude-id': 'A confirmed Claude Code response'},
         )
-        app_records, _ = normalize_codex_app_snapshot(
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'threads': [
-                    {
-                        'thread_id': '00000000-0000-4000-8000-000000000010',
-                        'title': 'Synthetic App session',
-                        'status': 'active',
-                        'project_label': 'AppProject',
-                        'last_agent_output': 'A confirmed Agent response',
-                        'last_output_kind': 'agent_message',
-                    }
-                ],
-            },
-            observed_at=NOW,
-            sequence=1,
-        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            codex_root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                codex_root,
+                [{
+                    'id': '00000000-0000-4000-8000-000000000010',
+                    'title': 'Synthetic App session',
+                    'name': 'Synthetic App session',
+                    'cwd': 'C:/Projects/AppProject',
+                    'originator': 'Codex Desktop',
+                    'updated_at_ms': 100,
+                    'agent_output': 'A confirmed Agent response',
+                }],
+            )
+            app_records, app_health = read_codex_app_local_threads(
+                observed_at=NOW,
+                sequence=1,
+                codex_root=codex_root,
+            )
+        self.assertEqual(app_health, 'local_state')
         projection = aggregate_activities(codex_records + claude_records + app_records, now=NOW)
         projection.update(
             {
-                'source_health': {'codex': 'online', 'codex-app': 'online', 'claude-code': 'online'},
+                'source_health': {'codex': 'online', 'codex-app': 'offline', 'claude-code': 'offline'},
+                'source_data_health': {
+                    'codex': 'not_applicable',
+                    'codex-app': 'local_state',
+                    'claude-code': 'local_state',
+                },
                 'source_labels': LIVE_SOURCE_LABELS,
-                'data_mode_label': '本机实时只读',
+                'data_mode_label': '本机状态文件只读',
             }
         )
 
@@ -844,6 +763,14 @@ class LiveSourceNormalizationTests(unittest.TestCase):
 
 
 class LocalCodexAppStateTests(unittest.TestCase):
+    def setUp(self):
+        process_states = patch(
+            'live_sources._local_process_states',
+            return_value={'codex-app': False, 'claude-code': False},
+        )
+        process_states.start()
+        self.addCleanup(process_states.stop)
+
     def test_local_desktop_state_shows_only_desktop_metadata_and_verified_agent_output(self):
         desktop_id = '00000000-0000-4000-8000-000000000101'
         cli_id = '00000000-0000-4000-8000-000000000102'
@@ -911,8 +838,13 @@ class LocalCodexAppStateTests(unittest.TestCase):
             {
                 'source_health': {
                     'codex': 'online',
-                    'codex-app': 'local_state',
+                    'codex-app': 'offline',
                     'claude-code': 'online',
+                },
+                'source_data_health': {
+                    'codex': 'not_applicable',
+                    'codex-app': 'local_state',
+                    'claude-code': 'local_state',
                 },
                 'source_labels': LIVE_SOURCE_LABELS,
                 'data_mode_label': '本机 Codex Desktop 状态库只读',
@@ -928,7 +860,8 @@ class LocalCodexAppStateTests(unittest.TestCase):
             preview['output'],
             '最近 Agent 输出：Synthetic Agent reply [凭据已隐藏] [本机路径]',
         )
-        self.assertEqual(scene['data']['summary']['codex_app_health'], '本机状态库可读')
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '进程离线')
+        self.assertEqual(scene['data']['summary']['codex_app_data_health'], '本机数据可读')
         self.assertEqual(scene['data']['summary']['codex_parallel'], '—')
         app_scene, _, _ = build_global_overview_scene(
             projection,
@@ -951,74 +884,14 @@ class LocalCodexAppStateTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, serialized)
 
-    def test_bridge_enriches_local_rows_without_duplicate_threads(self):
-        desktop_id = '00000000-0000-4000-8000-000000000111'
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir) / '.codex'
-            create_codex_app_state_fixture(
-                root,
-                [{
-                    'id': desktop_id,
-                    'title': 'Synthetic local title',
-                    'cwd': 'C:/Projects/SyntheticProject',
-                    'originator': 'Codex Desktop',
-                    'updated_at_ms': 200,
-                }],
-            )
-            local_records, local_health = read_codex_app_local_threads(
-                observed_at=NOW,
-                sequence=1,
-                codex_root=root,
-            )
-        self.assertEqual(local_health, 'local_state')
-        app_projection = aggregate_activities(local_records, now=NOW)
-        app_projection.update(
-            {
-                'source_health': {'codex': 'online', 'codex-app': 'local_state', 'claude-code': 'online'},
-                'source_labels': LIVE_SOURCE_LABELS,
-                'data_mode_label': '本机 Codex Desktop 状态库只读',
-            }
-        )
-        previous = LiveSnapshot(
-            app_projection,
-            {'codex-app': local_records, 'codex': [], 'claude-code': []},
-            1,
-            {'codex-app': NOW},
-        )
-
-        merged = merge_codex_app_snapshot(
-            previous,
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'captured_at': '2026-10-29T08:00:00Z',
-                'threads': [
-                    {
-                        'thread_id': desktop_id,
-                        'title': 'Connector title',
-                        'status': 'active',
-                        'project_label': 'Connector project',
-                        'last_agent_output': 'Connector Agent output',
-                        'last_output_kind': 'agent_message',
-                    }
-                ],
-            },
-            sequence=2,
-            now=NOW,
-            links_enabled=True,
-        )
-
-        records = merged.records_by_source['codex-app']
-        self.assertEqual(len(records), 1)
-        self.assertEqual(records[0]['provider_id'], 'codex-app-connector')
-        self.assertEqual(records[0]['display_name'], 'Connector title')
-        self.assertEqual(records[0]['normalized_status'], 'running')
-        self.assertEqual(records[0]['summary'], 'Connector Agent output')
-        self.assertEqual(merged.projection['source_health']['codex-app'], 'online')
-
-
 class LiveSourceFailureTests(unittest.TestCase):
     def setUp(self):
+        process_states = patch(
+            'live_sources._local_process_states',
+            return_value={'codex-app': True, 'claude-code': True},
+        )
+        process_states.start()
+        self.addCleanup(process_states.stop)
         local_state = patch(
             'live_sources.read_codex_app_local_threads',
             return_value=([], 'unavailable'),
@@ -1027,177 +900,6 @@ class LiveSourceFailureTests(unittest.TestCase):
         self.addCleanup(local_state.stop)
 
     # 🤖【2026-10-29】回归：延迟到达与未来的来源时间不能冒充新鲜快照
-    def test_codex_app_capture_time_controls_freshness_and_expiry_boundary(self):
-        with (
-            patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
-        ):
-            base = load_live_snapshot(sequence=1, now=NOW)
-
-        payload = {
-            'snapshot_version': 1,
-            'source_health': 'online',
-            'captured_at': '2026-10-29T07:59:30Z',
-            'threads': [
-                {
-                    'thread_id': '00000000-0000-4000-8000-000000000001',
-                    'title': 'Synthetic stale thread',
-                    'status': 'active',
-                    'project_label': 'Synthetic project',
-                    'last_agent_output': 'Synthetic output',
-                    'last_output_kind': 'agent_message',
-                }
-            ],
-        }
-
-        merged = merge_codex_app_snapshot(
-            base,
-            payload,
-            sequence=2,
-            now=NOW,
-            links_enabled=False,
-        )
-
-        app_session = next(
-            session for session in merged.projection['sessions']
-            if session['source_type_label'] == 'Codex App'
-        )
-        self.assertEqual(merged.projection['source_health']['codex-app'], 'online')
-        self.assertEqual(merged.projection['source_age_seconds']['codex-app'], 30)
-        self.assertEqual(merged.projection['source_freshness']['codex-app'], 'stale')
-        self.assertEqual(app_session['freshness'], 'stale')
-        self.assertEqual(app_session['normalized_status'], 'stale')
-
-    def test_codex_app_invalid_capture_time_fails_closed_for_its_source(self):
-        with (
-            patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
-        ):
-            base = load_live_snapshot(sequence=1, now=NOW)
-
-        for captured_at in (
-            '2026-10-29T08:00:01Z',
-            'not-a-timestamp',
-            '2026-10-29T08:00:00',
-        ):
-            with self.subTest(captured_at=captured_at):
-                payload = {
-                    'snapshot_version': 1,
-                    'source_health': 'online',
-                    'captured_at': captured_at,
-                    'threads': [],
-                }
-                with self.assertRaises(SourceReadError) as error:
-                    merge_codex_app_snapshot(
-                        base,
-                        payload,
-                        sequence=2,
-                        now=NOW,
-                        links_enabled=False,
-                    )
-                self.assertEqual(error.exception.source_id, 'codex-app')
-
-    def test_codex_app_snapshot_merges_into_the_same_read_only_projection(self):
-        codex_records, _ = normalize_codex_threads(
-            {'data': [{'id': 'codex-cli-id', 'status': {'type': 'active', 'activeFlags': []}}]},
-            observed_at=NOW,
-            sequence=1,
-        )
-        claude_records, _ = normalize_claude_agents(
-            [{'id': 'claude-id', 'state': 'idle'}],
-            observed_at=NOW,
-            sequence=1,
-        )
-        with (
-            patch('live_sources.read_codex_threads', return_value=(codex_records, 'online')),
-            patch('live_sources.read_claude_agents', return_value=(claude_records, 'online')),
-        ):
-            base = load_live_snapshot(sequence=1, now=NOW)
-        app_payload = {
-            'snapshot_version': 1,
-            'source_health': 'online',
-            'threads': [
-                {
-                    'thread_id': '00000000-0000-4000-8000-000000000002',
-                    'title': 'Synthetic Codex App thread',
-                    'status': 'active',
-                    'project_label': 'Synthetic project',
-                    'last_agent_output': 'Local CLI state DB had zero threads.',
-                    'last_output_kind': 'agent_message',
-                    'source_sequence': 0,
-                }
-            ],
-        }
-
-        merged = merge_codex_app_snapshot(
-            base,
-            app_payload,
-            sequence=2,
-            now=NOW,
-            links_enabled=True,
-        )
-
-        self.assertEqual(merged.projection['source_health'], {
-            'codex': 'online',
-            'codex-app': 'online',
-            'claude-code': 'online',
-        })
-        self.assertTrue(merged.projection['codex_app_links_enabled'])
-        self.assertEqual(len(merged.projection['sessions']), 3)
-        self.assertEqual(
-            {x['source_type_label'] for x in merged.projection['sessions']},
-            {'Codex', 'Claude Code', 'Codex App'},
-        )
-
-    def test_codex_app_unavailable_and_disconnected_modes_are_not_claimed_as_live(self):
-        with (
-            patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
-        ):
-            base = load_live_snapshot(sequence=1, now=NOW)
-
-        unavailable = merge_codex_app_snapshot(
-            base,
-            {'source_health': 'disconnected', 'threads': []},
-            sequence=2,
-            now=NOW,
-            links_enabled=True,
-        )
-        self.assertEqual(unavailable.projection['source_health']['codex-app'], 'unavailable')
-        self.assertIn('Codex App 等待 Agent 接入', unavailable.projection['data_mode_label'])
-
-        active_payload = {
-            'snapshot_version': 1,
-            'source_health': 'online',
-            'threads': [
-                {
-                    'thread_id': '00000000-0000-4000-8000-000000000002',
-                    'title': 'Synthetic Codex App thread',
-                    'status': 'active',
-                    'project_label': 'Synthetic project',
-                    'last_agent_output': 'Synthetic output',
-                    'last_output_kind': 'agent_message',
-                    'source_sequence': 0,
-                }
-            ],
-        }
-        online = merge_codex_app_snapshot(
-            base,
-            active_payload,
-            sequence=3,
-            now=NOW,
-            links_enabled=True,
-        )
-        disconnected = merge_codex_app_snapshot(
-            online,
-            {'source_health': 'disconnected', 'threads': []},
-            sequence=4,
-            now=NOW + timedelta(seconds=1),
-            links_enabled=True,
-        )
-        self.assertEqual(disconnected.projection['source_health']['codex-app'], 'disconnected')
-        self.assertIn('Codex App 桥接断开', disconnected.projection['data_mode_label'])
-
     def test_refresh_drops_detail_for_a_session_that_disappeared(self):
         state = GlobalOverviewState(
             source='claude-code',
@@ -1226,14 +928,14 @@ class LiveSourceFailureTests(unittest.TestCase):
         )
         with (
             patch('live_sources.read_codex_threads', return_value=(codex_records, 'online')),
-            patch('live_sources.read_claude_agents', return_value=(claude_records, 'online')),
+            patch('live_sources.read_claude_local_sessions', return_value=(claude_records, 'online')),
         ):
             first = load_live_snapshot(sequence=1, now=NOW)
 
         with (
             patch('live_sources.read_codex_threads', return_value=(codex_records, 'online')),
             patch(
-                'live_sources.read_claude_agents',
+                'live_sources.read_claude_local_sessions',
                 side_effect=SourceReadError('claude-code', 'timeout'),
             ),
         ):
@@ -1241,6 +943,11 @@ class LiveSourceFailureTests(unittest.TestCase):
 
         self.assertEqual(second.projection['source_health'], {
             'codex': 'online',
+            'codex-app': 'online',
+            'claude-code': 'online',
+        })
+        self.assertEqual(second.projection['source_data_health'], {
+            'codex': 'not_applicable',
             'codex-app': 'unavailable',
             'claude-code': 'disconnected',
         })
@@ -1254,54 +961,56 @@ class LiveSourceFailureTests(unittest.TestCase):
         with (
             patch('live_sources.read_codex_threads', return_value=([], 'online')),
             patch(
-                'live_sources.read_claude_agents',
+                'live_sources.read_claude_local_sessions',
                 side_effect=SourceReadError('claude-code', 'cli_failed'),
             ),
         ):
             snapshot = load_live_snapshot(sequence=1, now=NOW)
 
-        self.assertEqual(snapshot.projection['source_health']['claude-code'], 'disconnected')
+        self.assertEqual(snapshot.projection['source_health']['claude-code'], 'online')
+        self.assertEqual(snapshot.projection['source_data_health']['claude-code'], 'unavailable')
         self.assertEqual(snapshot.projection['source_health']['codex'], 'online')
         self.assertEqual(snapshot.projection['sessions'], [])
 
     def test_selected_sources_do_not_read_or_retain_stalled_codex_app_data(self):
-        app_records, app_health = normalize_codex_app_snapshot(
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'threads': [
-                    {
-                        'thread_id': '00000000-0000-4000-8000-000000000001',
-                        'title': 'Synthetic App row',
-                        'status': 'active',
-                        'project_label': 'Synthetic project',
-                        'last_agent_output': 'Synthetic output',
-                        'last_output_kind': 'agent_message',
-                    }
-                ],
-            },
-            observed_at=NOW,
-            sequence=1,
-        )
-        self.assertEqual(app_health, 'online')
-        with (
-            patch('live_sources.read_codex_app_local_threads', return_value=(app_records, 'local_state')),
-            patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
-        ):
-            previous = load_live_snapshot(sequence=1, now=NOW)
-
-        with (
-            patch('live_sources.read_codex_app_local_threads') as app_reader,
-            patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=([], 'online')),
-        ):
-            selected = load_live_snapshot(
-                previous,
-                sequence=2,
-                now=NOW + timedelta(seconds=1),
-                enabled_sources=('codex', 'claude-code'),
+        with tempfile.TemporaryDirectory() as temp_dir:
+            codex_root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                codex_root,
+                [{
+                    'id': '00000000-0000-4000-8000-000000000001',
+                    'title': 'Synthetic App row',
+                    'name': 'Synthetic App row',
+                    'cwd': 'C:/Projects/SyntheticProject',
+                    'originator': 'Codex Desktop',
+                    'updated_at_ms': 1,
+                    'agent_output': 'Synthetic local Agent output',
+                }],
             )
+            with (
+                patch(
+                    'live_sources.read_codex_app_local_threads',
+                    side_effect=lambda **kwargs: read_codex_app_local_threads(
+                        codex_root=codex_root,
+                        **kwargs,
+                    ),
+                ),
+                patch('live_sources.read_codex_threads', return_value=([], 'online')),
+                patch('live_sources.read_claude_local_sessions', return_value=([], 'local_state')),
+            ):
+                previous = load_live_snapshot(sequence=1, now=NOW)
+
+            with (
+                patch('live_sources.read_codex_app_local_threads') as app_reader,
+                patch('live_sources.read_codex_threads', return_value=([], 'online')),
+                patch('live_sources.read_claude_local_sessions', return_value=([], 'local_state')),
+            ):
+                selected = load_live_snapshot(
+                    previous,
+                    sequence=2,
+                    now=NOW + timedelta(seconds=1),
+                    enabled_sources=('codex', 'claude-code'),
+                )
 
         app_reader.assert_not_called()
         self.assertEqual(selected.records_by_source['codex-app'], [])
@@ -1326,7 +1035,7 @@ class LiveSourceFailureTests(unittest.TestCase):
                 with (
                     patch('live_sources.read_codex_app_local_threads') as app_reader,
                     patch('live_sources.read_codex_threads') as codex_reader,
-                    patch('live_sources.read_claude_agents') as claude_reader,
+                    patch('live_sources.read_claude_local_sessions') as claude_reader,
                     self.assertRaises(ValueError),
                 ):
                     load_live_snapshot(sequence=1, now=NOW, enabled_sources=selection)
@@ -1342,7 +1051,7 @@ class LiveSourceFailureTests(unittest.TestCase):
         )
         with (
             patch('live_sources.read_codex_threads', return_value=([], 'online')),
-            patch('live_sources.read_claude_agents', return_value=(records, 'online')),
+            patch('live_sources.read_claude_local_sessions', return_value=(records, 'online')),
         ):
             snapshot = load_live_snapshot(sequence=1, now=NOW)
 
@@ -1369,6 +1078,11 @@ class LiveSourceFailureTests(unittest.TestCase):
         projection.update({
             'source_health': {
                 'codex': 'online',
+                'codex-app': 'offline',
+                'claude-code': 'partial',
+            },
+            'source_data_health': {
+                'codex': 'not_applicable',
                 'codex-app': 'unavailable',
                 'claude-code': 'partial',
             },
@@ -1388,17 +1102,18 @@ class LiveSourceFailureTests(unittest.TestCase):
         })
         scene, _, _ = build_global_overview_scene(projection, GlobalOverviewState())
         self.assertEqual(scene['data']['summary']['codex_cli_health'], 'CLI 可查询')
-        self.assertEqual(scene['data']['summary']['codex_app_health'], '等待 Agent 桥接')
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '进程离线')
+        self.assertEqual(scene['data']['summary']['codex_app_data_health'], '数据不可用')
         serialized = json.dumps(scene, ensure_ascii=False)
         self.assertIn('本机实时只读', serialized)
         self.assertIn('Codex CLI · 本机状态库', serialized)
         self.assertIn('Codex App', serialized)
         self.assertIn('CLI 可查询', serialized)
-        self.assertIn('等待 Agent 桥接', serialized)
+        self.assertIn('进程离线', serialized)
         self.assertIn('CLI 部分可用', serialized)
         self.assertIn('已过期 · 上次成功 31 秒前', serialized)
-        self.assertIn('更新于 5 秒前', serialized)
-        self.assertIn('尚未收到快照', serialized)
+        self.assertIn('读取于 5 秒前', serialized)
+        self.assertIn('尚未读取到本机状态', serialized)
         self.assertIn('已过期 · 上次成功 31 秒前', serialized)
         self.assertIn('阻塞', serialized)
         self.assertNotIn('private-id', serialized)
@@ -1407,31 +1122,38 @@ class LiveSourceFailureTests(unittest.TestCase):
 
     def test_codex_app_title_is_clickable_only_with_host_thread_navigation_capability(self):
         thread_id = '00000000-0000-4000-8000-000000000003'
-        records, _ = normalize_codex_app_snapshot(
-            {
-                'snapshot_version': 1,
-                'source_health': 'online',
-                'threads': [
-                    {
-                        'thread_id': thread_id,
-                        'title': 'Synthetic Codex App thread',
-                        'status': 'active',
-                        'project_label': 'Synthetic project',
-                        'last_agent_output': 'Synthetic output',
-                        'last_output_kind': 'agent_message',
-                    }
-                ],
-            },
-            observed_at=NOW,
-            sequence=1,
-        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            codex_root = Path(temp_dir) / '.codex'
+            create_codex_app_state_fixture(
+                codex_root,
+                [{
+                    'id': thread_id,
+                    'title': 'Synthetic Codex App thread',
+                    'name': 'Synthetic Codex App thread',
+                    'cwd': 'C:/Projects/SyntheticProject',
+                    'originator': 'Codex Desktop',
+                    'updated_at_ms': 100,
+                    'agent_output': 'Synthetic output',
+                }],
+            )
+            records, data_health = read_codex_app_local_threads(
+                observed_at=NOW,
+                sequence=1,
+                codex_root=codex_root,
+            )
+        self.assertEqual(data_health, 'local_state')
         from activity_board import aggregate_activities
 
         projection = aggregate_activities(records, now=NOW)
         projection.update({
-            'source_health': {'codex': 'online', 'codex-app': 'online', 'claude-code': 'online'},
+            'source_health': {'codex': 'online', 'codex-app': 'online', 'claude-code': 'offline'},
+            'source_data_health': {
+                'codex': 'not_applicable',
+                'codex-app': 'local_state',
+                'claude-code': 'local_state',
+            },
             'source_labels': {'codex': 'Codex CLI', 'codex-app': 'Codex App', 'claude-code': 'Claude Code'},
-            'data_mode_label': 'Codex App + CLI 实时只读',
+            'data_mode_label': 'Codex App 本机文件只读',
             'codex_app_links_enabled': True,
         })
         scene, detail_targets, _ = build_global_overview_scene(projection, GlobalOverviewState())
@@ -1455,6 +1177,175 @@ class LiveSourceFailureTests(unittest.TestCase):
         disabled_node = next(node for node in walk_nodes(disabled_scene['root']) if node['id']=='global-codex-app-preview-name-0-0')
         self.assertEqual(disabled_node['kind'], 'text')
         self.assertNotIn(thread_id, json.dumps(disabled_scene))
+
+
+class ClaudeLocalHistoryTests(unittest.TestCase):
+    def setUp(self):
+        process_states = patch(
+            'live_sources._local_process_states',
+            return_value={'codex-app': False, 'claude-code': False},
+        )
+        process_states.start()
+        self.addCleanup(process_states.stop)
+
+    def create_history(self, config_dir: Path, session_id: str) -> Path:
+        project_dir = config_dir / 'projects' / 'C--Projects-PrivateProject'
+        project_dir.mkdir(parents=True)
+        transcript = project_dir / f'{session_id}.jsonl'
+        entries = [
+            {
+                'type': 'custom-title',
+                'sessionId': session_id,
+                'customTitle': 'Synthetic Claude work session',
+            },
+            {
+                'type': 'user',
+                'sessionId': session_id,
+                'cwd': 'C:/Projects/PrivateProject',
+                'message': {'content': 'Synthetic private prompt'},
+            },
+            {
+                'type': 'assistant',
+                'sessionId': session_id,
+                'cwd': 'C:/Projects/PrivateProject',
+                'message': {
+                    'content': [
+                        {'type': 'thinking', 'thinking': 'synthetic hidden reasoning'},
+                        {
+                            'type': 'text',
+                            'text': 'Synthetic final answer token=synthetic-secret C:\\Private\\note.md',
+                        },
+                    ],
+                    'stop_reason': 'end_turn',
+                },
+            },
+            {'type': 'tool_result', 'content': 'Synthetic tool output'},
+        ]
+        transcript.write_text(
+            ''.join(json.dumps(entry) + '\n' for entry in entries),
+            encoding='utf-8',
+        )
+        (project_dir / 'sessions-index.json').write_text(
+            json.dumps({
+                'version': 1,
+                'originalPath': 'C:/Projects/PrivateProject',
+                'entries': [{
+                    'sessionId': session_id,
+                    'summary': 'Synthetic Claude work session',
+                    'projectPath': 'C:/Projects/PrivateProject',
+                    'fullPath': 'C:/untrusted/outside/session.jsonl',
+                    'fileMtime': 1,
+                    'isSidechain': False,
+                }],
+            }),
+            encoding='utf-8',
+        )
+        return transcript
+
+    def test_offline_process_keeps_local_history_without_spawning_claude(self):
+        session_id = '00000000-0000-4000-8000-000000000201'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir) / '.claude'
+            transcript = self.create_history(config_dir, session_id)
+            with (
+                patch('live_sources.subprocess.run', side_effect=AssertionError('must not spawn CLI')),
+                patch('live_sources.subprocess.Popen', side_effect=AssertionError('must not spawn CLI')),
+                patch('live_sources.read_codex_app_local_threads', return_value=([], 'local_state')),
+                patch('live_sources.read_codex_threads', return_value=([], 'online')),
+                patch(
+                    'live_sources.read_claude_local_sessions',
+                    side_effect=lambda **kwargs: read_claude_local_sessions(
+                        config_dir=config_dir,
+                        **kwargs,
+                    ),
+                ),
+            ):
+                records, data_health = read_claude_local_sessions(
+                    observed_at=NOW,
+                    sequence=2,
+                    config_dir=config_dir,
+                )
+                snapshot = load_live_snapshot(sequence=3, now=NOW)
+
+        self.assertEqual(data_health, 'local_state')
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]['display_name'], 'Synthetic Claude work session')
+        self.assertEqual(records[0]['project_label'], 'PrivateProject')
+        self.assertEqual(
+            records[0]['summary'],
+            'Synthetic final answer [凭据已隐藏] [本机路径]',
+        )
+        self.assertEqual(records[0]['normalized_status'], 'unknown')
+        self.assertEqual(snapshot.projection['source_health']['claude-code'], 'offline')
+        self.assertEqual(snapshot.projection['source_data_health']['claude-code'], 'local_state')
+        self.assertEqual(len(snapshot.records_by_source['claude-code']), 1)
+        serialized = json.dumps(snapshot.projection, ensure_ascii=False)
+        for forbidden in (
+            session_id,
+            'C:/untrusted/outside',
+            'Synthetic private prompt',
+            'Synthetic tool output',
+            'synthetic hidden reasoning',
+            'synthetic-secret',
+            'C:\\Private',
+        ):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_session_file_with_mismatched_identity_is_skipped_and_marks_partial(self):
+        session_id = '00000000-0000-4000-8000-000000000202'
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir) / '.claude'
+            project_dir = config_dir / 'projects' / 'project'
+            project_dir.mkdir(parents=True)
+            (project_dir / f'{session_id}.jsonl').write_text(
+                json.dumps({
+                    'type': 'user',
+                    'sessionId': '00000000-0000-4000-8000-000000000299',
+                    'cwd': 'C:/Projects/SafeProject',
+                }) + '\n',
+                encoding='utf-8',
+            )
+            records, data_health = read_claude_local_sessions(
+                observed_at=NOW,
+                sequence=1,
+                config_dir=config_dir,
+            )
+
+        self.assertEqual(records, [])
+        self.assertEqual(data_health, 'partial')
+
+
+class LocalProcessDetectionTests(unittest.TestCase):
+    def test_codex_app_requires_its_installed_image_and_desktop_parent(self):
+        with patch.dict(os.environ, {'LOCALAPPDATA': 'C:/Local'}):
+            app_exe = 'C:/Local/OpenAI/Codex/bin/version/codex.exe'
+            processes = [
+                {'pid': 10, 'ppid': 1, 'name': 'ChatGPT.exe', 'exe': 'C:/Program Files/ChatGPT.exe'},
+                {'pid': 11, 'ppid': 10, 'name': 'codex.exe', 'exe': app_exe},
+            ]
+            self.assertTrue(_codex_app_process_running(processes))
+            processes[1]['ppid'] = 1
+            self.assertFalse(_codex_app_process_running(processes))
+
+    def test_claude_process_matches_only_the_resolved_installed_image(self):
+        executable = (
+            'C:/Users/test/AppData/Roaming/npm/node_modules/'
+            '@anthropic-ai/claude-code/bin/claude.exe'
+        )
+        with patch(
+            'live_sources._claude_code_executable_paths',
+            return_value={_normalized_executable_path(executable)},
+        ):
+            self.assertTrue(_claude_code_process_running([
+                {'pid': 9, 'name': 'claude.exe', 'exe': executable},
+            ]))
+            self.assertFalse(_claude_code_process_running([
+                {'pid': 10, 'name': 'claude.exe', 'exe': 'C:/Other/claude.exe'},
+            ]))
+
+    def test_process_enumeration_failure_is_unknown_not_offline(self):
+        with patch('live_sources._local_process_snapshot', return_value=None):
+            self.assertEqual(_local_process_states(), {'codex-app': None, 'claude-code': None})
 
 
 if __name__ == '__main__':

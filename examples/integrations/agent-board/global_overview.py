@@ -16,6 +16,7 @@ SOURCE_IDS = {"Codex": "codex", "Codex App": "codex-app", "Claude Code": "claude
 SOURCE_LABELS = {value: key for key, value in SOURCE_IDS.items()}
 SOURCE_HEALTH_LABELS = {
     "online": "在线",
+    "offline": "进程离线",
     "partial": "部分可用",
     "disconnected": "断开",
     "unavailable": "不可用",
@@ -27,6 +28,7 @@ SOURCE_HEALTH_LABELS = {
 '''📜来源健康状态的固定显示词汇'''
 SOURCE_HEALTH_TONES = {
     "online": "accent",
+    "offline": "muted",
     "partial": "warning",
     "disconnected": "danger",
     "unavailable": "danger",
@@ -36,6 +38,24 @@ SOURCE_HEALTH_TONES = {
     "unknown": "muted",
 }
 '''📜来源健康状态与通用 renderer tone 的固定映射'''
+SOURCE_DATA_HEALTH_LABELS = {
+    "local_state": "本机数据可读",
+    "partial": "部分读取",
+    "unavailable": "数据不可用",
+    "disconnected": "读取失败",
+    "not_requested": "本轮未查询",
+    "not_applicable": "实时状态来源",
+    "unknown": "数据状态未知",
+}
+SOURCE_DATA_HEALTH_TONES = {
+    "local_state": "success",
+    "partial": "warning",
+    "unavailable": "danger",
+    "disconnected": "danger",
+    "not_requested": "muted",
+    "not_applicable": "muted",
+    "unknown": "muted",
+}
 
 
 @dataclass(frozen=True)
@@ -166,14 +186,14 @@ def _source_update_label(source_id: str, projection: Mapping[str, Any]) -> str:
         if freshness == "disconnected":
             return "断开 · 尚无成功读取"
         if freshness == "unavailable" and source_id == "codex-app":
-            return "尚未收到快照"
+            return "尚未读取到本机状态"
         return "尚无成功读取"
     if freshness == "disconnected":
         return f"断开 · 上次成功 {age} 秒前"
     if freshness == "stale":
         return f"已过期 · 上次成功 {age} 秒前"
     if freshness == "fresh":
-        return f"刚刚更新（{age} 秒前）" if age < 5 else f"更新于 {age} 秒前"
+        return f"刚刚读取（{age} 秒前）" if age < 5 else f"读取于 {age} 秒前"
     return "采样时间未知"
 
 
@@ -270,6 +290,7 @@ def build_global_overview_scene(
         "source_health",
         {source_id: "synthetic" for source_id in SOURCE_LABELS},
     )
+    source_data_health = projection.get("source_data_health", {})
     health_labels = {
         source_id: _source_health_label(
             source_id,
@@ -332,6 +353,12 @@ def build_global_overview_scene(
             "codex_app_stale": codex_app_summary["stale"],
             "codex_app_health": health_labels["codex-app"],
             "codex_app_health_tone": health_tones["codex-app"],
+            "codex_app_data_health": SOURCE_DATA_HEALTH_LABELS.get(
+                str(source_data_health.get("codex-app", "not_requested")), "未知"
+            ),
+            "codex_app_data_health_tone": SOURCE_DATA_HEALTH_TONES.get(
+                str(source_data_health.get("codex-app", "not_requested")), "muted"
+            ),
             "claude_sessions": claude_summary["sessions"],
             "claude_metric_label": f"{source_labels['claude-code']} 后台 Agent",
             "claude_running": claude_summary["running"],
@@ -340,6 +367,12 @@ def build_global_overview_scene(
             "claude_stale": claude_summary["stale"],
             "claude_health": health_labels["claude-code"],
             "claude_health_tone": health_tones["claude-code"],
+            "claude_data_health": SOURCE_DATA_HEALTH_LABELS.get(
+                str(source_data_health.get("claude-code", "not_requested")), "未知"
+            ),
+            "claude_data_health_tone": SOURCE_DATA_HEALTH_TONES.get(
+                str(source_data_health.get("claude-code", "not_requested")), "muted"
+            ),
             "codex_cli_updated": _source_update_label("codex", projection),
             "codex_app_updated": _source_update_label("codex-app", projection),
             "claude_updated": _source_update_label("claude-code", projection),
@@ -379,6 +412,23 @@ def build_global_overview_scene(
                         },
                         "children": [],
                     },
+                    *(
+                        [
+                            {
+                                "id": f"global-{source_id}-data-health",
+                                "kind": "badge",
+                                "props": {
+                                    "text": {"$path": f"/summary/{health_key}_data_health"},
+                                    "tone": {"$path": f"/summary/{health_key}_data_health_tone"},
+                                },
+                                "children": [],
+                            }
+                        ]
+                        if source_id in {"codex-app", "claude-code"}
+                        and source_id in source_data_health
+                        and source_data_health.get(source_id) != "not_requested"
+                        else []
+                    ),
                     *(
                         [
                             _text(
@@ -557,6 +607,8 @@ def build_global_overview_scene(
                 attention.append(f"{source_label} 部分状态未识别")
             elif source_health.get(source_id) == "disconnected":
                 attention.append(f"{source_label} 来源断开")
+            elif source_health.get(source_id) == "offline" and source_id in {"codex-app", "claude-code"}:
+                attention.append(f"{source_label} 进程离线；本地历史仍可查看")
         if attention:
             children.append(_text("global-overview-attention", " · ".join(attention), "small"))
         codex_sessions = sources["codex"]
@@ -648,11 +700,12 @@ def build_global_overview_scene(
             children.append(_text("global-codex-app-preview-title", "Codex App · 会话状态", "heading"))
             if not codex_app_sessions:
                 health = source_health.get("codex-app", "unknown")
+                data_health = source_data_health.get("codex-app", "unknown")
                 empty_text = (
-                    "尚未收到 Codex App 快照；需要 Agent 桥接，应用开着不会自动接入。"
-                    if health == "unavailable"
-                    else "Codex App 连接失败，当前状态不确定。"
-                    if health == "disconnected"
+                    "本机 Codex 状态库不可读，当前无法列出会话。"
+                    if data_health in {"unavailable", "disconnected"}
+                    else "Codex App 进程离线；本机没有可显示的历史会话。"
+                    if health == "offline"
                     else "当前没有可显示的 Codex App 会话。"
                 )
                 children.append(_text("global-codex-app-preview-empty", empty_text))
@@ -740,9 +793,12 @@ def build_global_overview_scene(
         children.append(_text("global-claude-preview-title", f"{source_labels['claude-code']} · 后台 Agent 状态", "heading"))
         if not claude_sessions:
             health = source_health.get("claude-code", "unknown")
+            data_health = source_data_health.get("claude-code", "unknown")
             empty_text = (
-                "来源连接失败，当前状态不确定。"
-                if health == "disconnected"
+                "Claude Code 本地会话索引不可读。"
+                if data_health in {"unavailable", "disconnected"}
+                else "Claude Code 进程离线；本机没有可显示的历史会话。"
+                if health == "offline"
                 else "当前没有可显示的后台 Agent。"
             )
             children.append(_text("global-claude-preview-empty", empty_text))
