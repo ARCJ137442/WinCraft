@@ -751,14 +751,15 @@ fn encode_action_segment(value: &str) -> String {
 }
 
 fn decode_action_segment(value: &str) -> Result<String> {
-    if !value.len().is_multiple_of(2) || value.len() > 192 {
+    let (pairs, remainder) = value.as_bytes().as_chunks::<2>();
+    if !remainder.is_empty() || value.len() > 192 {
         return Err(Fault::new(
             "INVALID_ACTION",
             "invalid configuration action identity",
         ));
     }
-    let mut bytes = Vec::with_capacity(value.len() / 2);
-    for pair in value.as_bytes().chunks_exact(2) {
+    let mut bytes = Vec::with_capacity(pairs.len());
+    for pair in pairs {
         let pair = std::str::from_utf8(pair)
             .map_err(|_| Fault::new("INVALID_ACTION", "invalid configuration action identity"))?;
         bytes.push(
@@ -1095,6 +1096,23 @@ mod tests {
                 .and_then(|node| node.props.get("action"))
                 .and_then(Value::as_str),
             Some("settings.locale")
+        );
+    }
+
+    #[test]
+    fn configuration_action_segment_decoder_rejects_invalid_hex_and_utf8() {
+        assert_eq!(decode_action_segment("6f6b").unwrap(), "ok");
+        assert_eq!(
+            decode_action_segment("0").unwrap_err().code,
+            "INVALID_ACTION"
+        );
+        assert_eq!(
+            decode_action_segment("zz").unwrap_err().code,
+            "INVALID_ACTION"
+        );
+        assert_eq!(
+            decode_action_segment("ff").unwrap_err().code,
+            "INVALID_ACTION"
         );
     }
 

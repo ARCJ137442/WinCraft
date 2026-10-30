@@ -3,7 +3,7 @@
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
   "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence and a fresh current-source release; UI acceptance remains PARTIAL after Computer Use capture failure. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 remains BLOCKED/Codex App STALLED per user checkpoint; B09-02 remains BLOCKED pending explicit source selection.",
-  "next_action": "First complete B06-03 manager UI acceptance against the current-source release when a usable authorized UI capture path is available (or the user completes the documented manual flow). Then finish B06-04 two-independent-environment import/re-authorization acceptance. Keep B06-03 and B06-04 PARTIAL until those gates pass. Continue independent handoff tasks; keep Codex App STALLED and B09-02 waiting for explicit source selection.",
+  "next_action": "First complete B06-03 manager UI acceptance against the current-source release when a usable authorized UI capture path is available (or the user completes the documented manual flow). Then finish B06-04 two-independent-environment import/re-authorization acceptance. Keep B06-03 and B06-04 PARTIAL until those gates pass. Continue independent handoff tasks; keep Codex App STALLED and B09-02 waiting for explicit source selection. Hosted CI run 40976867333 exposed one Rust 1.99 Clippy lint; the current unpushed fix has local fmt/Clippy/full-suite PASS and must be committed/pushed, then its Actions run checked.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -185,6 +185,7 @@
     "2026-10-30: B06-04 static fixtures checked: full, optional-missing, required-missing and no-grant inventories are indexed; planner and export tests pass. A synthetic workday .wcp contains only pack.json and its declared blueprint (1,109 bytes; no credential keys or absolute user paths). B06-04-A1/A2/A3 are PARTIAL pending two-user/re-authorization and native manager checks.",
     "2026-10-30: B06-04 guide added a reproducible synthetic two-binding pack flow and explicit two-user acceptance steps; generated workday-synthetic.wcp contains only pack.json and its declared blueprint. npm run check:local exited 0 after plan regeneration. Two separate user environments remain NOT_RUN.",
     "2026-10-30: Current-source Tauri release passed a real local Python SDK hello/capability smoke: 0.4-preview.1 provider_inventory/provider_import fields matched the preview contract. No inventory write or world creation was issued; manager UI remains NOT_RUN after Computer Use access-denied.",
-    "2026-10-30: Direct handoff suite recheck after B06-04 fixture/guide updates ran 40 tests and passed; current inventory examples include full, optional-missing, required-missing and no-grant cases."
+    "2026-10-30: Direct handoff suite recheck after B06-04 fixture/guide updates ran 40 tests and passed; current inventory examples include full, optional-missing, required-missing and no-grant cases.",
+    "2026-10-30: GitHub Actions run 40976867333 for e3e8df4 passed fmt/check/workspace tests but failed Clippy 1.99 lint chunks_exact_to_as_chunks in self_provider.rs. Replaced fixed chunks_exact(2) with as_chunks::<2>(), added malformed/odd/invalid-UTF8 action-segment regression, and reran local fmt, workspace Clippy and npm run check:local successfully; hosted rerun awaits the fix commit."
   ]
 }

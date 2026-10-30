@@ -364,6 +364,8 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 2026-10-30 Windows 本机 `npm run check:local` 退出码 0：UI 28 tests、离线契约一致性、Rust fmt/check/workspace tests/clippy、Python 176 tests（1 项因 Windows symlink 创建返回 `OSError` 而跳过）及 27 个 Provider Skill 引用检查均通过。增加 Host capability 断言后的定向 Rust 用例退出码 0。当前源码的 Tauri release 也已构建：`target/release/wincraft-desktop.exe`，13,277,184 bytes，SHA-256 `AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0`。
 
+阶段提交 `e3e8df4513841c22dd1ca7574e403991c9dbcb16` 的 Windows Actions run `40976867333` 通过格式、编译和 workspace tests 后，在 Clippy 1.99 的新 lint `chunks_exact_to_as_chunks` 失败。修复将 2-byte decoder 改为 `slice::as_chunks::<2>()` 并新增奇数长度/非法 hex/无效 UTF-8 回归；本机 `cargo fmt --check`、workspace Clippy 和 `npm run check:local` 均再次通过。修复提交的 hosted CI 待回跑。
+
 新 release 已以 `--open-manager` 启动，Computer Use 能枚举到“窗构 · 世界管理器”，但截图/可访问性读取两次都因 `GetCursorPos failed: 拒绝访问 (0x80070005)` 失败。按 Computer Use 恢复规则已停止后续窗口操作，没有点击、输入或重放旧坐标。**原生管理器验收仍为 NOT_RUN。** 详细命令、工具链、退出码、二进制哈希和失败证据见 `evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json`。
 
 窗口状态读取失败后，另用当前 release 自己生成的本机 descriptor 做了只读 Python SDK hello/capability smoke：真实 Tauri Host 协商 `0.4-preview.1`，并返回 provider inventory 与 provider import 的预览契约、草案 schema、定向事件、声明 claim、排他写租约和本机确认要求。该请求未登记 inventory、未创建世界，也未调用导入；它只证明 Tauri Host 的真实协议握手，不证明 Manager UI。
