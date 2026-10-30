@@ -519,6 +519,361 @@ mod capability_tests {
     }
 
     #[test]
+    fn scoped_interactions_route_to_the_component_owner_and_require_its_lease() {
+        let hub = Hub::new(false);
+        let register = |name: &str| {
+            hub.lock()
+                .register_with_protocol(
+                    name.into(),
+                    false,
+                    ProtocolVersion::ComponentLeasesPreview01,
+                )
+                .unwrap()
+        };
+        let authority = register("scope-action-authority");
+        let focus_writer = register("scope-action-focus");
+        let tasks_writer = register("scope-action-tasks");
+        let late_reader = register("scope-action-late-reader");
+        let created = hub
+            .dispatch(
+                authority,
+                "world.create",
+                json!({"window":{"title":"Scope action fixture"},"claim":true}),
+            )
+            .unwrap();
+        let world_id = uuid::Uuid::parse_str(created["world"]["id"].as_str().unwrap()).unwrap();
+        let world_lease = created["lease"].clone();
+        let scene = json!({
+            "root":{"id":"root","kind":"stack","children":[
+                {"id":"focus-panel","kind":"stack","children":[
+                    {"id":"focus-action","kind":"button","props":{"label":"Refresh focus","action":"focus.refresh"},"children":[]}
+                ]},
+                {"id":"tasks-panel","kind":"stack","children":[
+                    {"id":"tasks-action","kind":"button","props":{"label":"Refresh tasks","action":"tasks.refresh"},"children":[]}
+                ]}
+            ]},
+            "data":{"focus":{},"tasks":{}}
+        });
+        let replaced = hub
+            .dispatch(
+                authority,
+                "scene.replace",
+                json!({
+                    "world_id":world_id,
+                    "lease":world_lease,
+                    "expected_revision":created["world"]["revision"],
+                    "scene":scene
+                }),
+            )
+            .unwrap();
+        let partitioned = hub
+            .dispatch(
+                authority,
+                "scope.partition",
+                json!({
+                    "world_id":world_id,
+                    "lease":world_lease,
+                    "expected_revision":replaced["revision"],
+                    "scopes":[
+                        {"root_node_id":"focus-panel","data_namespace":"focus"},
+                        {"root_node_id":"tasks-panel","data_namespace":"tasks"}
+                    ]
+                }),
+            )
+            .unwrap();
+        let grants = partitioned["scopes"].as_array().unwrap();
+        let focus_grant = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "focus-panel")
+            .unwrap();
+        let tasks_grant = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "tasks-panel")
+            .unwrap();
+        let focus_join = hub
+            .dispatch(
+                focus_writer,
+                "scope.join",
+                json!({
+                    "world_id":world_id,
+                    "scope_id":focus_grant["scope_id"],
+                    "generation":focus_grant["generation"],
+                    "join_key":focus_grant["join_key"],
+                    "mode":"write"
+                }),
+            )
+            .unwrap();
+        let tasks_join = hub
+            .dispatch(
+                tasks_writer,
+                "scope.join",
+                json!({
+                    "world_id":world_id,
+                    "scope_id":tasks_grant["scope_id"],
+                    "generation":tasks_grant["generation"],
+                    "join_key":tasks_grant["join_key"],
+                    "mode":"write"
+                }),
+            )
+            .unwrap();
+        hub.dispatch(
+            late_reader,
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus_grant["scope_id"],
+                "generation":focus_grant["generation"],
+                "join_key":focus_grant["join_key"],
+                "mode":"read"
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            hub.dispatch(
+                late_reader,
+                "scope.join",
+                json!({
+                    "world_id":world_id,
+                    "scope_id":focus_grant["scope_id"],
+                    "generation":focus_grant["generation"],
+                    "join_key":focus_grant["join_key"],
+                    "mode":"write"
+                }),
+            )
+            .unwrap_err()
+            .code,
+            "WRITE_CONFLICT"
+        );
+
+        let mut notices = hub.subscribe();
+        let snapshot = hub.renderer_snapshot(world_id).unwrap();
+        let focus_event = hub
+            .interact_with_source(
+                world_id,
+                "focus-action",
+                serde_json::Value::Null,
+                InteractionSource::Click,
+                snapshot.revision,
+            )
+            .unwrap();
+        let (target, routed) = match notices.try_recv().unwrap() {
+            super::Notice::Directed(target, message) => (target, message),
+            other => panic!("unexpected notice: {other:?}"),
+        };
+        assert_eq!(target, focus_writer);
+        assert_eq!(routed["event"], "scope.interaction");
+        assert_eq!(routed["data"]["scope_id"], focus_grant["scope_id"]);
+        assert_eq!(routed["data"]["component_id"], "focus-action");
+        assert_eq!(routed["data"]["action"], "focus.refresh");
+        assert_eq!(routed["data"]["id"], focus_event.to_string());
+
+        assert_eq!(
+            hub.dispatch(
+                tasks_writer,
+                "scope.action.result",
+                json!({
+                    "world_id":world_id,
+                    "lease":tasks_join["lease"],
+                    "event_id":focus_event,
+                    "ok":true
+                }),
+            )
+            .unwrap_err()
+            .code,
+            "SCOPE_ACTION_FORBIDDEN"
+        );
+        hub.dispatch(
+            focus_writer,
+            "scope.action.result",
+            json!({
+                "world_id":world_id,
+                "lease":focus_join["lease"],
+                "event_id":focus_event,
+                "ok":true,
+                "message":"focus updated"
+            }),
+        )
+        .unwrap();
+        let action = hub
+            .renderer_snapshot(world_id)
+            .unwrap()
+            .actions
+            .into_iter()
+            .find(|action| action.id == focus_event)
+            .unwrap();
+        assert_eq!(action.status, "ok");
+        assert_eq!(action.message.as_deref(), Some("focus updated"));
+
+        let current = hub.renderer_snapshot(world_id).unwrap();
+        let tasks_event_id = hub
+            .interact_with_source(
+                world_id,
+                "tasks-action",
+                serde_json::Value::Null,
+                InteractionSource::Click,
+                current.revision,
+            )
+            .unwrap();
+        let (target, routed) = match notices.try_recv().unwrap() {
+            super::Notice::Directed(target, message) => (target, message),
+            other => panic!("unexpected notice: {other:?}"),
+        };
+        assert_eq!(target, tasks_writer);
+        assert_eq!(routed["event"], "scope.interaction");
+        assert_eq!(routed["data"]["scope_id"], tasks_grant["scope_id"]);
+        assert_eq!(routed["data"]["id"], tasks_event_id.to_string());
+
+        let before_revoke = hub.renderer_snapshot(world_id).unwrap();
+        hub.dispatch(
+            authority,
+            "scope.structure.patch",
+            json!({
+                "world_id":world_id,
+                "authority_lease":partitioned["authority_lease"],
+                "expected_revision":before_revoke.revision,
+                "ops":[{"op":"remove","node_id":"tasks-panel"}]
+            }),
+        )
+        .unwrap();
+        assert_eq!(
+            hub.dispatch(
+                tasks_writer,
+                "scope.action.result",
+                json!({
+                    "world_id":world_id,
+                    "lease":tasks_join["lease"],
+                    "event_id":tasks_event_id,
+                    "ok":true
+                }),
+            )
+            .unwrap_err()
+            .code,
+            "STALE_SCOPE"
+        );
+        hub.lock().expire(hub.now() + 1);
+        let revoked_action = hub
+            .renderer_snapshot(world_id)
+            .unwrap()
+            .actions
+            .into_iter()
+            .find(|action| action.id == tasks_event_id)
+            .unwrap();
+        assert_eq!(revoked_action.status, "error");
+        assert_eq!(
+            revoked_action.message.as_deref(),
+            Some("component scope writer was revoked before acknowledgement")
+        );
+
+        hub.disconnect(late_reader);
+        hub.disconnect(tasks_writer);
+        hub.disconnect(focus_writer);
+        hub.disconnect(authority);
+    }
+
+    #[test]
+    fn scoped_interactions_reject_unowned_layout_and_native_window_actions() {
+        let hub = Hub::new(true);
+        let authority = hub
+            .lock()
+            .register_with_protocol(
+                "scope-safety-authority".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap();
+        let created = hub
+            .dispatch(
+                authority,
+                "world.create",
+                json!({"window":{"title":"Scope safety fixture"},"claim":true}),
+            )
+            .unwrap();
+        let world_id = created["world"]["id"].as_str().unwrap();
+        let lease = created["lease"].clone();
+        let unowned_action_scene = json!({
+            "root":{"id":"root","kind":"stack","children":[
+                {"id":"layout-action","kind":"button","props":{"label":"Unowned","action":"layout.run"},"children":[]},
+                {"id":"focus-panel","kind":"stack","children":[
+                    {"id":"focus-action","kind":"button","props":{"label":"Refresh","action":"focus.refresh"},"children":[]}
+                ]},
+                {"id":"tasks-panel","kind":"stack","children":[]}
+            ]},
+            "data":{"focus":{},"tasks":{}}
+        });
+        let replaced = hub
+            .dispatch(
+                authority,
+                "scene.replace",
+                json!({
+                    "world_id":world_id,
+                    "lease":lease,
+                    "expected_revision":created["world"]["revision"],
+                    "scene":unowned_action_scene
+                }),
+            )
+            .unwrap();
+        let unowned_partition = hub
+            .dispatch(
+                authority,
+                "scope.partition",
+                json!({
+                    "world_id":world_id,
+                    "lease":lease,
+                    "expected_revision":replaced["revision"],
+                    "scopes":[
+                        {"root_node_id":"focus-panel","data_namespace":"focus"},
+                        {"root_node_id":"tasks-panel","data_namespace":"tasks"}
+                    ]
+                }),
+            )
+            .unwrap_err();
+        assert_eq!(unowned_partition.code, "SCOPE_INTERACTIONS_UNOWNED");
+
+        let owned_native_action_scene = json!({
+            "root":{"id":"root","kind":"stack","children":[
+                {"id":"focus-panel","kind":"stack","children":[
+                    {"id":"focus-action","kind":"button","props":{
+                        "label":"Activate Obsidian",
+                        "action":"focus.refresh",
+                        "native_window_action":{"application":"obsidian","operation":"activate"}
+                    },"children":[]}
+                ]},
+                {"id":"tasks-panel","kind":"stack","children":[]}
+            ]},
+            "data":{"focus":{},"tasks":{}}
+        });
+        let refreshed = hub
+            .dispatch(
+                authority,
+                "scene.replace",
+                json!({
+                    "world_id":world_id,
+                    "lease":lease,
+                    "expected_revision":replaced["revision"],
+                    "scene":owned_native_action_scene
+                }),
+            )
+            .unwrap();
+        let native_scope = hub
+            .dispatch(
+                authority,
+                "scope.partition",
+                json!({
+                    "world_id":world_id,
+                    "lease":lease,
+                    "expected_revision":refreshed["revision"],
+                    "scopes":[
+                        {"root_node_id":"focus-panel","data_namespace":"focus"},
+                        {"root_node_id":"tasks-panel","data_namespace":"tasks"}
+                    ]
+                }),
+            )
+            .unwrap_err();
+        assert_eq!(native_scope.code, "SCOPE_NATIVE_ACTION_UNAVAILABLE");
+        hub.disconnect(authority);
+    }
+
+    #[test]
     fn disconnect_revokes_session_shortcuts_without_touching_another_session() {
         let hub = Hub::new(false);
         let (first, second) = {
@@ -774,6 +1129,16 @@ struct WindowParams {
 struct AckParams {
     world_id: Uuid,
     lease: LeaseKey,
+    event_id: Uuid,
+    ok: bool,
+    #[serde(default)]
+    message: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScopeAckParams {
+    world_id: Uuid,
+    lease: ScopedLeaseKey,
     event_id: Uuid,
     ok: bool,
     #[serde(default)]
@@ -1517,6 +1882,9 @@ impl Hub {
             json!({"status":"preview","version":1,"scope_snapshots":"filtered","scope_revision":true,
                 "scope_patch_operations":["props","insert","remove","replace","move"],
                 "root_structure_patch":"scope.structure.patch","filtered_scope_events":true,
+                "scope_interactions":{"status":"preview","version":1,"event":"scope.interaction",
+                    "acknowledge_method":"scope.action.result","routing":"component_scope_owner",
+                    "native_window_actions":false},
                 "parent_revocation":"generation_fence",
                 "state_slots":{"status":"preview","version":1,"schema_types":["boolean","integer","number","string","enum"],
                     "max_slots_per_world":MAX_STATE_SLOTS_PER_WORLD,"max_slots_per_scope":MAX_STATE_SLOTS_PER_SCOPE,
@@ -1783,6 +2151,22 @@ impl Hub {
                 changed = Some(p.world_id);
                 json!({})
             }
+            "scope.action.result" => {
+                let p: ScopeAckParams = decode(params)?;
+                e.acknowledge_scope(
+                    sid,
+                    p.world_id,
+                    &p.lease,
+                    ActionAcknowledgement {
+                        event_id: p.event_id,
+                        ok: p.ok,
+                        message: p.message,
+                    },
+                    now,
+                )?;
+                changed = Some(p.world_id);
+                json!({})
+            }
             "world.destroy" => {
                 let p: LeaseParams = decode(params)?;
                 let members = e.destroy(sid, p.world_id, &p.lease, now)?;
@@ -1973,30 +2357,59 @@ impl Hub {
     {
         let now = self.now();
         let mut core = self.lock();
-        if let Some(action) = core.native_window_action(id, node, source, expected_revision, now)? {
-            if !self.native_windows {
-                return Err(Fault::new(
-                    "UNSUPPORTED_CAPABILITY",
-                    "native external window actions are not available on this host",
-                ));
+        let ownership_mode = core
+            .worlds
+            .get(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?
+            .ownership_mode;
+        let (sid, event_id, event_message) = match ownership_mode {
+            OwnershipMode::ExclusiveWorld => {
+                if let Some(action) =
+                    core.native_window_action(id, node, source, expected_revision, now)?
+                {
+                    if !self.native_windows {
+                        return Err(Fault::new(
+                            "UNSUPPORTED_CAPABILITY",
+                            "native external window actions are not available on this host",
+                        ));
+                    }
+                    if action.application == NativeWindowApplication::CodexApp && !cfg!(windows) {
+                        return Err(Fault::new(
+                            "UNSUPPORTED_CAPABILITY",
+                            "Codex App thread navigation is only available on Windows hosts",
+                        ));
+                    }
+                    focus(&action)?;
+                }
+                let (target, event) =
+                    core.interact_with_source(id, node, value, source, expected_revision, now)?;
+                let event_id = event.id;
+                (
+                    target,
+                    event_id,
+                    json!({"event":"interaction","data":event}),
+                )
             }
-            if action.application == NativeWindowApplication::CodexApp && !cfg!(windows) {
-                return Err(Fault::new(
-                    "UNSUPPORTED_CAPABILITY",
-                    "Codex App thread navigation is only available on Windows hosts",
-                ));
+            OwnershipMode::ScopedSubtrees => {
+                let (target, event) = core.interact_in_scope_with_source(
+                    id,
+                    node,
+                    value,
+                    source,
+                    expected_revision,
+                    now,
+                )?;
+                let event_id = event.id;
+                (
+                    target,
+                    event_id,
+                    json!({"event":"scope.interaction","data":event}),
+                )
             }
-            focus(&action)?;
-        }
-        let (sid, event) =
-            core.interact_with_source(id, node, value, source, expected_revision, now)?;
+        };
         let sequence = core.worlds.get(&id).map(|world| world.sequence);
         drop(core);
-        let event_id = event.id;
-        let _ = self.events.send(Notice::Directed(
-            sid,
-            json!({"event":"interaction","data":event}),
-        ));
+        let _ = self.events.send(Notice::Directed(sid, event_message));
         if let Some(sequence) = sequence {
             self.changed_at(id, sequence, EventSource::Human, None);
         }

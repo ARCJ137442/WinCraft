@@ -223,6 +223,7 @@ class Client:
                              window_properties: tuple[str, ...] = (),
                              event_types: tuple[str, ...] = (),
                              component_leases_version: int | None = None,
+                             scope_interactions_version: int | None = None,
                              component_scope_operations: tuple[str, ...] = (),
                              root_structure_patch: bool = False,
                              state_slots_version: int | None = None,
@@ -241,6 +242,8 @@ class Client:
         event_subscriptions = capabilities.get("event_subscriptions")
         advertised_events = event_subscriptions.get("events") if isinstance(event_subscriptions, dict) else None
         component_leases = capabilities.get("component_leases")
+        scope_interactions = component_leases.get("scope_interactions") \
+            if isinstance(component_leases, dict) else None
         state_slots = component_leases.get("state_slots") \
             if isinstance(component_leases, dict) else None
         provider_inventory = capabilities.get("provider_inventory")
@@ -273,6 +276,18 @@ class Client:
                 or component_leases.get("version") != component_leases_version
             ):
                 missing.append(f"component_leases:preview-v{component_leases_version}")
+        if scope_interactions_version is not None and (
+            self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+            or not isinstance(component_leases, dict)
+            or not isinstance(scope_interactions, dict)
+            or scope_interactions.get("status") != "preview"
+            or scope_interactions.get("version") != scope_interactions_version
+            or scope_interactions.get("event") != "scope.interaction"
+            or scope_interactions.get("acknowledge_method") != "scope.action.result"
+            or scope_interactions.get("routing") != "component_scope_owner"
+            or scope_interactions.get("native_window_actions") is not False
+        ):
+            missing.append(f"scope_interactions:preview-v{scope_interactions_version}")
         advertised_scope_operations = component_leases.get("scope_patch_operations") \
             if isinstance(component_leases, dict) else None
         scope_operation_set = {
@@ -340,6 +355,13 @@ class Client:
     def require_component_leases(self, version: int = 1) -> None:
         """Fail closed unless this connection negotiated the matching scope-lease preview."""
         self.require_capabilities(component_leases_version=version)
+
+    def require_scope_interactions(self, version: int = 1) -> None:
+        """Fail closed unless the Host advertises owner-routed preview interactions."""
+        self.require_capabilities(
+            component_leases_version=1,
+            scope_interactions_version=version,
+        )
 
     def require_state_slots(self, version: int = 1) -> None:
         """Fail closed unless typed state slots and their access rules are advertised."""
@@ -562,6 +584,27 @@ class Client:
     async def leave_scope(self, world_id: str, scope_id: str) -> dict[str, Any]:
         self.require_component_leases()
         return await self.call("scope.leave", {"world_id": world_id, "scope_id": scope_id})
+
+    async def scope_action_result(
+        self,
+        world_id: str,
+        lease: Mapping[str, Any],
+        event_id: str,
+        *,
+        ok: bool,
+        message: str | None = None,
+    ) -> dict[str, Any]:
+        """Acknowledge a host-originated interaction with its current scoped lease."""
+        self.require_scope_interactions()
+        params: dict[str, Any] = {
+            "world_id": world_id,
+            "lease": dict(lease),
+            "event_id": event_id,
+            "ok": ok,
+        }
+        if message is not None:
+            params["message"] = message
+        return await self.call("scope.action.result", params)
 
     @staticmethod
     def _state_slot_scope_refs(scopes: list[Mapping[str, Any]]) -> list[dict[str, Any]]:

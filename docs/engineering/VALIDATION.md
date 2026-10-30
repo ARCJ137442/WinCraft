@@ -8,7 +8,7 @@
 
 本文件按时间追加，不回写早期观察。对同一验收项，较新的明确复核段落与生成的 `plan/acceptance.json`、`plan/status.json` 是当前状态；旧日期段落只保留发生当时的事实。
 
-TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询，其提供商识别逻辑会有界读取 `auth.json`。Agent 只读 API 的 `GET /v1/integrations/models` 可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。它们都不等于实时会话状态。Codex、MiniMax、DeepSeek 图形化额度悬浮窗是用户提出的后续方向，源码边界记录在 [`IDEAS.md`](../product/IDEAS.md)；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
+TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询，其提供商识别逻辑会有界读取 `auth.json`。Agent 只读 API 的 `GET /v1/integrations/models` 受 `data:read` token 保护，可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。WinCraft 的 B05-02 Provider 已实现为该 API 的只读使用者，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。真实 TeamSense 联调与像素验收仍未完成；账户 ID 不由该 endpoint 返回，Codex 也仍是 unknown。
 
 ## 2026-10-30 B02-02 主题与无障碍偏好验收
 
@@ -813,3 +813,146 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 | 当前 release 可见呈现与 UUID 深链接 | NOT_RUN | 上述 smoke 只证明本机采集与合并；不证明 Tauri release 像素、原生点击或目标会话加载。|
 
 多来源裁剪按来源等额分配初始预算，依 `source_sequence` 选择较新的叶会话，并把被选中子 Agent 的父链一并保留；最终不足额可用时再扩展预算。被裁剪来源的可读数据健康改为 `partial`。TeamSense 本机用量/额度收集仅作为后续额度 HUD 的来源研究；WinCraft 不读取其 `auth.json` 或供应商凭据，待 TeamSense 提供经授权的本机脱敏只读汇总后再实现 Codex、MiniMax、DeepSeek 卡片。
+
+## 2026-10-30 B04-03 resumed candidate and real-host probe
+
+**Given** the manager shortcut implementation landed after the previous `target/release` executable was built, **When** resume the Windows host work, **Then** distinguish the stale executable from the current candidate, validate the latter against the actual Tauri/Rust server, and keep native key delivery separate from protocol success.
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Earlier `target/release` process | 已停止（旧构建） | Running EXE SHA-256 `5E6061827A3B4527BFEEA1307A5945A8EAB8976C8BDC47A86BFE2F4B654B6F8F`，文件时间 2026-10-30 15:29；快捷键功能提交 `4bc3e81` 时间为 15:50，因此该进程早于功能实现，不能验证新管理器快捷键控件。|
+| 隔离候选 `target/stage-309af17/release/wincraft-desktop.exe` | PASS（已测试，现已停止） | 文件 13,559,808 bytes，SHA-256 `6840654D6DBEFB780B758618805B241AC96D22D57B8E7F4D49B102DFA3E58E10`；真实 Tauri-hosted `lease_probe.py` 41 项通过。|
+| 标准 release `target/release/wincraft-desktop.exe` | PASS（2026-10-30 时运行，后已替换） | `npm run desktop:build` 退出码 0；13,559,808 bytes，SHA-256 `C949FC2359B5D36DA9FF3C2CAD395D07914699D13DF9130A985CC3160070BA25`。当时以 `--open-manager` 启动为唯一 WinCraft 进程；同一标准路径产物上的真实 Tauri-hosted `lease_probe.py` 41 项通过。2026-10-31 已停止该进程并替换为当前 release。|
+| 新候选上的真实 Tauri-hosted `lease_probe.py` | PASS | 退出码 0，共 41 项：授权/协议拒绝、动态 insert/move/replace/props/remove、租约过期、旧 epoch fencing、断线重连、慢消费者断开，以及原生窗口属性报告。探针只创建并清理自己的合成世界；runtime descriptor 路径与 token 未写入证据。|
+| 当前 OS 全局快捷键注册/触发/撤销/IME | NOT_RUN | Computer Use JS 报告原生管道不可用（系统找不到指定的文件）。当前候选没有输入或启用任何组合键；B04-03-A1/A2/A3 仍 `PARTIAL`，不得将旧进程无控件或协议 probe 当作快捷键失败/成功。|
+| Provider Skill 收集规则回归 | PASS | `python skills/wincraft-provider/scripts/verify.py` 退出码 0；检查过程/本机文件数据路径，并拒绝旧的 App relay 或 Claude CLI 查询说明。|
+| `npm run check:local` | PASS | 退出码 0：Node 28 项；Rust workspace 全部测试、fmt/check/Clippy 通过；Python 174 项通过，1 项因 Windows symlink 能力跳过。环境：Node v22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| GitHub Actions run `41022563172` on `4bc3e81` | FAIL（Clippy） | `npm run check:local` 走到 Rust Clippy 后失败：Rust 1.99 `clippy::collapsible_match` 要求将 `if code.is_none()` 折进 `RunEvent::ExitRequested` match guard。没有单测或构建失败。|
+| 后续 GitHub Actions `41024348330` (`309af17`) 与 `41026654580` (`c36e4af`) | PASS | 同一源码使用 match guard 后，两次 Windows Actions 均通过；当前本地 HEAD 对应 run `41026654580`。本地未提交改动不包含在该远端 run 中。|
+| CodeGraph | PASS | `npm run codegraph:sync` 同步 1 个 Python 文件；`npm run codegraph:status` 为 current，91 files / 2,501 nodes。|
+| 标准路径 EXE + 中文验收 ZIP | PASS | `evidence/local/WinCraft-0.1.0-alpha.1-standard-20261030-c36e4af-three-source.zip` SHA-256 `B90D044F20D1727508BFE26FA6AB2C73CA7E0CC245C527C15AA0EDC933B1E886`；包内 EXE SHA 与上方标准 `target/release` 构建一致，`SHA256SUMS.txt` 对 EXE 和两份验收文档逐项通过；不含 runtime descriptor。|
+
+本轮将新候选留在前台供后续本机验收；热键授权、真实按键、跨进程冲突、注销后不残留和 IME 输入保护仍需 Computer Use 恢复后验收。对应机器本地摘要在忽略的 `evidence/local/nextgen-2026-10-30/b04-03-runtime-resume-20261030.json`；不含 runtime descriptor 或 bearer token。
+
+GitHub Actions 复盘：run [41022563172](https://github.com/exomind-team/WinCraft/actions/runs/41022563172) 在 Windows 的 `npm run check:local` 失败；Rust 1.99 Clippy 将 `RunEvent::ExitRequested` 分支中的嵌套 `if code.is_none()` 升为 `clippy::collapsible_match` 错误。修复是将条件移入 match guard，已在 commit `309af176` 核实；后续 run [41024348330](https://github.com/exomind-team/WinCraft/actions/runs/41024348330) 与当前 HEAD 的 run [41026654580](https://github.com/exomind-team/WinCraft/actions/runs/41026654580) 均通过。当前本机 Rust 1.93 的 `npm run check:local` 通过；远端 Actions 仍以 Rust stable 版本为准。
+
+## 2026-10-30 B08-02 本机数据来源复核
+
+**Given** 用户指定 Codex App 与 Claude Code 只从本机进程状态和固定数据目录采集，**When** 重跑 count-only 来源 smoke，**Then** 只报告进程状态、数据质量、新鲜度和有界计数，不启动 Harness、不连接 WinCraft Host、不输出会话内容。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python scripts/local_harness_source_smoke.py` | PASS（本机只读） | Python 3.11.4，退出码 0，0.5303 秒；Codex App `online` / 数据 `partial` / 128 条 / 2 条有界输出 / age 0 秒；Claude Code `offline` / 数据 `partial` / 128 条 / 24 条有界输出 / age 0 秒。两来源合计 256 条，未启动目标进程。|
+| 数据保留边界 | PASS | smoke 明确报告 `session_values_persisted_or_printed=false`；本机 evidence 只保存状态、计数和耗时，不保存标题、项目名、session ID、prompt、消息正文或 descriptor。|
+| 标准 release `live_provider.py` | PASS（来源→Host 协议/scene） | 12 秒真实 Tauri Host run，退出码 0；仅选择 `codex-app` 与 `claude-code`，提交 3 次快照：Codex App `online`/128 行，Claude Code `offline`/128 行，Codex CLI `not_requested`；Provider 明确确认清理自己的临时 world。原始 Provider 输出未保存。|
+| 标准 release 三来源 `live_provider.py` | PASS（来源→Host 协议/scene） | 12 秒真实 Tauri Host run，退出码 0；选择 `codex`、`codex-app`、`claude-code`，提交 3 次快照：Codex CLI `online`/0 行、Codex App `online`/128 行、Claude Code `offline`/128 行。Codex CLI 走固定 `useStateDbOnly=true` app-server；Codex App/Claude 由进程 + 本机文件读取。Provider 确认清理自己的临时 world；Codex 进程数量测试前后同为 2。原始 Provider 输出未保存。|
+| Codex App 进程文案修复后 live smoke | PASS | 标准 release 上重新提交 2 次 Codex App/Claude 快照：App `online`、Claude `offline`，临时 world 清理确认。scene 标签现使用进程状态用语，没有“已桥接/等待 Agent 桥接”。|
+| `test_live_scene_separates_health_data_quality_and_freshness_for_all_sources` | PASS | 实时 scene schema 回归确认三源健康/freshness 分离、App/Claude 数据质量徽标独立；Codex App online/offline/unavailable 文案对应进程状态，不再声称“桥接”。|
+| `test_codex_app_preview_binds_name_status_project_output_and_uuid_link` | PASS（合成） | scene schema 回归检查标题、状态、项目、最近 Agent 输出，及仅在 Host capability 打开时的 UUID-only 原生动作；不读取真实会话。|
+| `npm run check:python` | PASS | 退出码 0；Python 176 项通过，1 项 Windows symlink 能力跳过；`skills/wincraft-provider/scripts/verify.py` 通过。|
+| `npm run check:local` | PASS | 加入上述 scene 回归和 Codex App 进程文案修复后重新执行；UI 28 项、Rust workspace 141 项、Python 176 项通过，1 项 Windows symlink 用例因环境能力跳过；fmt/check/Clippy、离线契约和 Skill 校验均通过。|
+| release UI 与三来源呈现 | NOT_RUN | live provider 证明同一 standard Host 接受了三源 scene 更新，不证明窗口像素、卡片内容、freshness/unknown 控件或 UUID-only 深链。B08-02-A1 的 L2 scene 场景已 PASS；A4 仍按用户要求 STALLED，A5 的视觉新鲜度提示仍 PARTIAL。|
+
+count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-local-process-disk-smoke-resume-20261030.json`；两源与三源标准 release Provider 摘要分别记录在 `b08-02-standard-release-live-provider-smoke-20261030-current.json` 与 `b08-02-standard-release-three-source-smoke-20261030.json`；进程文案修复后复核在 `b08-02-standard-release-process-label-recheck-20261030.json`。三源 L2 场景通过：同一 Provider world 收到 Codex CLI、Codex App 和 Claude Code 的状态/记录并提交到 Host。scene freshness/data-health 与 Codex App 卡片字段回归记录在 `b08-02-three-source-scene-test-20261030.json`。Host 只持有可重建的 scene/会话状态，Provider 清理后临时 world 已销毁；本证据没有保存标题、项目名、session ID、prompt 或消息正文。截图、卡片像素、freshness 展示和 UUID 深链继续保持各自验收状态。
+
+## 2026-10-30 B04-04 TouchAI read-only source review
+
+**Given** 用户指定 TouchAI 本地仓库用于学习，**When** 只读检查其固定 commit、许可证和召回/输入/取消源码，**Then** 更新 WinCraft 窄用例差异矩阵，不启动 TouchAI、不读写其数据库、不复制 GPL 源码。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| TouchAI source identity | PASS（只读） | 指定本地 checkout 为 `main`、HEAD `cdc9b399d0ea6813be321b6a87e39d3532d1a7da`、工作树 clean。运行栈为 Tauri 2 + Vue 3，`@touchai/desktop` 1.2.2。|
+| license and permission boundary | PASS（静态核对） | `COPYING` / manifest 声明 GPL-3.0-or-later；TouchAI 产品规则要求数据库 schema 变更显式批准，AgentService/对话运行时为 RFC-first 高风险区。WinCraft 未复制源码、未修改仓库。|
+| 实际召回/输入/结果/取消路径 | PASS（源码阅读，非运行） | `Alt+Space` -> SearchView 恢复焦点/模型 -> SearchRequest 传 text/attachments/input snapshot/model/provider -> `sessionTaskCenter.startTask`；启动可 AbortController，运行中 `cancelTask`。TouchAI 内部有流式 AgentService；没有发现稳定的外部 WinCraft bridge/API。|
+| B04-04-A1 live workflow | NOT_RUN / BLOCKED | 本轮仅授权学习源码，未启动 TouchAI、未打开会话、未请求模型或读写数据库；没有已定义的外部 Provider contract。因此没有宣称已复现真实 workflow。|
+| B04-04-A2/A3 | PASS（差异与许可边界） | 矩阵将 stream/context/MCP/tool execution 列为未接入/来源自有；未将其标成等价，也未将 GPL-3.0-or-later 代码复制到 WinCraft。|
+
+细节与来源路径见 [`docs/integrations/touchai-gap-matrix.md`](../integrations/touchai-gap-matrix.md)；本机摘要在忽略的 `evidence/local/nextgen-2026-10-30/b04-04-touchai-readonly-source-review.json`，不含 TouchAI 用户数据或凭据。B04-04 仍为 `BLOCKED`，等待明确的 live workflow/adapter contract 授权；可继续独立的其他交接任务。
+
+## 2026-10-30 B05-02 TeamSense model-quota Provider
+
+**Given** TeamSense 提供授权的缓存只读汇总，**When** WinCraft 收到 DeepSeek/MiniMax 数据，**Then** 各币种、模型与周期分别呈现，明确显示缓存 freshness 和 API 连接状态；缺少字段、Codex 不在接口或账户标识缺失时保持未知，不推算余额。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| TeamSense route/auth source review | PASS（L1，静态） | `docs/agent-api.md` 和 `worker/app.ts`/`worker/routes/agent-api.ts` 确认 `GET /v1/integrations/models` 经 `requireApiToken`，仅 `data:read` scope；返回缓存的 DeepSeek/MiniMax/Sub2API 和 freshness。它不列出 Codex；`/api/codex/usage` 不在本 Provider 的请求路径中。`GET /v1/dashboard` 虽含 `modelQuotas`，也返回财务、项目和服务摘要，且该 quota projection 不提供账户/周期身份，因此 Provider 不请求它。未读取 credentials、数据库或业务快照。|
+| `python -m unittest discover -s tests -p test_team_sense_quota.py -v` | PASS | 11 个合成行为用例：币种/模型/周期隔离、零值与缺失区分、断线保留脱敏 last-good projection、freshness 与 API 健康分离、Codex unknown、过滤账户/管理字段、固定 GET/禁止重定向与 TLS URL 约束、额度状态冲突、模型截断披露及声明式进度条场景。未访问 TeamSense 网络。|
+| `npm run check:local` | PASS | 退出码 0：Node UI 28 项、Rust workspace 141 项、Python 187 项（1 项 Windows symlink 能力跳过）；离线契约、fmt/check/Clippy 与 Provider Skill 30 项引用校验通过。环境：Windows 11 Pro build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| 标准 release Tauri Host + `provider.py --demo --duration-seconds 8` | PASS（L2 scene/protocol） | 运行中的 `wincraft-desktop.exe`（PID 69936）接受合成 Provider 的 world/scene；Host 返回普通组件 capability，Provider 确认清理自己的临时世界。runtime descriptor 路径和 bearer token 未写入终端记录或证据。未取得窗口截图，像素/可读性 NOT_RUN。|
+| TeamSense live API | NOT_RUN | 本轮没有 TeamSense API token，也没有发起远端请求；没有修改 TeamSense。真实 freshness/cache 样本、账户归属、断线恢复需配置经授权的 `data:read` token 后验证。|
+| B05-02-A1/A2/A3 | PARTIAL / PARTIAL / PASS（源码与合成） | A1 的 provider/window/currency 不混算已由合成数据检查，但 endpoint 不提供 account ID，账户归属留缺口；A2 freshness/API 断线 scene 已通过合成测试和 Host scene 接受，未做真实像素验收；A3 只使用已定位的固定只读 GET 和 `--demo`，没有修改 TeamSense。B05-02 保持 `IMPLEMENTED_UNVERIFIED`。|
+
+实现入口为 [`examples/integrations/model_quota/`](../../examples/integrations/model_quota/)；忽略的本机摘要为 `evidence/local/nextgen-2026-10-30/b05-02-team-sense-quota-provider.json`。Codex quota、TeamSense 账户身份及真实服务 freshness 仍是下一步边界。
+
+## 2026-10-30 B08-03-A2 standard Tauri Host scope concurrency
+
+**Given** one current Tauri Host and a scoped parent world, **When** two authenticated preview writer sessions and a read observer operate concurrently, **Then** each writer changes only its disjoint subtree, readers receive filtered snapshots, and the probe destroys only its own temporary world.
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `examples/python/scope_probe.py` against standard release Host | PASS（L2 protocol; synthetic sources） | 退出码 0。两个独立 WebSocket writer session 在 `focus`/`tasks` scopes 更新不同 revision；读者只收到授权 scope；结构 patch、typed slot CAS/grants/revocation、parent revocation、稳定 0.3 refusal 均通过，探针确认自身世界已销毁。Host PID 69936，EXE SHA-256 `C949FC2359B5D36DA9FF3C2CAD395D07914699D13DF9130A985CC3160070BA25`；descriptor 路径、token、world ID 未保存。|
+| B08-03-A2 判定 | PARTIAL | 已证明真实标准 Host 的两个独立 writer sessions 并发且彼此隔离；值与身份为合成数据，并由同一探针进程编排，尚未证明 Codex/Claude 真实来源作为独立 provider 运行。|
+| UI / source adapter | NOT_RUN | 本次不涉及窗口像素或真实 Harness 业务读取；Computer Use 原生管道仍不可用。|
+
+忽略的本机摘要：`evidence/local/nextgen-2026-10-30/b08-03-standard-tauri-scope-probe.json`。
+
+## 2026-10-31 B08-03-A3 组件动作所有权路由
+
+**Given** 一个由世界 authority 划分、且含两个组件 scope 的合成世界；**When** 用户触发 scope 内按钮；**Then** 事件只发送给该组件 scope 的当前写者，动作回执必须由同一 writer 的当前租约提交。未归属布局、旧/异 scope writer 与稳定 0.3 客户端均不能接管该动作；scope 原生窗口动作保持不支持。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-server scoped_interaction --no-fail-fast` | PASS（3 tests） | Hub 回归确认事件只路由给组件 owner、异 scope writer 不能回执、删除 scope 会 fence 旧 writer 并结束 pending action；loopback WebSocket 回归确认 `scope.interaction`/`scope.action.result` 的 lease 绑定，并确认 stable 0.3 不宣告 component leases 且调用 preview method 得到 `PROTOCOL_MISMATCH`。未归属布局和 `native_window_action` 被拒绝。|
+| Python SDK、preview schema 与 demo 定向回归 | PASS（37 tests） | `tests.test_client_capabilities`、`tests.test_client_event_queue`、`tests.test_scope_preview_contract`、`tests.test_scope_interaction_demo` 全部通过；SDK 在 capability 不存在/版本或形状不匹配时失败关闭。|
+| `npm run check:local` | PASS（完整本地门禁） | UI 28、Rust workspace 144、Python 193（1 项 Windows symlink 能力跳过）、离线契约与 Provider Skill 31 个引用通过；fmt、check、Clippy 均通过。第一次完整门禁暴露 `record_pending_action` 8 参数 Clippy 失败，随后用具名 `PendingAction` 输入结构收敛参数并重跑通过。|
+| `npm run desktop:build` + release Provider smoke | PASS（build / L2 create-and-cleanup） | 产物为 `target/release/wincraft-desktop.exe`，13,572,608 bytes，SHA-256 `0E5ECCAD24E04653C3E8F878CF96C370E3A74F68AC4EFE742C70EA10284422C7`。新 release 以 `--open-manager` 启动；`scope_interaction_demo.py --duration-seconds 1` 成功协商 preview capability、创建/划分 scope、取得 scope writer 并清理自己的临时世界，退出码 0。该短 smoke 没有点击按钮，也不证明动作已在屏幕中触发。|
+| B08-03-A3 判定 | PARTIAL（L1-L2） | 协议、Host 路由、scope lease 回执与 stable 0.3 隔离已由测试覆盖。原生窗口中的真实点击/动作回执，以及 Codex/Claude 两个真实来源的独立 Provider 仍未验收。|
+| 原生点击 / 像素 | NOT_RUN | 本轮没有可用的 Computer Use 输入管道；没有将 WebSocket/fixture 结果冒充原生 UI 验收。|
+
+运行环境：Windows 11 Pro build 22000；Node `v22.23.4`、npm `11.19.0`、Python `3.11.4`、Cargo/Rust `1.93.0`。本机脱敏测试摘要（Git 忽略）：`evidence/local/nextgen-2026-10-31/b08-03-a3-scoped-interaction-tests.json`。不记录 descriptor、bearer token、world/session UUID 或真实业务数据。
+
+## 2026-10-31 B08-02-A5 本机来源 freshness recheck
+
+**Given** 用户已授权的本机 Codex CLI、Codex App 与 Claude Code 来源；**When** 当前 release 的只读 Provider 每 5 秒读取进程元数据和有界本地快照，共运行 11 秒；**Then** 三轮汇总显示来源在线状态与逐会话状态分开，未知状态继续显示 `unknown`，Provider 自行清理临时世界。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `live_provider.py --sources codex codex-app claude-code --duration-seconds 11 --refresh-seconds 5` | PASS（L2 source-to-Host protocol） | 退出码 0；当前标准 Tauri Host SHA-256 `0E5ECCAD24E04653C3E8F878CF96C370E3A74F68AC4EFE742C70EA10284422C7` 接收 3 次快照并确认自身世界清理。汇总状态三轮一致：Codex CLI online/0 个可列状态；Codex App online/128 条状态未知；Claude Code offline/128 条历史状态未知。没有启动任何 Harness 进程；会话名称、项目、ID、输出与原始记录未写入终端摘要或证据。|
+| B08-02-A5 判定 | PARTIAL | 本机来源确实更新并能区分来源在线状态与 `unknown` 会话历史，但 freshness 标签的窗口像素/时效提示仍未通过原生 UI 观察。|
+| Codex App 深链与 UI | STALLED / NOT_RUN | Computer Use 原生管道重试仍不可用；本次没有触发 Codex thread 导航，也没有用其他自动化代替 UI 验收。|
+
+忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-02-a5-live-source-snapshot.json`。其不含 descriptor/token、会话内容或用户业务数据。
+
+## 2026-10-31 B08-03-A4/A5 验收状态复核
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_agent_global_overview -v` | PASS（13 tests） | 覆盖 Codex 并行量、Claude 有界状态预览、Codex/Claude 列表字段、source/detail/back 导航、身份与 freshness、过期 detail 拒绝和分页。|
+| 当前标准 release + `global_overview_provider.py --duration-seconds 5` | PASS（L2 scene/cleanup） | 当前 Tauri Host 接受仓库合成总览场景；Provider 5 秒后退出并确认仅清理自己的临时世界。该 smoke 不含真实会话数据，也不提供新截图。|
+| B08-03-A4 判定 | PARTIAL | source、detail identity/freshness 与返回导航由专项测试覆盖，既有 A7 Computer Use 截图证明单窗口视图切换；但撤销状态尚未在总览数据模型中表达并端到端验证。|
+| B08-03-A5 判定 | PASS（L1-L4） | 首屏 Codex 并行量与 Claude 状态预览由测试覆盖；A7 release 截图已记录 Overview `520×421`、Claude list `520×422`、Codex list `520×512`、detail `520×477`，并验证动作回执和受限窗口高度。当前 release synthetic scene/cleanup smoke 通过。|
+
+忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json`。A4 留待明确并实现/表示组件或来源撤销状态后重新验收。
+
+## 2026-10-31 B06-04 合成配置包再验
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `tools/pack/export_pack.py` | PASS | 退出码 0；新导出 `workday-synthetic-20261031-2.wcp`，1,109 bytes，SHA-256 `3407ec6895809a6227860e6e83e952dcc3df31b083123c5e8fd6171e8527a840`。归档只有 `pack.json` 与声明的 `blueprints/workday.json`；`adapter` 为 null。|
+| 合成归档隐私/内容扫描 | PASS（L0-L1） | 未发现凭据字段、绝对用户路径、runtime/session 标记或未声明归档条目。仅检查仓库合成 fixture，不代表用户自定义包都自动脱敏。|
+| `python -m unittest tests.test_pack_export -v` | PASS（10 passed / 1 skipped） | 覆盖确定性导出、只打包声明文件、拒绝覆盖、拒绝 adapter/provider 二进制与描述文件、大小/路径/schema 限制、不会接触 Host 或执行 adapter。1 项 symlink 用例因 Windows 当前无法创建 symlink 而跳过。|
+| B06-04-A2 判定 | PARTIAL | 本次合成包静态卫生通过；第二个独立用户/设备导入相同包仍 NOT_RUN。A1 clean-install 不自动下载/执行 Provider 与 A3 缺失区域管理器可见解释也仍需独立环境/原生 UI 验收。|
+
+忽略的本机证据：`evidence/local/nextgen-2026-10-31/b06-04-synthetic-export-audit.json` 与归档 `workday-synthetic-20261031-2.wcp`。
+
+## 2026-10-31 B06-03 Host 行为回归复跑
+
+**Given** 一个含既有世界的 Host、经授权的合成 Provider inventory 和配置 blueprint；**When** 计划 generation 变化、用户取消、显式授权后重新预览、应用中途失败或用户执行回退；**Then** 旧计划失效、既有世界不被清空，Host 报告部分成功/清理结果，并且只删除仍与导入账本完全一致的资源。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-server pack_import --no-fail-fast` | PASS（16 tests） | 覆盖 generation invalidation、取消不创建资源、权限需独立 host grant 后 re-preview、只为选中 Provider 分配写入、部分失败报告与 ledger-guarded rollback；退出码 0。|
+| 当前 release Manager UI | NOT_RUN | 当前 release SHA-256 `0E5ECCAD24E04653C3E8F878CF96C370E3A74F68AC4EFE742C70EA10284422C7` 已启动；Computer Use native pipe 不可用，预览/授权重规划/应用/取消/回退点击与画面仍未验收。|
+| B06-03-A1/A2/A3 判定 | PARTIAL / PARTIAL / PARTIAL | Rust Host 行为回归已复跑；不将单测或无界面 Host 请求记作 manager 的人工预览、回退 UI 通过。|
+
+忽略的本机回归摘要：`evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json`。

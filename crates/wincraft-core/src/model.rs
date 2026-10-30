@@ -1,3 +1,4 @@
+use crate::scene::InteractionSource;
 use crate::Scene;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -440,6 +441,10 @@ pub struct ActionState {
     #[serde(skip)]
     pub lease_epoch: u64,
     #[serde(skip)]
+    pub scope_id: Option<Uuid>,
+    #[serde(skip)]
+    pub scope_generation: Option<u64>,
+    #[serde(skip)]
     pub deadline: u64,
 }
 #[derive(Clone, Debug)]
@@ -457,6 +462,20 @@ pub struct UiEvent {
     pub value: Value,
     pub lease_epoch: u64,
     pub revision: u64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ScopeUiEvent {
+    pub id: Uuid,
+    pub world_id: Uuid,
+    pub scope_id: Uuid,
+    pub scope_generation: u64,
+    pub component_id: String,
+    pub action: String,
+    pub value: Value,
+    pub source: InteractionSource,
+    pub lease_epoch: u64,
+    pub world_revision: u64,
+    pub scope_revision: u64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WorldSummary {

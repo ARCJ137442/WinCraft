@@ -1,0 +1,16 @@
+{
+  "event": "scope.interaction",
+  "data": {
+    "id": "00000000-0000-4000-8000-000000000004",
+    "world_id": "00000000-0000-4000-8000-000000000001",
+    "scope_id": "00000000-0000-4000-8000-000000000002",
+    "scope_generation": 1,
+    "component_id": "focus-action",
+    "action": "focus.refresh",
+    "value": null,
+    "source": "click",
+    "lease_epoch": 1,
+    "world_revision": 7,
+    "scope_revision": 3
+  }
+}

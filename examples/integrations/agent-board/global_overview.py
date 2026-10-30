@@ -156,10 +156,11 @@ def _source_health_label(source_id: str, health: str) -> str:
     '''把查询能力与正在运行的应用实例区分开来'''
     if source_id == "codex-app":
         return {
-            "online": "已桥接",
+            "online": "进程在线",
+            "offline": "进程离线",
             "partial": "部分数据",
-            "disconnected": "桥接断开",
-            "unavailable": "等待 Agent 桥接",
+            "disconnected": "进程状态读取中断",
+            "unavailable": "进程状态不可用",
             "not_requested": "本轮未查询",
             "local_state": "本机状态库可读",
         }.get(health, SOURCE_HEALTH_LABELS.get(health, "未知"))

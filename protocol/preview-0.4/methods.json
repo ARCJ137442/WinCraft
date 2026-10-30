@@ -7,7 +7,8 @@
     "version": 1
   },
   "optional_capabilities": [
-    { "name": "provider_inventory", "version": 1 }
+    { "name": "provider_inventory", "version": 1 },
+    { "name": "scope_interactions", "version": 1 }
   ],
   "handshake_schema": "hello.schema.json",
   "request_schema": "scope-request.schema.json",
@@ -18,6 +19,7 @@
     "scope.join",
     "scope.snapshot",
     "scope.patch",
+    "scope.action.result",
     "scope.structure.patch",
     "scope.data.replace",
     "scope.renew",
@@ -55,7 +57,16 @@
       "writes": "owner_scope_cas",
       "reads": "explicit_scope_grants"
     },
-    "interactive_scope_components": false,
+    "scope_interactions": {
+      "status": "preview",
+      "version": 1,
+      "event": "scope.interaction",
+      "event_schema": "scope-interaction-event.schema.json",
+      "result_method": "scope.action.result",
+      "routing": "component_scope_owner",
+      "native_window_actions": false
+    },
+    "interactive_scope_components": true,
     "stable_0_3_world_writer_and_scope_writers_may_not_coexist": true
   }
 }

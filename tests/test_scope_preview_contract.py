@@ -43,6 +43,31 @@ class ComponentScopePreviewContractTests(unittest.TestCase):
         jsonschema.Draft202012Validator(schema, format_checker=jsonschema.FormatChecker()).validate(request)
         self.assertEqual(request["method"], "scope.structure.patch")
 
+    def test_scope_interaction_event_and_result_require_the_preview_capability(self):
+        manifest = load_json(PREVIEW / "methods.json")
+        self.assertIn(
+            {"name": "scope_interactions", "version": 1},
+            manifest["optional_capabilities"],
+        )
+        self.assertIn("scope.action.result", manifest["methods"])
+        self.assertEqual(manifest["constraints"]["interactive_scope_components"], True)
+
+        request_schema = load_json(PREVIEW / "scope-request.schema.json")
+        request_validator = jsonschema.Draft202012Validator(
+            request_schema, format_checker=jsonschema.FormatChecker()
+        )
+        valid_result = load_json(PREVIEW / "examples/scope-action-result-valid.json")
+        invalid_lease = load_json(PREVIEW / "examples/scope-action-result-invalid-lease.json")
+        self.assertEqual(list(request_validator.iter_errors(valid_result)), [])
+        self.assertTrue(list(request_validator.iter_errors(invalid_lease)))
+
+        event_schema = load_json(PREVIEW / "scope-interaction-event.schema.json")
+        event = load_json(PREVIEW / "examples/scope-interaction-event.json")
+        jsonschema.Draft202012Validator.check_schema(event_schema)
+        jsonschema.Draft202012Validator(
+            event_schema, format_checker=jsonschema.FormatChecker()
+        ).validate(event)
+
 
 if __name__ == "__main__":
     unittest.main()

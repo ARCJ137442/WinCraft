@@ -110,6 +110,128 @@ class CapabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "root_structure_patch:scope.structure.patch"):
             client.require_capabilities(root_structure_patch=True)
 
+    def test_scoped_interactions_require_an_explicit_preview_capability(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        with self.assertRaisesRegex(RuntimeError, "scope_interactions:preview-v1"):
+            client.require_scope_interactions()
+
+        client.ready["capabilities"]["component_leases"]["scope_interactions"] = {
+            "status": "preview",
+            "version": 1,
+            "event": "scope.interaction",
+            "acknowledge_method": "scope.action.result",
+            "routing": "component_scope_owner",
+            "native_window_actions": False,
+        }
+        client.require_scope_interactions()
+
+    def test_scope_action_result_uses_the_current_scoped_lease(self):
+        client = self.client_with({
+            "component_leases": {
+                "status": "preview",
+                "version": 1,
+                "scope_interactions": {
+                    "status": "preview",
+                    "version": 1,
+                    "event": "scope.interaction",
+                    "acknowledge_method": "scope.action.result",
+                    "routing": "component_scope_owner",
+                    "native_window_actions": False,
+                },
+            }
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        calls = []
+
+        async def capture(method, params):
+            calls.append((method, params))
+            return {"acknowledged": True}
+
+        client.call = capture
+        result = asyncio.run(client.scope_action_result(
+            "world-a",
+            {"scope_id": "scope-a", "lease_id": "lease-a", "epoch": 3, "generation": 2},
+            "event-a",
+            ok=True,
+            message="accepted",
+        ))
+
+        self.assertEqual(result, {"acknowledged": True})
+        self.assertEqual(calls, [(
+            "scope.action.result",
+            {
+                "world_id": "world-a",
+                "lease": {"scope_id": "scope-a", "lease_id": "lease-a", "epoch": 3, "generation": 2},
+                "event_id": "event-a",
+                "ok": True,
+                "message": "accepted",
+            },
+        )])
+
+    def test_scoped_interactions_require_an_explicit_preview_capability(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        with self.assertRaisesRegex(RuntimeError, "scope_interactions:preview-v1"):
+            client.require_scope_interactions()
+
+        client.ready["capabilities"]["component_leases"]["scope_interactions"] = {
+            "status": "preview",
+            "version": 1,
+            "event": "scope.interaction",
+            "acknowledge_method": "scope.action.result",
+            "routing": "component_scope_owner",
+            "native_window_actions": False,
+        }
+        client.require_scope_interactions()
+
+    def test_scope_action_result_uses_the_current_scoped_lease(self):
+        client = self.client_with({
+            "component_leases": {
+                "status": "preview",
+                "version": 1,
+                "scope_interactions": {
+                    "status": "preview",
+                    "version": 1,
+                    "event": "scope.interaction",
+                    "acknowledge_method": "scope.action.result",
+                    "routing": "component_scope_owner",
+                    "native_window_actions": False,
+                },
+            }
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        calls = []
+
+        async def capture(method, params):
+            calls.append((method, params))
+            return {"acknowledged": True}
+
+        client.call = capture
+        result = asyncio.run(client.scope_action_result(
+            "world-a",
+            {"scope_id": "scope-a", "lease_id": "lease-a", "epoch": 3, "generation": 2},
+            "event-a",
+            ok=True,
+            message="accepted",
+        ))
+
+        self.assertEqual(result, {"acknowledged": True})
+        self.assertEqual(calls, [(
+            "scope.action.result",
+            {
+                "world_id": "world-a",
+                "lease": {"scope_id": "scope-a", "lease_id": "lease-a", "epoch": 3, "generation": 2},
+                "event_id": "event-a",
+                "ok": True,
+                "message": "accepted",
+            },
+        )])
+
     def test_scope_patch_does_not_send_unadvertised_structure_operation(self):
         client = self.client_with({
             "component_leases": {

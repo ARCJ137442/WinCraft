@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:protocol:0.4-preview.1:scope-interaction-event",
+  "title": "WinCraft scoped interaction occurrence",
+  "description": "Preview event routed only to the current writer of the component's scope. The provider acknowledges through scope.action.result using its current scoped lease.",
+  "type": "object",
+  "properties": {
+    "event": {"const": "scope.interaction"},
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "format": "uuid"},
+        "world_id": {"type": "string", "format": "uuid"},
+        "scope_id": {"type": "string", "format": "uuid"},
+        "scope_generation": {"type": "integer", "minimum": 1},
+        "component_id": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9_.:-]+$"},
+        "action": {"type": "string", "minLength": 1, "maxLength": 128},
+        "value": {},
+        "source": {"enum": ["click", "context_menu", "escape", "control_enter"]},
+        "lease_epoch": {"type": "integer", "minimum": 1},
+        "world_revision": {"type": "integer", "minimum": 1},
+        "scope_revision": {"type": "integer", "minimum": 1}
+      },
+      "required": [
+        "id", "world_id", "scope_id", "scope_generation", "component_id",
+        "action", "value", "source", "lease_epoch", "world_revision", "scope_revision"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": ["event", "data"],
+  "additionalProperties": false
+}

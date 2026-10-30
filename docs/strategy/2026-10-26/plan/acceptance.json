@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-30",
+  "updated_at": "2026-10-31",
   "cases": [
     {
       "id": "B00-01-A1",
@@ -808,7 +808,7 @@
       "level": "L1-L4",
       "criterion": "冲突注册失败不占用他人热键",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: core registry canonicalizes equivalent chords before conflict checks, and the server fake-host test confirms a failed native registration rolls back only this session's intent. Real OS-level or cross-process conflict behavior remains unverified."
+      "evidence": "PARTIAL: core registry canonicalizes equivalent chords before conflict checks, and the server fake-host test confirms a failed native registration rolls back only this session's intent. Real OS-level or cross-process conflict behavior remains unverified. The old running target/release binary predated shortcut commit 4bc3e81; the current standard target/release candidate now runs, but Computer Use could not connect to its native pipe, so OS-level interaction remains NOT_RUN."
     },
     {
       "id": "B04-03-A2",
@@ -820,7 +820,7 @@
       "level": "L1-L4",
       "criterion": "断线/撤销/退出后无残留绑定",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: disconnect/revoke cleanup is implemented and fake-host tests cover explicit disable plus retry after native unregister failure. Actual OS unregister after session loss or app exit remains unverified."
+      "evidence": "PARTIAL: disconnect/revoke cleanup is implemented and fake-host tests cover explicit disable plus retry after native unregister failure. Actual OS unregister after session loss or app exit remains unverified. The old running target/release binary predated shortcut commit 4bc3e81; the current standard target/release candidate now runs, but Computer Use could not connect to its native pipe, so OS-level interaction remains NOT_RUN."
     },
     {
       "id": "B04-03-A3",
@@ -832,7 +832,7 @@
       "level": "L1-L4",
       "criterion": "IME/输入框/平台组合键不被默认破坏",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: shortcut validation denies reserved Windows and common IME combinations, and no binding exists by default. Real key delivery, OS collision behavior, and WebView2/IME input interaction remain unverified."
+      "evidence": "PARTIAL: shortcut validation denies reserved Windows and common IME combinations, and no binding exists by default. Real key delivery, OS collision behavior, and WebView2/IME input interaction remain unverified. The old running target/release binary predated shortcut commit 4bc3e81; the current standard target/release candidate now runs, but Computer Use could not connect to its native pipe, so OS-level interaction remains NOT_RUN."
     },
     {
       "id": "B04-04-A1",
@@ -843,7 +843,8 @@
       ],
       "level": "L2-L5",
       "criterion": "可以复现一项实际工作流而非只弹空窗",
-      "status": "NOT_RUN"
+      "status": "NOT_RUN",
+      "evidence": "NOT_RUN: no TouchAI runtime was launched and no live TouchAI request was sent. The local source review does not prove that a WinCraft provider can reproduce a real user workflow."
     },
     {
       "id": "B04-04-A2",
@@ -854,7 +855,8 @@
       ],
       "level": "L2-L5",
       "criterion": "无法实现的功能不标等价",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: the updated gap matrix separates implemented, partial, missing-by-design, and unverified features; it does not claim equivalence for model streaming, context capture, MCP/tool execution, or cancellation."
     },
     {
       "id": "B04-04-A3",
@@ -865,7 +867,8 @@
       ],
       "level": "L2-L5",
       "criterion": "不复制未审许可源码进Host",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: the reviewed TouchAI source is GPL-3.0-or-later. No TouchAI source was copied into WinCraft; only behavior boundaries and repository/source metadata were summarized."
     },
     {
       "id": "B05-01-A1",
@@ -912,7 +915,7 @@
       ],
       "level": "L0-L5",
       "criterion": "账号/提供商/窗口期不同数据不混算",
-      "status": "NOT_RUN"
+      "status": "PARTIAL"
     },
     {
       "id": "B05-02-A2",
@@ -923,7 +926,7 @@
       ],
       "level": "L0-L5",
       "criterion": "数据过期和断线清晰",
-      "status": "NOT_RUN"
+      "status": "PARTIAL"
     },
     {
       "id": "B05-02-A3",
@@ -934,7 +937,7 @@
       ],
       "level": "L0-L5",
       "criterion": "真实接口未定位时只有合成演示，不改TeamSense",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B05-03-A1",
@@ -1100,7 +1103,7 @@
       "level": "L1-L4",
       "criterion": "环境变化使旧计划失效并重新规划",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust Host/manager behavior tests cover inventory generation invalidation, expiration, host-approved permission grant followed by re-preview, and stale-plan rejection; a read-only Python SDK hello against the current Tauri release negotiated 0.4-preview.1 and verified the provider-import capability contract. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; re-preview is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust Host/manager behavior tests cover inventory generation invalidation, expiration, host-approved permission grant followed by re-preview, and stale-plan rejection; a read-only Python SDK hello against the current Tauri release negotiated 0.4-preview.1 and verified the provider-import capability contract. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; re-preview is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json. 2026-10-31 focused regression: `cargo test -p wincraft-server pack_import --no-fail-fast` exited 0 with 16 tests covering generation invalidation, cancellation, host-approved permission/re-preview, selected-provider-only join, partial failure reporting, idempotence and ledger-guarded rollback. The same behaviors remain unverified in current release manager UI; status stays PARTIAL. Evidence: evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json."
     },
     {
       "id": "B06-03-A2",
@@ -1113,7 +1116,7 @@
       "level": "L1-L4",
       "criterion": "导入取消不会清空既有世界",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust Host/manager tests cover cancellation without creating or clearing existing worlds and explicit confirmation before apply. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; cancel/reopen is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust Host/manager tests cover cancellation without creating or clearing existing worlds and explicit confirmation before apply. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; cancel/reopen is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json. 2026-10-31 focused regression: `cargo test -p wincraft-server pack_import --no-fail-fast` exited 0 with 16 tests covering generation invalidation, cancellation, host-approved permission/re-preview, selected-provider-only join, partial failure reporting, idempotence and ledger-guarded rollback. The same behaviors remain unverified in current release manager UI; status stays PARTIAL. Evidence: evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json."
     },
     {
       "id": "B06-03-A3",
@@ -1126,7 +1129,7 @@
       "level": "L1-L4",
       "criterion": "失败报告部分成功与清理结果，不造假回滚",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust tests cover partial creation failure, idempotent replay, and rollback that removes only ledger-matching unchanged resources while retaining edited/joined resources. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; UI/provider round-trip and rollback interaction are NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust tests cover partial creation failure, idempotent replay, and rollback that removes only ledger-matching unchanged resources while retaining edited/joined resources. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; UI/provider round-trip and rollback interaction are NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json. 2026-10-31 focused regression: `cargo test -p wincraft-server pack_import --no-fail-fast` exited 0 with 16 tests covering generation invalidation, cancellation, host-approved permission/re-preview, selected-provider-only join, partial failure reporting, idempotence and ledger-guarded rollback. The same behaviors remain unverified in current release manager UI; status stays PARTIAL. Evidence: evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json."
     },
     {
       "id": "B06-04-A1",
@@ -1156,7 +1159,7 @@
       "level": "L0-L5",
       "criterion": "分享内容不含原机路径/密钥/私有标题",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: sample workday .wcp contains exactly pack.json and the referenced blueprint; static audit found no credential fields or absolute user paths. Two separate users/devices have not yet imported the shared pack. Evidence: evidence/local/nextgen-2026-10-30/b06-04-sharing-fixtures-20261030.json."
+      "evidence": "PARTIAL: sample workday .wcp contains exactly pack.json and the referenced blueprint; static audit found no credential fields or absolute user paths. Two separate users/devices have not yet imported the shared pack. Evidence: evidence/local/nextgen-2026-10-30/b06-04-sharing-fixtures-20261030.json. 2026-10-31 export audit: a fresh CLI export produced a 1,109-byte archive with exactly pack.json and the declared blueprint; adapter=null; scan found no credential keys, absolute user paths, or runtime/session markers. tests.test_pack_export passed 10 with 1 symlink capability skip. Status remains PARTIAL because a second independent user/device has not imported the pack. Evidence: evidence/local/nextgen-2026-10-31/b06-04-synthetic-export-audit.json."
     },
     {
       "id": "B06-04-A3",
@@ -1388,7 +1391,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Claude Code、Codex CLI 与 Codex App 三种独立来源在同一总览中表达；Codex App/Claude Code 在线状态由进程证据决定，缺失来源不伪造成空闲。",
-      "status": "PARTIAL"
+      "status": "PASS",
+      "evidence": "PASS at L2 source-to-Host scene integration: test_live_scene_separates_health_data_quality_and_freshness_for_all_sources verifies distinct Codex CLI/App/Claude health and freshness rows, with App/Claude data-health indicators. The standard-release live provider selected all three sources and submitted three snapshots to one overview world: Codex CLI online/0 rows, Codex App online/128 bounded rows, Claude Code offline/128 bounded rows. The provider cleaned only its own temporary world. Pixel layout, freshness-label visibility, and UUID navigation remain in A4/A5. Codex App health wording is process-based (online/offline/unavailable) and no longer claims an App bridge. After replacing the stale App-bridge label with process-based wording, a second standard-release live-provider smoke submitted two refreshed App/Claude snapshots and cleaned its world."
     },
     {
       "id": "B08-02-A2",
@@ -1401,7 +1405,8 @@
       ],
       "level": "L2-L5",
       "criterion": "只读取显式配置的数据根与固定文件布局，设置项目/文件/输出上限；不把任意历史会话视为完整可枚举，范围受限时明确 partial。",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence": "PASS: fixed roots, known layouts, identity validation and limits are covered by the B08-02 tests. The local count-only smoke returned 128 bounded records per source (256 total), both partial; a real standard-release provider then submitted three successive snapshots and cleaned only its own world. No session values were logged."
     },
     {
       "id": "B08-02-A3",
@@ -1414,7 +1419,8 @@
       ],
       "level": "L2-L5",
       "criterion": "进程不存在但本地历史可读时来源为 offline 且历史仍显示；进程状态、数据可读性和读取新鲜度分别呈现，单源读取失败只影响该来源。",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence": "PASS: the real provider smoke observed Codex App online and Claude Code offline while both local readers returned bounded history; no Harness was started. The focused offline-history regression passes and source failure remains independent."
     },
     {
       "id": "B08-02-A4",
@@ -1427,8 +1433,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。",
-      "status": "PARTIAL",
-      "evidence": "STALLED by user request at the 2026-10-30 stage checkpoint: local process/disk adapter and count-only smoke pass, but current-release Agent Activity rendering and UUID-only navigation remain NOT_RUN after Computer Use was stopped by physical Escape. The overall B08-02 task remains IN_PROGRESS."
+      "status": "STALLED",
+      "evidence": "STALLED by user request at the 2026-10-30 stage checkpoint. Standard-release real snapshots and the synthetic scene regression verify the title, status, project, recent Agent output, and capability-gated UUID-only action in the scene contract; pixel-level Agent Activity cards, an actual title click, and target conversation loading remain NOT_RUN because the Computer Use native pipe is unavailable. The broader B08-02 task remains IN_PROGRESS."
     },
     {
       "id": "B08-02-A5",
@@ -1441,7 +1447,8 @@
       ],
       "level": "L2-L5",
       "criterion": "每个来源显示最近成功读取年龄及 stale/disconnected 边界；没有权威逐会话状态时显示 unknown，不将 source process online 等同所有会话 active。",
-      "status": "PARTIAL"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: local smoke returns separate process health, data health and last-read age; three live Host snapshots succeeded. The absence of authoritative per-session state remains unknown in focused tests; visible freshness labels in the current release remain NOT_RUN. Current 2026-10-31 standard Tauri release L2 recheck submitted three snapshots over 11 seconds: Codex CLI online/0 listed statuses, Codex App online/128 unknown statuses, Claude Code offline/128 unknown historical statuses; the provider cleaned its temporary world and did not start Harness processes or persist session text. A5 remains PARTIAL because freshness pixels were not observed. Evidence: evidence/local/nextgen-2026-10-31/b08-02-a5-live-source-snapshot.json."
     },
     {
       "id": "B08-03-A1",
@@ -1468,7 +1475,8 @@
       ],
       "level": "L1-L5",
       "criterion": "至少两种真实独立writer并发验收",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL at L2: examples/python/scope_probe.py connected with explicit 0.4-preview.1 to the current standard Tauri Host. Two separate authenticated writer sessions updated disjoint scopes while readers received filtered live snapshots; CAS/grant, parent revocation, stable 0.3 refusal, and own-world cleanup passed. Writer identities/data were synthetic and both sessions were orchestrated by one probe process, so this does not yet verify independent live Codex/Claude adapters. Evidence: evidence/local/nextgen-2026-10-30/b08-03-standard-tauri-scope-probe.json."
     },
     {
       "id": "B08-03-A3",
@@ -1481,7 +1489,8 @@
       ],
       "level": "L1-L5",
       "criterion": "动作路由跟随组件owner，不被后加入者截获",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL at L1-L2: scoped-interaction Rust Hub and loopback WebSocket tests pass owner-only event routing, wrong-owner ack refusal, parent-scope revocation fencing, pending-action closure, and stable 0.3 PROTOCOL_MISMATCH. Python SDK/preview schema/demo regressions pass. The current release provider created its temporary scoped world and cleaned it successfully, but no native button click was performed; real independent Codex/Claude writers and pixel/action-ack acceptance remain NOT_RUN. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a3-scoped-interaction-tests.json."
     },
     {
       "id": "B08-03-A4",
@@ -1494,7 +1503,8 @@
       ],
       "level": "L1-L5",
       "criterion": "单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL at L1-L4: 13 global-overview tests cover source switching, detail identity/status/freshness, back navigation, bounded pagination and stale-detail rejection; the prior native-release A7 capture confirms a single window and source/list/detail views. Current release synthetic provider scene/cleanup smoke also passes. The plan asks to preserve revocation state, which is not currently represented or verified end-to-end. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json."
     },
     {
       "id": "B08-03-A5",
@@ -1507,7 +1517,8 @@
       ],
       "level": "L1-L5",
       "criterion": "首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS at L1-L4: 13 global-overview tests verify the Codex parallel count, bounded Claude status preview, Codex/Claude session fields and progressive detail. The existing current-source Windows release Computer Use evidence (B08-03-A7) captured overview 520x421, Claude list 520x422, Codex list 520x512 and detail 520x477, with action receipts and bounded window height. Current standard release accepted the synthetic overview scene and cleaned its world. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a4-a5-overview-recheck.json."
     },
     {
       "id": "B08-03-A6",

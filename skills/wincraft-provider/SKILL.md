@@ -266,9 +266,14 @@ scope while retaining a separate world/window authority. Scope writers can apply
 atomic insert/remove/replace/move/props patches only inside their fixed subtree;
 root authority edits only unowned layout through `scope.structure.patch`. Parent
 revocation fences descendant generations, and scope readers receive filtered live
-`scope.snapshot` events plus `scope.revoked` notices. Cross-scope moves and
-component action routing remain unsupported. B07-03 also exposes explicitly shared,
-typed state slots with owner-scope CAS. Values are bounded scalars, reader grants are
+`scope.snapshot` events plus `scope.revoked` notices. Cross-scope moves remain
+unsupported. If the Host advertises `component_leases.scope_interactions`, call
+`client.require_scope_interactions()` before placing interactive components in an
+owned subtree. The Host sends `scope.interaction` only to that component's current
+scope writer; acknowledge with `client.scope_action_result()` and its current scoped
+lease. Stale world revisions and revoked scope generations fail closed. Interactive
+controls in unowned layout and native-window actions inside scopes remain unsupported.
+B07-03 also exposes explicitly shared, typed state slots with owner-scope CAS. Values are bounded scalars, reader grants are
 scope-generation specific, and slots never become provider business truth or arbitrary
 JSON references. Call `client.require_state_slots(version=1)` before using slot helpers.
 Follow the [scope preview guide](references/component-scopes-preview.md) exactly; use
@@ -335,6 +340,10 @@ at the original installation's configuration or put source values in evidence.
 - `examples/python/lease_probe.py` — protocol acceptance against the actual Rust host.
 - `examples/python/scope_probe.py` — opt-in 0.4 preview probe against the actual Rust host;
   uses synthetic scopes and cleans up only its temporary world.
+- `examples/python/scope_interaction_demo.py` — synthetic interactive scope provider;
+  it requires the optional `scope_interactions` capability, accepts only clicks routed
+  to its owned scope, and acknowledges with that scope's current lease. It creates and
+  destroys only its temporary world; native OS actions are not part of this demo.
 - `examples/python/composition_probe.py` — B07-04 real-source fault-isolation probe using
   an explicit staged TrafficMonitor snapshot path and an open Obsidian vault; both source
   integrations are read-only and its temporary WinCraft world is destroyed.
@@ -345,26 +354,26 @@ at the original installation's configuration or put source values in evidence.
   Codex/Claude Code source switcher using synthetic activity only. Local `view.*`
   navigation does not grant access to live sessions or provide approval/write actions.
 - `examples/integrations/agent-board/live_provider.py` and `live_sources.py` — read-only
-  local Harness adapters. Claude Code uses `agents --json`; Codex CLI uses the
-  experimental app-server `thread/list` method with `useStateDbOnly=true`; Codex Desktop
-  local fallback filters a read-only SQLite state database by the exact `Codex Desktop`
-  originator and keeps missing status explicitly unknown. A matched local rollout tail
-  contributes only a bounded, sanitized `agent_message`. The Codex CLI state database
-  and Codex App connector remain distinct sources; never merge their counts as one source.
-  Claude `agents --json` reports background-agent records, not every interactive Claude
-  conversation. A successful CLI query proves that the command responded, not that the
-  Claude Code UI or an interactive session is open; keep source reachability separate from
-  agent status and display the last successful read age.
-- When an authorized Codex App connector is available to the calling Agent, that Agent can
-  send a whitelisted JSONL snapshot to `live_provider.py --codex-app-bridge` over stdin:
-  UUID thread id, title, status, project label, source order, and a bounded last-output
-  excerpt. `list_threads`/`list_projects` supply sidebar metadata; use `read_thread` only
-  with a small turn limit and output cap when an exact last assistant message is needed.
-  Do not send full tool results, cwd, credentials, complete turn histories, or JSONL
-  rollouts. The Provider treats every title/output as untrusted plain text and does not
-  execute it. Having Codex App open does not automatically populate the live bridge. The
-  local fallback can expose bounded title/project metadata, with status unknown until a
-  connector snapshot arrives; if neither source is available, report the source as waiting.
+  local Harness adapters. Codex CLI uses the local app-server `thread/list` status adapter
+  with `useStateDbOnly=true`; it is independent from the Codex App source. Codex App reads
+  bounded `CODEX_HOME/state_*.sqlite` metadata filtered by the exact `Codex Desktop`
+  originator and only reads recent rollout tails whose `session_meta` UUID matches the
+  selected thread. Claude Code reads bounded project JSONL files and the known
+  `session/subagents/agent-*.jsonl` layout, validating session and agent identities under
+  the configured data root. For Codex App and Claude Code, OS process metadata determines
+  online/offline state; their local data directories supply session details and history.
+  Neither App nor CLI is started for collection. Keep process state, data readability,
+  per-session status, and last successful read age separate; absent authoritative status
+  remains `unknown`, while readable history remains available when the process is offline.
+  Do not add an App snapshot relay or invoke a Harness command to discover sessions.
+- `examples/integrations/model_quota/README.md` and
+  `examples/integrations/model_quota/provider.py` — TeamSense cached
+  model-quota projection through its fixed `GET /v1/integrations/models` `data:read`
+  endpoint. `--demo` uses synthetic values without network access. The endpoint omits
+  account IDs and Codex quota, so keep both unknown; never read provider credentials or
+  use the refresh/admin/vendor API paths. Do not swap in the broader `/v1/dashboard`
+  response: it contains unrelated finance/project summaries and its quota rows do not
+  establish account or window identity.
 - Codex App title links require `codex_thread_navigation`. The host accepts only a typed
   UUID and constructs `codex://threads/<UUID>` itself; never send a general URL or shell
   command. Clicks are explicit user actions, and OS acceptance is not proof that the

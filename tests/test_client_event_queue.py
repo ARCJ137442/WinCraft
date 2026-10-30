@@ -51,6 +51,12 @@ class EventQueueTests(unittest.TestCase):
             "world-b",
         )
 
+    def test_scope_interaction_world_id_is_read_from_the_data_envelope(self):
+        self.assertEqual(
+            event_world_id({"event": "scope.interaction", "data": {"world_id": "world-scope"}}),
+            "world-scope",
+        )
+
     def test_invalid_or_missing_world_identity_fails_closed(self):
         self.assertIsNone(event_world_id({"event": "world.deleted", "world_id": 42}))
         self.assertIsNone(event_world_id({"event": "world.deleted", "data": {"id": "world-c"}}))

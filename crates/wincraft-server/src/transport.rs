@@ -1734,6 +1734,221 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn scoped_interaction_event_and_ack_are_bound_to_the_component_scope_writer() {
+        let runtime_dir =
+            std::env::temp_dir().join(format!("wincraft-scope-action-{}", Uuid::new_v4()));
+        let _cleanup = TestRuntimeDirectory(runtime_dir.clone());
+        let hub = Hub::new(false);
+        let server = start(hub.clone(), "127.0.0.1:0".parse().unwrap(), &runtime_dir)
+            .await
+            .expect("loopback server starts");
+        let (mut authority, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope-action-authority",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let (mut focus, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope-action-focus",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let (mut tasks, _) = connect_test_provider_with_protocol(
+            &server.descriptor,
+            "scope-action-tasks",
+            COMPONENT_LEASES_PREVIEW_PROTOCOL,
+        )
+        .await;
+        let (mut stable, _) =
+            connect_test_provider(&server.descriptor, "scope-action-stable-03").await;
+
+        let capabilities = rpc(&mut focus, "caps", "host.capabilities", json!({})).await;
+        assert_eq!(
+            capabilities["result"]["component_leases"]["scope_interactions"]["version"],
+            1
+        );
+        let created = rpc(
+            &mut authority,
+            "create",
+            "world.create",
+            json!({"window":{"title":"synthetic scope action"},"claim":true}),
+        )
+        .await;
+        let world_id = created["result"]["world"]["id"].as_str().unwrap();
+        let world_id_uuid = world_id.parse::<Uuid>().unwrap();
+        let world_lease = created["result"]["lease"].clone();
+        let scene = json!({
+            "root":{"id":"root","kind":"stack","children":[
+                {"id":"focus-panel","kind":"stack","children":[
+                    {"id":"focus-action","kind":"button","props":{"label":"Refresh focus","action":"focus.refresh"},"children":[]}
+                ]},
+                {"id":"tasks-panel","kind":"stack","children":[
+                    {"id":"tasks-action","kind":"button","props":{"label":"Refresh tasks","action":"tasks.refresh"},"children":[]}
+                ]}
+            ]},
+            "data":{"focus":{},"tasks":{}}
+        });
+        let replaced = rpc(
+            &mut authority,
+            "replace",
+            "scene.replace",
+            json!({
+                "world_id":world_id,
+                "lease":world_lease,
+                "expected_revision":created["result"]["world"]["revision"],
+                "scene":scene
+            }),
+        )
+        .await;
+        assert_eq!(replaced["ok"], true);
+        let partitioned = rpc(
+            &mut authority,
+            "partition",
+            "scope.partition",
+            json!({
+                "world_id":world_id,
+                "lease":world_lease,
+                "expected_revision":replaced["result"]["revision"],
+                "scopes":[
+                    {"root_node_id":"focus-panel","data_namespace":"focus"},
+                    {"root_node_id":"tasks-panel","data_namespace":"tasks"}
+                ]
+            }),
+        )
+        .await;
+        assert_eq!(partitioned["ok"], true);
+        let grants = partitioned["result"]["scopes"].as_array().unwrap();
+        let focus_grant = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "focus-panel")
+            .unwrap();
+        let tasks_grant = grants
+            .iter()
+            .find(|grant| grant["root_node_id"] == "tasks-panel")
+            .unwrap();
+        let focus_join = rpc(
+            &mut focus,
+            "join-focus",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus_grant["scope_id"],
+                "generation":focus_grant["generation"],
+                "join_key":focus_grant["join_key"],
+                "mode":"write"
+            }),
+        )
+        .await;
+        let tasks_join = rpc(
+            &mut tasks,
+            "join-tasks",
+            "scope.join",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks_grant["scope_id"],
+                "generation":tasks_grant["generation"],
+                "join_key":tasks_grant["join_key"],
+                "mode":"write"
+            }),
+        )
+        .await;
+        assert_eq!(focus_join["ok"], true);
+        assert_eq!(tasks_join["ok"], true);
+
+        let current = hub.renderer_snapshot(world_id_uuid).unwrap();
+        let event_id = hub
+            .interact_with_source(
+                world_id_uuid,
+                "focus-action",
+                Value::Null,
+                wincraft_core::InteractionSource::Click,
+                current.revision,
+            )
+            .unwrap();
+        let event = next_event_matching(&mut focus, "scope.interaction", |message| {
+            message["data"]["id"] == event_id.to_string()
+        })
+        .await;
+        assert_eq!(event["data"]["scope_id"], focus_grant["scope_id"]);
+        assert_eq!(event["data"]["scope_generation"], focus_grant["generation"]);
+        assert_eq!(event["data"]["component_id"], "focus-action");
+        assert_eq!(event["data"]["action"], "focus.refresh");
+
+        let wrong_owner_ack = rpc(
+            &mut tasks,
+            "wrong-owner-ack",
+            "scope.action.result",
+            json!({
+                "world_id":world_id,
+                "lease":tasks_join["result"]["lease"],
+                "event_id":event_id,
+                "ok":true
+            }),
+        )
+        .await;
+        assert_eq!(wrong_owner_ack["ok"], false);
+        assert_eq!(wrong_owner_ack["error"]["code"], "SCOPE_ACTION_FORBIDDEN");
+
+        let stable_capabilities =
+            rpc(&mut stable, "stable-caps", "host.capabilities", json!({})).await;
+        assert_eq!(stable_capabilities["result"]["component_leases"], false);
+        let stable_ack = rpc(
+            &mut stable,
+            "stable-ack",
+            "scope.action.result",
+            json!({
+                "world_id":world_id,
+                "lease":focus_join["result"]["lease"],
+                "event_id":event_id,
+                "ok":true
+            }),
+        )
+        .await;
+        assert_eq!(stable_ack["ok"], false);
+        assert_eq!(stable_ack["error"]["code"], "PROTOCOL_MISMATCH");
+
+        let acknowledged = rpc(
+            &mut focus,
+            "owner-ack",
+            "scope.action.result",
+            json!({
+                "world_id":world_id,
+                "lease":focus_join["result"]["lease"],
+                "event_id":event_id,
+                "ok":true,
+                "message":"synthetic focus update"
+            }),
+        )
+        .await;
+        assert_eq!(acknowledged["ok"], true);
+        let action = hub
+            .renderer_snapshot(world_id_uuid)
+            .unwrap()
+            .actions
+            .into_iter()
+            .find(|action| action.id == event_id)
+            .unwrap();
+        assert_eq!(action.status, "ok");
+        assert_eq!(action.message.as_deref(), Some("synthetic focus update"));
+
+        let authority_lease = partitioned["result"]["authority_lease"].clone();
+        let destroyed = rpc(
+            &mut authority,
+            "destroy",
+            "world.destroy",
+            json!({"world_id":world_id,"lease":authority_lease}),
+        )
+        .await;
+        assert_eq!(destroyed["ok"], true);
+        authority.close(None).await.expect("authority closes");
+        focus.close(None).await.expect("focus writer closes");
+        tasks.close(None).await.expect("tasks writer closes");
+        stable.close(None).await.expect("stable provider closes");
+        server.shutdown().await;
+    }
+
+    #[tokio::test]
     async fn dropping_server_stops_loopback_listener_and_removes_descriptor() {
         let runtime_dir =
             std::env::temp_dir().join(format!("wincraft-server-drop-{}", Uuid::new_v4()));

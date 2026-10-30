@@ -51,7 +51,7 @@ npm run desktop:dev
 
 ```powershell
 npm run desktop:build
-Start-Process -FilePath '.\target\release\wincraft-desktop.exe' -ArgumentList '--open-manager' -WindowStyle Hidden
+Start-Process -FilePath '.\target\release\wincraft-desktop.exe' -ArgumentList '--open-manager'
 ```
 
 ```powershell

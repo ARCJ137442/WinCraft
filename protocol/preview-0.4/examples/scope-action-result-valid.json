@@ -1,0 +1,16 @@
+{
+  "id": "scope-action-ack-1",
+  "method": "scope.action.result",
+  "params": {
+    "world_id": "00000000-0000-4000-8000-000000000001",
+    "lease": {
+      "scope_id": "00000000-0000-4000-8000-000000000002",
+      "lease_id": "00000000-0000-4000-8000-000000000003",
+      "epoch": 1,
+      "generation": 1
+    },
+    "event_id": "00000000-0000-4000-8000-000000000004",
+    "ok": true,
+    "message": "Synthetic scope action confirmed"
+  }
+}

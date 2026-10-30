@@ -2,7 +2,7 @@
 {
   "doc_id": "plan__TASKS",
   "title": "实施任务与可验收交付（生成视图）",
-  "updated_at": "2026-10-30",
+  "updated_at": "2026-10-31",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -760,14 +760,14 @@ cargo test --workspace
 
 **前置：** B05-01；**需求：** R013, R063
 
-**输入：** TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权。
+**输入：** TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。WinCraft 只读 Provider 与合成回归已实现；未连接真实账号。
 
-**定位：** `proposed: examples/integrations/teamsense/`；`proposed: contracts/usage-observation.schema.json`
+**定位：** `examples/integrations/model_quota/`；`proposed: contracts/usage-observation.schema.json`
 
 ### 实施
-1. 核对TeamSense真实只读API、身份/账号/窗口数据口径和授权；不读取密钥、不调用写API
-2. 将服务器负载与quota分开建字段，带单位/更新时间/来源
-3. 未提供官方总额度时标unknown或estimate，不推导伪余额
+1. 核对 TeamSense 真实只读 API、身份/账号/窗口口径与授权；本地文档/路由已确认 data:read GET，账户标识及真实授权仍待验证；不读取密钥、不调用写 API
+2. 将 quota 单独建字段并保留 provider、currency/model/window、单位与缓存更新时间；本机 UI 将 status/freshness/API 连接分别呈现，不合并单位或周期
+3. 未提供官方总额度时标 unknown；Codex 不在此 API，账户 ID 缺失，均不推导伪余额或归属
 
 ### 验收
 - **B05-02-A1** 账号/提供商/窗口期不同数据不混算
@@ -777,12 +777,13 @@ cargo test --workspace
 **验证层/目录：** L0-L5 / current WinCraft checkout
 
 ```text
-npm run check
+python -m unittest discover -s tests -p test_team_sense_quota.py -v
+npm run check:python
 python scripts/check_contracts.py
 cargo test --workspace
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED
+**说明：** 合成回归检查 provider/window/currency 隔离、unknown/zero、新鲜度/断线、脱敏和固定 GET；合成数据不替代真实账号接口；真实服务没有 token 时保持 NOT_RUN；原生窗口像素须另行 Computer Use 或人工验收
 
 **回滚：** 停只读Provider；Host与服务无业务修改。
 

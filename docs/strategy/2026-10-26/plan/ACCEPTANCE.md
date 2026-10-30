@@ -2,7 +2,7 @@
 {
   "doc_id": "plan__ACCEPTANCE",
   "title": "验收矩阵（生成视图）",
-  "updated_at": "2026-10-30",
+  "updated_at": "2026-10-31",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -84,14 +84,14 @@
 | B04-03-A2 | B04-03 | L1-L4 | 断线/撤销/退出后无残留绑定 | PARTIAL |
 | B04-03-A3 | B04-03 | L1-L4 | IME/输入框/平台组合键不被默认破坏 | PARTIAL |
 | B04-04-A1 | B04-04 | L2-L5 | 可以复现一项实际工作流而非只弹空窗 | NOT_RUN |
-| B04-04-A2 | B04-04 | L2-L5 | 无法实现的功能不标等价 | NOT_RUN |
-| B04-04-A3 | B04-04 | L2-L5 | 不复制未审许可源码进Host | NOT_RUN |
+| B04-04-A2 | B04-04 | L2-L5 | 无法实现的功能不标等价 | PASS |
+| B04-04-A3 | B04-04 | L2-L5 | 不复制未审许可源码进Host | PASS |
 | B05-01-A1 | B05-01 | L1-L5 | 任意网页不能拿到token或直接调用Host | NOT_RUN |
 | B05-01-A2 | B05-01 | L1-L5 | 保留现有Origin拒绝策略 | NOT_RUN |
 | B05-01-A3 | B05-01 | L1-L5 | 桥接断开后来源stale而非继续显示实时 | NOT_RUN |
-| B05-02-A1 | B05-02 | L0-L5 | 账号/提供商/窗口期不同数据不混算 | NOT_RUN |
-| B05-02-A2 | B05-02 | L0-L5 | 数据过期和断线清晰 | NOT_RUN |
-| B05-02-A3 | B05-02 | L0-L5 | 真实接口未定位时只有合成演示，不改TeamSense | NOT_RUN |
+| B05-02-A1 | B05-02 | L0-L5 | 账号/提供商/窗口期不同数据不混算 | PARTIAL |
+| B05-02-A2 | B05-02 | L0-L5 | 数据过期和断线清晰 | PARTIAL |
+| B05-02-A3 | B05-02 | L0-L5 | 真实接口未定位时只有合成演示，不改TeamSense | PASS |
 | B05-03-A1 | B05-03 | L1-L5 | 不承诺任意网页一键变原生APP | NOT_RUN |
 | B05-03-A2 | B05-03 | L1-L5 | 页面关闭/导航后错误地绑定旧对话被拒绝 | NOT_RUN |
 | B05-03-A3 | B05-03 | L1-L5 | 用户发送内容有可见预览和回执，无法验证时返回unknown | NOT_RUN |
@@ -125,16 +125,16 @@
 | B08-01-A1 | B08-01 | L1-L2 | 断线不是任务完成或空闲 | PASS |
 | B08-01-A2 | B08-01 | L1-L2 | 模型名/显示名不作身份 | PASS |
 | B08-01-A3 | B08-01 | L1-L2 | 只读面板没有批准/写文件/继续执行权限 | PASS |
-| B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源在同一总览中表达；Codex App/Claude Code 在线状态由进程证据决定，缺失来源不伪造成空闲。 | PARTIAL |
+| B08-02-A1 | B08-02 | L2-L5 | Claude Code、Codex CLI 与 Codex App 三种独立来源在同一总览中表达；Codex App/Claude Code 在线状态由进程证据决定，缺失来源不伪造成空闲。 | PASS |
 | B08-02-A2 | B08-02 | L2-L5 | 只读取显式配置的数据根与固定文件布局，设置项目/文件/输出上限；不把任意历史会话视为完整可枚举，范围受限时明确 partial。 | PASS |
 | B08-02-A3 | B08-02 | L2-L5 | 进程不存在但本地历史可读时来源为 offline 且历史仍显示；进程状态、数据可读性和读取新鲜度分别呈现，单源读取失败只影响该来源。 | PASS |
-| B08-02-A4 | B08-02 | L2-L5 | Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。 | PARTIAL |
+| B08-02-A4 | B08-02 | L2-L5 | Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。 | STALLED |
 | B08-02-A5 | B08-02 | L2-L5 | 每个来源显示最近成功读取年龄及 stale/disconnected 边界；没有权威逐会话状态时显示 unknown，不将 source process online 等同所有会话 active。 | PARTIAL |
 | B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | PASS |
-| B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | NOT_RUN |
-| B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | NOT_RUN |
-| B08-03-A4 | B08-03 | L1-L5 | 单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态 | NOT_RUN |
-| B08-03-A5 | B08-03 | L1-L5 | 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口 | NOT_RUN |
+| B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | PARTIAL |
+| B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | PARTIAL |
+| B08-03-A4 | B08-03 | L1-L5 | 单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态 | PARTIAL |
+| B08-03-A5 | B08-03 | L1-L5 | 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口 | PASS |
 | B08-03-A6 | B08-03 | L1-L2 | 合成总览显示Codex并行量与Claude会话状态；最多3条预览，来源/详情/返回/分页动作均为view.*本地导航，拒绝过时详情组件且不传raw source status或实例ID。 | PASS |
 | B08-03-A7 | B08-03 | L3-L4 | Windows Tauri release中Computer Use验证单窗口总览、Codex/Claude列表与会话详情；尺寸保持在已观察的520×421至520×512首屏、520×477详情范围，动作回执确认，测试世界关闭后管理器计数归零。 | PASS |
 | B08-03-A8 | B08-03 | L1-L5 | 总览同时显示Codex App、Codex CLI与Claude Code各自的来源健康和最后成功更新时间；Codex App列表逐项显示会话名、状态、项目及最近输出，详情渐进披露 | PARTIAL |

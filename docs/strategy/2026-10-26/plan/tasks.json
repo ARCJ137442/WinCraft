@@ -1145,7 +1145,7 @@
       "id": "B04-03",
       "batch": "B04",
       "title": "授权快捷键资源",
-      "status": "IN_PROGRESS",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B01-02",
         "B04-01"
@@ -1204,7 +1204,7 @@
       "id": "B04-04",
       "batch": "B04",
       "title": "TouchAI窄用例与等价性清单",
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "depends_on": [
         "B04-03",
         "B02-02"
@@ -1263,7 +1263,7 @@
       "id": "B05-01",
       "batch": "B05",
       "title": "浏览器Native Messaging桥接",
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "depends_on": [
         "B01-03",
         "B01-04"
@@ -1323,7 +1323,7 @@
       "id": "B05-02",
       "batch": "B05",
       "title": "TeamSense只读在线服务投影",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B05-01"
       ],
@@ -1332,14 +1332,14 @@
         "R063"
       ],
       "targets": [
-        "proposed: examples/integrations/teamsense/",
+        "examples/integrations/model_quota/",
         "proposed: contracts/usage-observation.schema.json"
       ],
-      "inputs": "TeamSense本地仓库与Codex用量采集器已定位并审阅；WinCraft实时投影仍需核实正式只读API、账号/窗口口径与授权。",
+      "inputs": "TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。WinCraft 只读 Provider 与合成回归已实现；未连接真实账号。",
       "implementation_steps": [
-        "核对TeamSense真实只读API、身份/账号/窗口数据口径和授权；不读取密钥、不调用写API",
-        "将服务器负载与quota分开建字段，带单位/更新时间/来源",
-        "未提供官方总额度时标unknown或estimate，不推导伪余额"
+        "核对 TeamSense 真实只读 API、身份/账号/窗口口径与授权；本地文档/路由已确认 data:read GET，账户标识及真实授权仍待验证；不读取密钥、不调用写 API",
+        "将 quota 单独建字段并保留 provider、currency/model/window、单位与缓存更新时间；本机 UI 将 status/freshness/API 连接分别呈现，不合并单位或周期",
+        "未提供官方总额度时标 unknown；Codex 不在此 API，账户 ID 缺失，均不推导伪余额或归属"
       ],
       "acceptance": [
         {
@@ -1357,14 +1357,15 @@
       ],
       "verification_level": "L0-L5",
       "verification_commands": [
-        "npm run check",
+        "python -m unittest discover -s tests -p test_team_sense_quota.py -v",
+        "npm run check:python",
         "python scripts/check_contracts.py",
         "cargo test --workspace"
       ],
       "verification_workdir": "current WinCraft checkout",
       "verification_instructions": [
-        "先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例",
-        "原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED"
+        "合成回归检查 provider/window/currency 隔离、unknown/zero、新鲜度/断线、脱敏和固定 GET；合成数据不替代真实账号接口",
+        "真实服务没有 token 时保持 NOT_RUN；原生窗口像素须另行 Computer Use 或人工验收"
       ],
       "priority": "P1",
       "evidence_required": [
@@ -1381,7 +1382,7 @@
       "id": "B05-03",
       "batch": "B05",
       "title": "网页聊天语义对象与动作边界",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B05-01",
         "B03-02"
@@ -1440,7 +1441,7 @@
       "id": "B05-04",
       "batch": "B05",
       "title": "主动语音输入与朗读POC",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B05-03",
         "B02-04"
@@ -2349,7 +2350,7 @@
       "id": "B09-02",
       "batch": "B09",
       "title": "Android通知摘要单设备验证",
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "depends_on": [
         "B09-01",
         "B00-03"
@@ -2768,7 +2769,7 @@
       "id": "B11-01",
       "batch": "B11",
       "title": "持续兼容与资源性能基线",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B03-04",
         "B02-04"
@@ -2891,7 +2892,7 @@
       "id": "B11-03",
       "batch": "B11",
       "title": "macOS/Linux能力矩阵与受限试构建",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B01-01",
         "B11-01"
@@ -2950,7 +2951,7 @@
       "id": "B11-04",
       "batch": "B11",
       "title": "集体治理与公众发布准备",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B11-02",
         "B00-02"

@@ -121,6 +121,159 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.assertEqual(scene['data']['summary']['codex_app_updated'], '本轮未查询')
         self.assertEqual(scene['data']['summary']['codex_app_sessions'], 0)
 
+    def test_live_scene_separates_health_data_quality_and_freshness_for_all_sources(self):
+        projection = copy.deepcopy(self.projection)
+        projection['data_mode_label'] = '本机进程与文件实时只读'
+        projection['source_health'] = {
+            'codex': 'online',
+            'codex-app': 'online',
+            'claude-code': 'offline',
+        }
+        projection['source_data_health'] = {
+            'codex-app': 'partial',
+            'claude-code': 'partial',
+        }
+        projection['source_age_seconds'] = {
+            'codex': 0,
+            'codex-app': 4,
+            'claude-code': 12,
+        }
+        projection['source_freshness'] = {
+            'codex': 'fresh',
+            'codex-app': 'fresh',
+            'claude-code': 'fresh',
+        }
+
+        scene, _, _ = build_global_overview_scene(
+            projection,
+            GlobalOverviewState(),
+        )
+
+        schema = json.loads((ROOT / 'protocol' / 'scene.schema.json').read_text(encoding='utf-8'))
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(scene)
+        nodes = {node['id']: node for node in walk_nodes(scene['root'])}
+        source_fields = {
+            'codex': ('codex_cli_health', 'codex_cli_updated'),
+            'codex-app': ('codex_app_health', 'codex_app_updated'),
+            'claude-code': ('claude_health', 'claude_updated'),
+        }
+        for source_id, (health_key, freshness_key) in source_fields.items():
+            self.assertIn(f'global-{source_id}-health', nodes)
+            freshness = nodes[f'global-{source_id}-freshness']
+            self.assertEqual(
+                freshness['props']['text'],
+                {'$path': f'/summary/{freshness_key}'},
+            )
+            self.assertTrue(scene['data']['summary'][freshness_key])
+
+        self.assertEqual(scene['data']['summary']['codex_health'], '进程在线')
+        self.assertEqual(scene['data']['summary']['codex_cli_health'], 'CLI 可查询')
+        self.assertEqual(scene['data']['summary']['codex_app_health'], '进程在线')
+        self.assertEqual(scene['data']['summary']['claude_health'], '进程离线')
+        self.assertNotIn('桥接', scene['data']['summary']['codex_app_health'])
+        self.assertIn('0 秒前', scene['data']['summary']['codex_cli_updated'])
+        self.assertIn('4 秒前', scene['data']['summary']['codex_app_updated'])
+        self.assertIn('12 秒前', scene['data']['summary']['claude_updated'])
+        self.assertIn('global-codex-app-data-health', nodes)
+        self.assertIn('global-claude-code-data-health', nodes)
+
+        offline_projection = copy.deepcopy(projection)
+        offline_projection['source_health']['codex-app'] = 'offline'
+        offline_scene, _, _ = build_global_overview_scene(
+            offline_projection,
+            GlobalOverviewState(),
+        )
+        self.assertEqual(
+            offline_scene['data']['summary']['codex_app_health'],
+            '进程离线',
+        )
+
+        unavailable_projection = copy.deepcopy(projection)
+        unavailable_projection['source_health']['codex-app'] = 'unavailable'
+        unavailable_scene, _, _ = build_global_overview_scene(
+            unavailable_projection,
+            GlobalOverviewState(),
+        )
+        self.assertEqual(
+            unavailable_scene['data']['summary']['codex_app_health'],
+            '进程状态不可用',
+        )
+
+    def test_codex_app_preview_binds_name_status_project_output_and_uuid_link(self):
+        projection = copy.deepcopy(self.projection)
+        projection['data_mode_label'] = '本机进程与文件实时只读'
+        projection['source_health'] = {
+            'codex': 'online',
+            'codex-app': 'online',
+            'claude-code': 'offline',
+        }
+        projection['source_data_health'] = {
+            'codex-app': 'local_state',
+            'claude-code': 'partial',
+        }
+        projection['source_age_seconds'] = {
+            'codex': 0,
+            'codex-app': 2,
+            'claude-code': 12,
+        }
+        projection['source_freshness'] = {
+            'codex': 'fresh',
+            'codex-app': 'fresh',
+            'claude-code': 'fresh',
+        }
+        projection['codex_app_links_enabled'] = True
+        session = copy.deepcopy(projection['sessions'][0])
+        identity = tuple(session['identity'])
+        session.update(
+            {
+                'identity': (*identity[:3], 'synthetic-codex-app-thread'),
+                'source_type_label': 'Codex App',
+                'display_name': 'Synthetic Codex App title',
+                'normalized_status': 'running',
+                'status_label': '运行中',
+                'freshness': 'fresh',
+                'freshness_label': '刚刚读取（2 秒前）',
+                'project_label': 'SyntheticProject',
+                'summary': 'Synthetic latest agent output',
+                'last_output_kind': 'agent_message',
+                'codex_app_thread_id': '00000000-0000-4000-8000-000000000042',
+                'is_leaf': True,
+            }
+        )
+        projection['sessions'].append(session)
+
+        scene, _, _ = build_global_overview_scene(
+            projection,
+            GlobalOverviewState(),
+        )
+
+        schema = json.loads((ROOT / 'protocol' / 'scene.schema.json').read_text(encoding='utf-8'))
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(scene)
+        self.assertEqual(len(scene['data']['codex_app_preview']), 1)
+        preview = scene['data']['codex_app_preview'][0]
+        self.assertEqual(preview['status'], '运行中')
+        self.assertEqual(preview['freshness'], '刚刚读取（2 秒前）')
+        self.assertEqual(preview['project'], '项目：SyntheticProject')
+        self.assertEqual(preview['output'], '最近 Agent 输出：Synthetic latest agent output')
+
+        nodes = list(walk_nodes(scene['root']))
+        title = next(
+            node
+            for node in nodes
+            if node['id'].startswith('global-codex-app-preview-name-')
+        )
+        self.assertEqual(title['kind'], 'button')
+        self.assertEqual(title['props']['label'], 'Synthetic Codex App title')
+        self.assertEqual(title['props']['action'], 'view.open_detail')
+        self.assertEqual(
+            title['props']['native_window_action'],
+            {
+                'application': 'codex_app',
+                'operation': 'open_thread',
+                'thread_id': '00000000-0000-4000-8000-000000000042',
+            },
+        )
+
     def test_source_switch_and_detail_are_progressive_and_return_to_same_source(self):
         source_state = transition_view(
             GlobalOverviewState(), "view.source.claude_code", "", {}, 1

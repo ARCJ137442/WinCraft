@@ -239,6 +239,160 @@ fn scope_is_read_only(node: &Node) -> bool {
         && node.children.iter().all(scope_is_read_only)
 }
 
+fn scope_tree_supports_interactions(node: &Node) -> bool {
+    !node.props.contains_key("native_window_action")
+        && node.children.iter().all(scope_tree_supports_interactions)
+}
+
+fn unowned_layout_is_read_only(node: &Node, owned_roots: &[Node]) -> bool {
+    if owned_roots.iter().any(|root| root.find(&node.id).is_some()) {
+        return true;
+    }
+    !(node.kind.interactive() || node.kind == Kind::KeyValue && node.props.contains_key("action"))
+        && node
+            .children
+            .iter()
+            .all(|child| unowned_layout_is_read_only(child, owned_roots))
+}
+
+fn action_for_interaction(
+    node: &Node,
+    value: &Value,
+    source: InteractionSource,
+    data: &Value,
+) -> Result<String> {
+    let key_value_action =
+        node.kind == Kind::KeyValue && node.props.get("action").and_then(Value::as_str).is_some();
+    if !node.kind.interactive() && !key_value_action {
+        return Err(Fault::new("FORBIDDEN", "component is not interactive"));
+    }
+    if node.kind == Kind::KeyValue {
+        let key = value
+            .as_object()
+            .filter(|record| record.len() == 1)
+            .and_then(|record| record.get("key"))
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if source != InteractionSource::Click || key.is_empty() || key.chars().count() > 64 {
+            return Err(Fault::new(
+                "INVALID_EVENT",
+                "key_value action must be a click with one bounded row key",
+            ));
+        }
+    }
+    let disabled = node
+        .props
+        .get("disabled")
+        .map(|value| {
+            if let Some(path) = value.get("$path").and_then(Value::as_str) {
+                data.pointer(path).and_then(Value::as_bool).unwrap_or(false)
+            } else {
+                value.as_bool().unwrap_or(false)
+            }
+        })
+        .unwrap_or(false);
+    if disabled {
+        return Err(Fault::new("FORBIDDEN", "component disabled"));
+    }
+    match node.kind {
+        Kind::Input | Kind::TextArea => {
+            let max_bytes = if node.kind == Kind::TextArea {
+                32_768
+            } else {
+                4_096
+            };
+            if !value.is_string() || value.as_str().unwrap().len() > max_bytes {
+                return Err(Fault::new(
+                    "INVALID_EVENT",
+                    format!("text input must be at most {max_bytes} UTF-8 bytes"),
+                ));
+            }
+        }
+        Kind::Button => {
+            if !value.is_null() {
+                return Err(Fault::new("INVALID_EVENT", "button carries null value"));
+            }
+        }
+        Kind::KeyValue => {}
+        _ => unreachable!(),
+    }
+    let action_property = match source {
+        InteractionSource::Click => "action",
+        InteractionSource::ContextMenu => "context_action",
+        InteractionSource::Escape => {
+            if node.kind != Kind::Button
+                || node.props.get("shortcut").and_then(Value::as_str) != Some("escape")
+            {
+                return Err(Fault::new("FORBIDDEN", "Escape action is not registered"));
+            }
+            "shortcut_action"
+        }
+        InteractionSource::ControlEnter => {
+            if node.kind != Kind::TextArea
+                || node.props.get("shortcut").and_then(Value::as_str) != Some("ctrl_enter")
+            {
+                return Err(Fault::new(
+                    "FORBIDDEN",
+                    "Ctrl+Enter action is not registered",
+                ));
+            }
+            "shortcut_action"
+        }
+    };
+    node.props
+        .get(action_property)
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .ok_or_else(|| Fault::new("FORBIDDEN", "component has no registered context action"))
+}
+
+struct PendingAction<'a> {
+    event_id: Uuid,
+    component_id: &'a str,
+    action: String,
+    writer: Uuid,
+    lease_epoch: u64,
+    scope_id: Option<Uuid>,
+    scope_generation: Option<u64>,
+}
+
+fn record_pending_action(world: &mut World, pending: PendingAction<'_>, now: u64) -> Result<()> {
+    if world
+        .actions
+        .iter()
+        .filter(|action| action.status == "pending")
+        .count()
+        >= 32
+    {
+        return Err(Fault::new("LIMIT", "too many pending actions"));
+    }
+    while world.actions.len() >= 48 {
+        if let Some(index) = world
+            .actions
+            .iter()
+            .position(|action| action.status != "pending")
+        {
+            world.actions.remove(index);
+        } else {
+            break;
+        }
+    }
+    world.actions.push(ActionState {
+        id: pending.event_id,
+        component_id: pending.component_id.into(),
+        action: pending.action,
+        status: "pending".into(),
+        message: None,
+        writer: Some(pending.writer),
+        lease_epoch: pending.lease_epoch,
+        scope_id: pending.scope_id,
+        scope_generation: pending.scope_generation,
+        deadline: now + ACTION_TIMEOUT_MS,
+    });
+    world.sequence += 1;
+    Ok(())
+}
+
 fn revoke_component_scope(scope: &mut ComponentScope) -> bool {
     let Some(writer) = scope.writer.take() else {
         return false;
@@ -578,10 +732,10 @@ impl Engine {
                 .find(&definition.root_node_id)
                 .cloned()
                 .ok_or_else(|| Fault::new("NOT_FOUND", "scope root component is missing"))?;
-            if !scope_is_read_only(&root) {
+            if !scope_tree_supports_interactions(&root) {
                 return Err(Fault::new(
-                    "SCOPE_INTERACTIONS_UNAVAILABLE",
-                    "B07-01 scopes are display/data-only until component action routing is implemented",
+                    "SCOPE_NATIVE_ACTION_UNAVAILABLE",
+                    "native window actions cannot be owned by a component scope",
                 ));
             }
             let mut local_view = root.clone();
@@ -600,6 +754,12 @@ impl Engine {
                     ));
                 }
             }
+        }
+        if !unowned_layout_is_read_only(&world.scene.root, &roots) {
+            return Err(Fault::new(
+                "SCOPE_INTERACTIONS_UNOWNED",
+                "interactive components must belong to an owned component scope",
+            ));
         }
         validate_parent_layout_bindings(&world.scene.root, &roots, &namespaces)?;
 
@@ -1183,10 +1343,10 @@ impl Engine {
                             "insert parent is outside this component scope",
                         ));
                     }
-                    if !scope_is_read_only(node) {
+                    if !scope_tree_supports_interactions(node) {
                         return Err(Fault::new(
-                            "SCOPE_INTERACTIONS_UNAVAILABLE",
-                            "component actions are not routed by scope owner yet",
+                            "SCOPE_NATIVE_ACTION_UNAVAILABLE",
+                            "native window actions cannot be owned by a component scope",
                         ));
                     }
                     let mut node = node.clone();
@@ -1227,10 +1387,10 @@ impl Engine {
                             "a scope replacement must preserve its root component ID",
                         ));
                     }
-                    if !scope_is_read_only(node) {
+                    if !scope_tree_supports_interactions(node) {
                         return Err(Fault::new(
-                            "SCOPE_INTERACTIONS_UNAVAILABLE",
-                            "component actions are not routed by scope owner yet",
+                            "SCOPE_NATIVE_ACTION_UNAVAILABLE",
+                            "native window actions cannot be owned by a component scope",
                         ));
                     }
                     let mut node = node.clone();
@@ -1272,10 +1432,10 @@ impl Engine {
                 "scope root component is no longer in the scene",
             )
         })?;
-        if !scope_is_read_only(final_scope_root) {
+        if !scope_tree_supports_interactions(final_scope_root) {
             return Err(Fault::new(
-                "SCOPE_INTERACTIONS_UNAVAILABLE",
-                "component actions are not routed by scope owner yet",
+                "SCOPE_NATIVE_ACTION_UNAVAILABLE",
+                "native window actions cannot be owned by a component scope",
             ));
         }
         world.scene = next_scene;
@@ -2123,10 +2283,33 @@ impl Engine {
                 }
             }
             let mut expired = false;
-            for a in &mut w.actions {
-                if a.status == "pending" && a.deadline <= now {
-                    a.status = "error".into();
-                    a.message = Some("provider acknowledgement timed out".into());
+            for action in &mut w.actions {
+                if action.status != "pending" {
+                    continue;
+                }
+                let scope_owner_active =
+                    match (action.scope_id, action.scope_generation, action.writer) {
+                        (Some(scope_id), Some(generation), Some(writer_session)) => w
+                            .scopes
+                            .get(&scope_id)
+                            .filter(|scope| scope.generation == generation)
+                            .and_then(|scope| scope.writer.as_ref())
+                            .is_some_and(|writer| {
+                                writer.session == writer_session
+                                    && writer.key.epoch == action.lease_epoch
+                                    && writer.expires_at > now
+                            }),
+                        (None, None, _) => true,
+                        _ => false,
+                    };
+                if !scope_owner_active {
+                    action.status = "error".into();
+                    action.message =
+                        Some("component scope writer was revoked before acknowledgement".into());
+                    expired = true;
+                } else if action.deadline <= now {
+                    action.status = "error".into();
+                    action.message = Some("provider acknowledgement timed out".into());
                     expired = true;
                 }
             }
@@ -2252,104 +2435,7 @@ impl Engine {
             .root
             .find(node_id)
             .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
-        let key_value_action = node.kind == Kind::KeyValue
-            && node.props.get("action").and_then(Value::as_str).is_some();
-        if !node.kind.interactive() && !key_value_action {
-            return Err(Fault::new("FORBIDDEN", "component is not interactive"));
-        }
-        if node.kind == Kind::KeyValue {
-            let key = value
-                .as_object()
-                .filter(|record| record.len() == 1)
-                .and_then(|record| record.get("key"))
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            if source != InteractionSource::Click || key.is_empty() || key.chars().count() > 64 {
-                return Err(Fault::new(
-                    "INVALID_EVENT",
-                    "key_value action must be a click with one bounded row key",
-                ));
-            }
-        }
-        let disabled = node
-            .props
-            .get("disabled")
-            .map(|v| {
-                if let Some(path) = v.get("$path").and_then(Value::as_str) {
-                    w.scene
-                        .data
-                        .pointer(path)
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false)
-                } else {
-                    v.as_bool().unwrap_or(false)
-                }
-            })
-            .unwrap_or(false);
-        if disabled {
-            return Err(Fault::new("FORBIDDEN", "component disabled"));
-        }
-        match node.kind {
-            Kind::Input | Kind::TextArea => {
-                let max_bytes = if node.kind == Kind::TextArea {
-                    32_768
-                } else {
-                    4_096
-                };
-                if !value.is_string() || value.as_str().unwrap().len() > max_bytes {
-                    return Err(Fault::new(
-                        "INVALID_EVENT",
-                        format!("text input must be at most {max_bytes} UTF-8 bytes"),
-                    ));
-                }
-            }
-            Kind::Button => {
-                if !value.is_null() {
-                    return Err(Fault::new("INVALID_EVENT", "button carries null value"));
-                }
-            }
-            Kind::KeyValue => {}
-            _ => unreachable!(),
-        }
-        let action_property = match source {
-            InteractionSource::Click => "action",
-            InteractionSource::ContextMenu => "context_action",
-            InteractionSource::Escape => {
-                if node.kind != Kind::Button
-                    || node.props.get("shortcut").and_then(Value::as_str) != Some("escape")
-                {
-                    return Err(Fault::new("FORBIDDEN", "Escape action is not registered"));
-                }
-                "shortcut_action"
-            }
-            InteractionSource::ControlEnter => {
-                if node.kind != Kind::TextArea
-                    || node.props.get("shortcut").and_then(Value::as_str) != Some("ctrl_enter")
-                {
-                    return Err(Fault::new(
-                        "FORBIDDEN",
-                        "Ctrl+Enter action is not registered",
-                    ));
-                }
-                "shortcut_action"
-            }
-        };
-        let action = node
-            .props
-            .get(action_property)
-            .and_then(Value::as_str)
-            .ok_or_else(|| Fault::new("FORBIDDEN", "component has no registered context action"))?
-            .to_owned();
-        if w.actions.iter().filter(|a| a.status == "pending").count() >= 32 {
-            return Err(Fault::new("LIMIT", "too many pending actions"));
-        }
-        while w.actions.len() >= 48 {
-            if let Some(i) = w.actions.iter().position(|a| a.status != "pending") {
-                w.actions.remove(i);
-            } else {
-                break;
-            }
-        }
+        let action = action_for_interaction(node, &value, source, &w.scene.data)?;
         let event = UiEvent {
             id: Uuid::new_v4(),
             world_id: id,
@@ -2359,18 +2445,133 @@ impl Engine {
             lease_epoch: lease.key.epoch,
             revision: w.revision,
         };
-        w.actions.push(ActionState {
-            id: event.id,
-            component_id: node_id.into(),
-            action,
-            status: "pending".into(),
-            message: None,
-            writer: Some(lease.session),
-            lease_epoch: lease.key.epoch,
-            deadline: now + ACTION_TIMEOUT_MS,
-        });
-        w.sequence += 1;
+        record_pending_action(
+            w,
+            PendingAction {
+                event_id: event.id,
+                component_id: node_id,
+                action,
+                writer: lease.session,
+                lease_epoch: lease.key.epoch,
+                scope_id: None,
+                scope_generation: None,
+            },
+            now,
+        )?;
         Ok((lease.session, event))
+    }
+    pub fn interact_in_scope_with_source(
+        &mut self,
+        id: Uuid,
+        node_id: &str,
+        value: Value,
+        source: InteractionSource,
+        expected_revision: u64,
+        now: u64,
+    ) -> Result<(Uuid, ScopeUiEvent)> {
+        let world = self
+            .worlds
+            .get_mut(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new(
+                "SCOPE_MODE",
+                "world is not partitioned into component scopes",
+            ));
+        }
+        Self::revision(world, expected_revision)?;
+        if world.write_blocked {
+            return Err(Fault::new(
+                "OPERATOR_HOLD",
+                "local operator has held this world",
+            ));
+        }
+        if world
+            .authority
+            .as_ref()
+            .is_none_or(|authority| authority.expires_at <= now)
+        {
+            return Err(Fault::new(
+                "PARENT_AUTHORITY_REQUIRED",
+                "the world authority must be active before an action can be routed",
+            ));
+        }
+        let scope_id = world
+            .scopes
+            .values()
+            .find(|scope| {
+                world
+                    .scene
+                    .root
+                    .find(&scope.root_node_id)
+                    .is_some_and(|root| root.find(node_id).is_some())
+            })
+            .map(|scope| scope.id)
+            .ok_or_else(|| {
+                Fault::new(
+                    "SCOPE_ACTION_UNOWNED",
+                    "interactive component is not owned by a component scope",
+                )
+            })?;
+        let (scope_generation, scope_revision, writer_session, lease_epoch) = {
+            let scope = world.scopes.get(&scope_id).unwrap();
+            let writer = scope
+                .writer
+                .as_ref()
+                .filter(|writer| writer.expires_at > now)
+                .ok_or_else(|| Fault::new("OFFLINE", "component scope has no active writer"))?;
+            if writer.key.generation != scope.generation {
+                return Err(Fault::new(
+                    "STALE_SCOPE_LEASE",
+                    "scope writer generation no longer matches",
+                ));
+            }
+            (
+                scope.generation,
+                scope.revision,
+                writer.session,
+                writer.key.epoch,
+            )
+        };
+        let node = world
+            .scene
+            .root
+            .find(node_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "component missing"))?;
+        if node.props.contains_key("native_window_action") {
+            return Err(Fault::new(
+                "UNSUPPORTED_CAPABILITY",
+                "native window actions are not available inside component scopes",
+            ));
+        }
+        let action = action_for_interaction(node, &value, source, &world.scene.data)?;
+        let event = ScopeUiEvent {
+            id: Uuid::new_v4(),
+            world_id: id,
+            scope_id,
+            scope_generation,
+            component_id: node_id.into(),
+            action: action.clone(),
+            value,
+            source,
+            lease_epoch,
+            world_revision: world.revision,
+            scope_revision,
+        };
+        record_pending_action(
+            world,
+            PendingAction {
+                event_id: event.id,
+                component_id: node_id,
+                action,
+                writer: writer_session,
+                lease_epoch,
+                scope_id: Some(scope_id),
+                scope_generation: Some(scope_generation),
+            },
+            now,
+        )?;
+        Ok((writer_session, event))
     }
     pub fn acknowledge(
         &mut self,
@@ -2406,6 +2607,51 @@ impl Engine {
             .message
             .map(|s| s.chars().take(512).collect());
         w.sequence += 1;
+        Ok(())
+    }
+    pub fn acknowledge_scope(
+        &mut self,
+        session: Uuid,
+        id: Uuid,
+        key: &ScopedLeaseKey,
+        acknowledgement: ActionAcknowledgement,
+        now: u64,
+    ) -> Result<()> {
+        self.require_component_leases_protocol(session)?;
+        let world = self
+            .worlds
+            .get_mut(&id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        Self::require_scope_writer(world, session, key, now)?;
+        let action = world
+            .actions
+            .iter_mut()
+            .find(|action| action.id == acknowledgement.event_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "scope action missing"))?;
+        if action.scope_id != Some(key.scope_id)
+            || action.scope_generation != Some(key.generation)
+            || action.writer != Some(session)
+            || action.lease_epoch != key.epoch
+        {
+            return Err(Fault::new(
+                "SCOPE_ACTION_FORBIDDEN",
+                "action belongs to another component scope writer",
+            ));
+        }
+        if action.status != "pending" {
+            return Err(Fault::new(
+                "ACTION_FINISHED",
+                "action already completed or timed out",
+            ));
+        }
+        if action.deadline <= now {
+            return Err(Fault::new("ACTION_TIMEOUT", "action deadline elapsed"));
+        }
+        action.status = if acknowledgement.ok { "ok" } else { "error" }.into();
+        action.message = acknowledgement
+            .message
+            .map(|message| message.chars().take(512).collect());
+        world.sequence += 1;
         Ok(())
     }
     pub fn native_report(&mut self, id: Uuid, expected: u64, report: NativeReport) -> bool {

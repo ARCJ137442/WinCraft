@@ -70,6 +70,9 @@ def main() -> None:
     preview_request_schema = json.loads(
         (preview_directory / preview_manifest["request_schema"]).read_text(encoding="utf-8")
     )
+    preview_scope_interaction_schema = json.loads(
+        (preview_directory / "scope-interaction-event.schema.json").read_text(encoding="utf-8")
+    )
     pack_schema_path = ROOT / "docs/strategy/2026-10-26/contracts/pack.schema.json"
     pack_examples = ROOT / "docs/strategy/2026-10-26/examples"
     Draft202012Validator.check_schema(request_schema)
@@ -84,6 +87,7 @@ def main() -> None:
     Draft202012Validator.check_schema(provider_inventory_schema)
     Draft202012Validator.check_schema(provider_inventory_registration_schema)
     Draft202012Validator.check_schema(preview_request_schema)
+    Draft202012Validator.check_schema(preview_scope_interaction_schema)
     pack_schema = json.loads(pack_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(pack_schema)
     scene_registry = (
@@ -107,6 +111,9 @@ def main() -> None:
     provider_inventory_registration_validator = Draft202012Validator(provider_inventory_registration_schema, format_checker=FormatChecker())
     preview_validator = Draft202012Validator(
         preview_request_schema, format_checker=FormatChecker()
+    )
+    preview_scope_interaction_validator = Draft202012Validator(
+        preview_scope_interaction_schema, format_checker=FormatChecker()
     )
     pack_validator = Draft202012Validator(pack_schema)
     requests = json.loads((ROOT / "protocol/examples/requests.json").read_text(encoding="utf-8"))
@@ -177,6 +184,18 @@ def main() -> None:
     ):
         assert not preview_validator.is_valid(request), request
     checks.append("preview_0_4_state_slot_request_schema_and_fixtures")
+    preview_scope_action_ack = json.loads(
+        (preview_examples / "scope-action-result-valid.json").read_text(encoding="utf-8")
+    )
+    preview_validator.validate(preview_scope_action_ack)
+    invalid_scope_action_ack = json.loads(
+        (preview_examples / "scope-action-result-invalid-lease.json").read_text(encoding="utf-8")
+    )
+    assert not preview_validator.is_valid(invalid_scope_action_ack)
+    preview_scope_interaction_validator.validate(
+        json.loads((preview_examples / "scope-interaction-event.json").read_text(encoding="utf-8"))
+    )
+    checks.append("preview_0_4_scope_interaction_schema_and_fixtures")
     for bad in [
         {"id":"x","method":"world.create","params":{"window":{"width":-1}}},
         {"id":"x","method":"scene.execute_javascript","params":{}},

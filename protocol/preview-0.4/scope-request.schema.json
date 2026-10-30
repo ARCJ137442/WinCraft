@@ -98,6 +98,27 @@
       "type": "object",
       "properties": {
         "id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "method": {"const": "scope.action.result"},
+        "params": {
+          "type": "object",
+          "properties": {
+            "world_id": {"type": "string", "format": "uuid"},
+            "lease": {"$ref": "#/$defs/ScopedLease"},
+            "event_id": {"type": "string", "format": "uuid"},
+            "ok": {"type": "boolean"},
+            "message": {"type": ["string", "null"], "maxLength": 512}
+          },
+          "required": ["world_id", "lease", "event_id", "ok"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 80},
         "method": {"const": "scope.structure.patch"},
         "params": {
           "type": "object",

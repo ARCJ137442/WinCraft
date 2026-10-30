@@ -16,6 +16,7 @@ REQUIRED_PATHS = (
     "examples/python/provider_tutorial.py",
     "examples/python/lease_probe.py",
     "examples/python/theme_demo.py",
+    "examples/python/scope_interaction_demo.py",
     "examples/python/trafficmonitor_provider.py",
     "examples/python/obsidian-workspace.py",
     "examples/trafficmonitor/wincraft_bridge.cpp",
@@ -34,6 +35,9 @@ REQUIRED_PATHS = (
     "examples/integrations/device-inbox/README.md",
     "examples/integrations/device-inbox/device_inbox.py",
     "examples/integrations/device-inbox/provider.py",
+    "examples/integrations/model_quota/README.md",
+    "examples/integrations/model_quota/provider.py",
+    "examples/integrations/model_quota/team_sense_quota.py",
 )
 
 
@@ -68,6 +72,34 @@ def main() -> int:
     if "--open-manager" not in content or "--open-manager" not in desktop_source:
         print("FAIL: manager startup guidance does not match the desktop CLI flag")
         return 1
+
+    live_start = content.find("`examples/integrations/agent-board/live_provider.py`")
+    live_end = content.find("- `examples/integrations/device-inbox/README.md`", live_start)
+    if live_start < 0 or live_end < 0:
+        print("FAIL: provider skill is missing the local Harness adapter guidance")
+        return 1
+    live_guidance = content[live_start:live_end]
+    required_claims: tuple[str, ...] = (
+        "useStateDbOnly=true",
+        "state_*.sqlite",
+        "session_meta` UUID",
+        "OS process metadata",
+        "Neither App nor CLI is started for collection.",
+    )
+    missing_claims = [claim for claim in required_claims if claim not in live_guidance]
+    if missing_claims:
+        print("FAIL: provider skill omits the process-and-local-files source contract")
+        return 1
+    obsolete_claims: tuple[str, ...] = (
+        "agents --json",
+        "codex-app-bridge",
+        "Codex App connector",
+        "MCP snapshot",
+    )
+    if any(claim in live_guidance for claim in obsolete_claims):
+        print("FAIL: provider skill still describes a superseded Harness collection path")
+        return 1
+
     lesson_titles = (
         "看见第一个世界",
         "搭一块会变的方块",
@@ -82,6 +114,12 @@ def main() -> int:
         return 1
     if "examples/python/provider_tutorial.py" not in content:
         print("FAIL: skill does not link the guided provider tutorial")
+        return 1
+    if "examples/python/scope_interaction_demo.py" not in content:
+        print("FAIL: skill does not link the scope interaction example")
+        return 1
+    if "examples/integrations/model_quota/provider.py" not in content:
+        print("FAIL: provider skill is missing the TeamSense read-only quota example")
         return 1
     print(f"PASS: {len(REQUIRED_PATHS)} repository references exist")
     return 0

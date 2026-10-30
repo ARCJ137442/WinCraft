@@ -12,21 +12,21 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码提交 | `309af176714ffaf4d76601124a32e43ab2dfdd0b` |
-| 程序路径 | `target/stage-309af17/release/wincraft-desktop.exe` |
+| 源码提交 | `c36e4afed0097329fdb6e282b229692cc299d1c1` |
+| 程序路径 | `target/release/wincraft-desktop.exe` |
 | 文件大小 | 13,559,808 bytes |
-| SHA-256 | `6840654D6DBEFB780B758618805B241AC96D22D57B8E7F4D49B102DFA3E58E10` |
+| SHA-256 | `C949FC2359B5D36DA9FF3C2CAD395D07914699D13DF9130A985CC3160070BA25` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。`npm run check:local` 退出码 0：28 项 UI、141 项 Rust、174 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 27 个 Provider Skill 引用检查通过；Windows Actions run [41024348330](https://github.com/exomind-team/WinCraft/actions/runs/41024348330) 对 `309af17` 也通过。设置隔离 `CARGO_TARGET_DIR=target/stage-309af17` 后，`npm run desktop:build` 退出码 0。该新 EXE 尚未另行启动：之前的 4bc3e81 候选仍开着世界管理器窗口，避免重复创建托盘宿主。CI 与自动测试不替代原生 GUI 验收。
+这是单个 Windows 可执行文件，不是安装器。`npm run check:local` 退出码 0：28 项 UI、141 项 Rust、174 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过；Windows Actions run [41024348330](https://github.com/exomind-team/WinCraft/actions/runs/41024348330) 对 `309af17` 通过，run [41026654580](https://github.com/exomind-team/WinCraft/actions/runs/41026654580) 对 `c36e4af` 也通过。当前 `target/release/wincraft-desktop.exe` 由 `npm run desktop:build` 以退出码 0 构建，哈希见上表。早先隔离候选与标准路径新构建分别在真实 Tauri-hosted `lease_probe.py` 上通过 41 项；旧目标路径 EXE 早于快捷键功能提交，已停止。标准路径 EXE 当前以 `--open-manager` 单实例运行。Provider Skill 校验器的本机变更通过最新 `npm run check:local`，但尚未推送或跑 CI。CI 与自动测试不替代原生 GUI 验收。
 
-首次 release 启动时，管理器后台循环在同步 Tauri setup 回调直接调用 `tokio::spawn`，进程以 101 退出；已修复为通过 `tauri::async_runtime::spawn` 调度，并重新构建验证。Computer Use 随后被物理 Escape 停止：未输入或启用快捷键，也未完成托盘交互。本指南中的空白验收格仍须由维护者实际操作填写。
+首次 release 启动时，管理器后台循环在同步 Tauri setup 回调直接调用 `tokio::spawn`，进程以 101 退出；已修复为通过 `tauri::async_runtime::spawn` 调度，并重新构建验证。旧运行进程所用 EXE 的构建时间早于快捷键功能提交，不能用来验证该功能。当前新版候选已运行；Computer Use 返回“native pipe is unavailable”，本轮未点击启用热键，也未完成托盘交互。本指南中的空白验收格仍须由维护者实际操作填写。
 
-2026-10-30 用户明确要求改用本机进程状态与磁盘会话数据，不需要实时 Codex App connector。当前源码包含 Codex App state DB/rollout 与 Claude Code JSONL/subagent 只读适配；本机 count-only smoke 确认 Codex App 进程在线、Claude Code 进程离线但历史可读。最新 release 的管理器窗口和 accessibility tree 已观察；本次没有打开 Agent Activity 世界，因此真实会话卡片、像素截图、UUID-only 深链接仍为 `NOT_RUN`。不把 synthetic UIA 或协议 smoke 计作真实 UI 接入。
+2026-10-30 用户明确要求改用本机进程状态与磁盘会话数据，不需要与 Codex App 通信。当前源码包含 Codex App state DB/rollout 与 Claude Code JSONL/subagent 只读适配；count-only smoke 确认 Codex App 进程在线、Claude Code 进程离线但历史可读。标准 release 上的只读 live provider 以 `codex`、`codex-app`、`claude-code` 三源运行，真实提交了三次场景快照并清理自己的临时世界；来源摘要为 Codex CLI online/0、Codex App online/128、Claude Code offline/128。它证明三源进入同一个 Host scene 更新路径，不证明像素呈现：本机没有取得 Agent Activity 截图或 accessibility tree，所以标题/项目/Agent 输出卡片、freshness 展示和 UUID-only 深链接仍为 `NOT_RUN`。
 
 ## 快速启动
 
-1. 先从此前已运行的 WinCraft 实例托盘菜单选择“退出”，再打开 `target/stage-309af17/release/wincraft-desktop.exe`。普通启动预期只有托盘图标，不自动打开业务窗口。
+1. 如果已有 WinCraft 实例，先从它的托盘菜单选择“退出”，再打开 `target/release/wincraft-desktop.exe`。普通启动预期只有托盘图标，不自动打开业务窗口。
 2. 从 WinCraft 托盘菜单打开“世界管理器”。多次点击应聚焦同一个管理器实例。
 3. 在管理器中新建空白世界；需要自动打开管理器时，可使用可选参数 `--open-manager`。这个参数是本机联调用入口，不代表默认启动行为。
 4. 从管理器复制它显示的 runtime descriptor 路径给本机 Python 示例，例如：
@@ -50,14 +50,14 @@ audience: maintainer, Windows tester
 | 动态组件与动作回执（W04/W05/W06） | 在 Python focus demo 中点击“替换组件区”和一个按钮；结构实时更新，动作显示当前 provider 的实际回执；provider 断线不冒充成功。 | ____ |
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
-| 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Core/server 回归与 release build：PASS；本机真实按键与撤销：NOT_RUN |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 工作树定向测试与本机 count-only 进程/磁盘 smoke：PASS；Codex App 当前 release UI 与 UUID 深链：用户要求阶段性标记停滞（NOT_RUN） |
+| 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Rust 回归、Windows CI 与 release build：PASS；新版 release 已启动；真实启用/按键/冲突/撤销/IME：NOT_RUN |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 三源同一标准 Host scene 更新与本机 count-only 来源 smoke：PASS（L2）；像素/freshness 卡片及 UUID 深链：用户要求的 Codex App 子目标仍停滞（NOT_RUN） |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
 
-完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本次构建的真实 Tauri-hosted `lease_probe.py` 返回 `PASS`、退出码 0；B07-02 scope probe 也通过。这些协议探针不替代托盘点击、像素布局、真实 z-order、穿透救援及多显示器人工操作。当前 provider 从进程读取 Codex App/Claude 在线状态，从本机数据目录读取会话摘要；无进程仍显示可读历史，数据缺失明确显示未知/不可用。Computer Use 曾观察到管理器截图，但未保存，因为画面含本机 runtime 路径；真实 Codex App 卡片和深链接仍未验收。
+完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。本轮新版候选上的真实 Tauri-hosted `lease_probe.py` 退出码 0，共 41 项通过，覆盖协议授权、组件动态 patch、租约过期、断线重连、旧 epoch fencing、慢消费者断开和原生窗口属性应用。它不替代托盘点击、全局快捷键按键、像素布局、真实 z-order、穿透救援及多显示器人工操作。当前 provider 从进程读取 Codex App/Claude 在线状态，从本机数据目录读取会话摘要；无进程仍显示可读历史，数据缺失明确显示未知/不可用。Computer Use 原生管道不可用，本轮没有截图；真实 Codex App 卡片和深链接仍未验收。
 
 ## 记录与复现
 
