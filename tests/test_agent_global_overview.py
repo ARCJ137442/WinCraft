@@ -403,6 +403,56 @@ class GlobalOverviewSceneTests(unittest.TestCase):
         self.assertFalse(recovered.selection_missing)
         self.assertEqual(recovered.selected_identity, claude_target.identity)
 
+    def test_codex_app_detail_identity_is_restored_after_switching_sources(self):
+        projection = copy.deepcopy(self.projection)
+        app_session = copy.deepcopy(projection["sessions"][0])
+        identity = tuple(app_session["identity"])
+        app_session.update(
+            {
+                "identity": (*identity[:3], "synthetic-codex-app-thread"),
+                "source_type_label": "Codex App",
+                "display_name": "Synthetic Codex App title",
+                "project_label": "SyntheticProject",
+                "summary": "Synthetic latest agent output",
+                "last_output_kind": "agent_message",
+                "normalized_status": "running",
+                "status_label": "运行中",
+                "freshness": "fresh",
+                "freshness_label": "刚刚读取（1 秒前）",
+                "is_leaf": True,
+            }
+        )
+        projection["sessions"].append(app_session)
+
+        app_list = transition_view(
+            GlobalOverviewState(), "view.source.codex_app", "", {}, 1
+        )
+        _, app_targets, app_pages = build_global_overview_scene(projection, app_list)
+        app_component, app_target = next(
+            (component, target)
+            for component, target in app_targets.items()
+            if target.source_id == "codex-app"
+        )
+        app_detail = transition_view(
+            app_list,
+            "view.open_detail",
+            app_component,
+            app_targets,
+            app_pages,
+        )
+        codex_list = transition_view(app_detail, "view.source.codex", "", {}, 1)
+        restored_app = transition_view(
+            codex_list, "view.source.codex_app", "", {}, 1
+        )
+
+        self.assertEqual(restored_app.selected_identity, app_target.identity)
+        restored_scene, _, _ = build_global_overview_scene(projection, restored_app)
+        self.assertEqual(
+            restored_scene["data"]["detail"]["session"],
+            "Synthetic Codex App title",
+        )
+        self.assertEqual(restored_scene["data"]["detail"]["project"], "SyntheticProject")
+
     def test_selected_detail_survives_missing_snapshot_with_unknown_revocation(self):
         source_state = transition_view(
             GlobalOverviewState(), "view.source.claude_code", "", {}, 1
