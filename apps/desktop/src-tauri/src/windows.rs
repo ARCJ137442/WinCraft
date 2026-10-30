@@ -13,10 +13,14 @@ use tauri::{
     WebviewWindowBuilder,
 };
 use uuid::Uuid;
+#[cfg(any(windows, test))]
+use wincraft_core::NativeWindowApplication;
+#[cfg(windows)]
+use wincraft_core::NativeWindowOperation;
 use wincraft_core::{
     geometry::{self, Rect},
-    EventSource, GeometryControl, NativeReport, NativeWindowAction, NativeWindowApplication,
-    NativeWindowOperation, Position, Snapshot, WorkAreaAnchor,
+    EventSource, GeometryControl, NativeReport, NativeWindowAction, Position, Snapshot,
+    WorkAreaAnchor,
 };
 use wincraft_server::{self_provider::ManagerProvider, Hub};
 
@@ -370,6 +374,8 @@ fn tray_tooltip() -> String {
     )
 }
 
+#[cfg(any(windows, test))]
+// Keep pure Windows action-policy helpers available to tests on every target.
 fn executable_name_for_application(application: NativeWindowApplication) -> Option<&'static str> {
     match application {
         NativeWindowApplication::Obsidian => Some("obsidian.exe"),
@@ -378,18 +384,22 @@ fn executable_name_for_application(application: NativeWindowApplication) -> Opti
     }
 }
 
+#[cfg(any(windows, test))]
 fn codex_thread_uri(thread_id: Uuid) -> String {
     format!("codex://threads/{thread_id}")
 }
 
+#[cfg(any(windows, test))]
 fn normalized_title_filter(value: Option<&str>) -> String {
     value.unwrap_or_default().trim().to_lowercase()
 }
 
+#[cfg(any(windows, test))]
 fn title_matches_filter(title: &str, normalized_filter: &str) -> bool {
     normalized_filter.is_empty() || title.to_lowercase().contains(normalized_filter)
 }
 
+#[cfg(any(windows, test))]
 fn select_external_window_match_index(
     match_count: usize,
     foreground_index: Option<usize>,
@@ -406,18 +416,41 @@ fn select_external_window_match_index(
     }
 }
 
+#[cfg(any(windows, test))]
 fn foreground_activation_confirmed(api_reported_success: bool, target_is_foreground: bool) -> bool {
     api_reported_success || target_is_foreground
 }
 
 #[cfg(test)]
 mod native_window_action_tests {
+    #[cfg(not(windows))]
+    use super::perform_external_window_action;
     use super::{
         codex_thread_uri, executable_name_for_application, foreground_activation_confirmed,
         normalized_title_filter, select_external_window_match_index, title_matches_filter,
     };
     use uuid::Uuid;
     use wincraft_core::NativeWindowApplication;
+    #[cfg(not(windows))]
+    use wincraft_core::{NativeWindowAction, NativeWindowOperation};
+
+    #[cfg(not(windows))]
+    #[test]
+    fn external_window_actions_fail_closed_on_non_windows_hosts() {
+        let action = NativeWindowAction {
+            application: NativeWindowApplication::Obsidian,
+            operation: NativeWindowOperation::Activate,
+            title_contains: None,
+            thread_id: None,
+        };
+
+        let error = perform_external_window_action(&action).unwrap_err();
+
+        assert_eq!(
+            error,
+            "Native external window actions are unsupported on this platform"
+        );
+    }
 
     #[test]
     fn application_ids_map_only_to_registered_process_images() {

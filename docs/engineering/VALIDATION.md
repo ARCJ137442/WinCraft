@@ -1028,3 +1028,22 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | Windows Actions run [41109395539](https://github.com/exomind-team/WinCraft/actions/runs/41109395539) | PASS | `gh run watch --exit-status` 退出码 0；run 与 check suite `completed/success`。Workflow 不替代五课交互、管理器清理或人工原生验收。|
 
 阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery.zip`，包含 EXE、中文验收指南与 build/hash/待验收说明；不是仓库发布附件。
+
+## 2026-10-31 B11-03 Linux capability/build check
+
+**Given** Ubuntu 24.04 WSL2、`x86_64-unknown-linux-gnu` Rust target 和 Tauri GTK/WebKit/AppIndicator 构建依赖，**When** 使用独立 `/tmp` Cargo target 检查、测试并构建 workspace，**Then** Linux Rust/Tauri 编译边界通过；该证据不证明 GUI、托盘或窗口管理器行为等价。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Ubuntu WSL2 Tauri 依赖 | PASS（环境） | 安装 `libdbus-1-dev`、`libgtk-3-dev`、`libwebkit2gtk-4.1-dev`、`libayatana-appindicator3-dev`、`libxdo-dev`、`librsvg2-dev`；APT 解析共新增 189 个包、升级 14 个图形/系统依赖，使用 WSL root。H 盘构建空间紧张，Linux Cargo target 放在 `/tmp/wincraft-linux-target-1ced028`。|
+| Linux `cargo fmt --all -- --check` | PASS | 退出码 0。环境：Ubuntu 24.04 WSL2、Linux kernel `6.6.114.1-microsoft-standard-WSL2`、x86_64、rustc/Cargo 1.96.0。|
+| Linux `cargo test --locked --workspace --no-fail-fast` | PASS | 退出码 0：147 项通过（core 10、core invariants 62、desktop 22、server 53；无失败或跳过）。新增平台回归确认非 Windows 不广告外窗动作，并在执行时返回 unsupported。|
+| Linux `cargo clippy --locked --workspace --all-targets -- -D warnings` | PASS | 退出码 0；包括 Tauri desktop 全 targets，无 warning。|
+| Linux `cargo check --locked -p wincraft-desktop` | PASS | 退出码 0，无平台专用 unused warning。|
+| Linux `cargo build --locked -p wincraft-desktop` | PASS（debug ELF） | 退出码 0；ELF 为 288,532,064 bytes，SHA-256 `eb5529e4890d2ae5bb85783256844395fa3b1427a77aeb57e2bc4e28f58211a8`，临时产物在 WSL `/tmp`。没有启动该 ELF。|
+| Windows `npm run check:local` 当前工作树 | PASS | 退出码 0：UI 28、Rust 146、Python 205（1 项 symlink 能力跳过）、Clippy、离线契约与 Provider Skill 检查均通过。|
+| Windows `npm run desktop:build` 当前工作树 | PASS | 退出码 0；`target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `764FBB942A0CA019A87E2967DD38606163D23A5455AC57B564FE804286F5CB99`。这是提交前工作树构建，提交后将从干净 HEAD 重建交付 EXE。|
+| Linux WSLg/X11/Wayland 原生交互、macOS 构建/交互 | NOT_RUN | WSLg 有 `DISPLAY=:0` 与 `WAYLAND_DISPLAY=wayland-0`，但没有启动 GUI 或读取窗口树；X11/Wayland 分别验收与 macOS host 均未运行。 |
+| B11-03-A1/A2/A3 | PASS / PARTIAL / PASS（受限） | A1 明确区分 Tauri 编译与原生交互。A2 已给出源代码与 Linux 构建能力矩阵，但原生 Linux GUI 与 macOS 仍 NOT_RUN，故 PARTIAL。A3 Windows 全门禁与 release build 通过；改动仅收窄 Windows-only helper 编译边界并新增平台 capability 回归，未改变 Windows API 路径。B11-03 保持 `IMPLEMENTED_UNVERIFIED`，B11-01 性能基线仍单独未关闭。|
+
+详细平台边界见 [`docs/platforms/capability-matrix.md`](../platforms/capability-matrix.md)。本机补充证据 `evidence/local/nextgen-2026-10-31/b11-03-linux-platform-build.json` 默认忽略，不提交 Cargo target、runtime descriptor 或 WSL 系统依赖包。

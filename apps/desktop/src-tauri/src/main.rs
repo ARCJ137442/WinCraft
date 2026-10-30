@@ -28,6 +28,8 @@ pub struct DesktopState {
     pub server: Mutex<Option<RunningServer>>,
 }
 
+const EXTERNAL_WINDOW_ACTIONS_AVAILABLE: bool = cfg!(target_os = "windows");
+
 struct TauriShortcutHost {
     app: tauri::AppHandle,
     registered: Mutex<BTreeSet<String>>,
@@ -497,7 +499,7 @@ fn main() {
             let bind: SocketAddr = std::env::var("WINCRAFT_BIND")
                 .unwrap_or_else(|_| "127.0.0.1:0".into())
                 .parse()?;
-            let hub = Hub::new(cfg!(target_os = "windows"));
+            let hub = Hub::new(EXTERNAL_WINDOW_ACTIONS_AVAILABLE);
             hub.set_locale(&load_locale(&locale_path))
                 .map_err(std::io::Error::other)?;
             let (server, manager) = tauri::async_runtime::block_on(async {
@@ -559,4 +561,34 @@ fn main() {
             _ => {}
         }
     });
+}
+
+#[cfg(test)]
+mod platform_capability_tests {
+    use super::EXTERNAL_WINDOW_ACTIONS_AVAILABLE;
+    use wincraft_server::Hub;
+
+    #[test]
+    fn external_window_action_capabilities_match_the_compiled_host() {
+        let capabilities = Hub::new(EXTERNAL_WINDOW_ACTIONS_AVAILABLE).capabilities();
+        let button_features = capabilities["button_features"]
+            .as_array()
+            .expect("button feature capabilities are an array");
+        assert_eq!(
+            capabilities["native_windows"].as_bool(),
+            Some(EXTERNAL_WINDOW_ACTIONS_AVAILABLE)
+        );
+        assert_eq!(
+            button_features
+                .iter()
+                .any(|feature| feature == "external_window_actions"),
+            EXTERNAL_WINDOW_ACTIONS_AVAILABLE
+        );
+        assert_eq!(
+            button_features
+                .iter()
+                .any(|feature| feature == "codex_thread_navigation"),
+            cfg!(windows)
+        );
+    }
 }

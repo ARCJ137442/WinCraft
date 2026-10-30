@@ -1982,7 +1982,8 @@
       ],
       "level": "L6",
       "criterion": "Tauri编译成功不等于原生交互等价",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS at L1-L4: the platform matrix explicitly separates Tauri compile/build from native interaction parity. Linux WSL2 Tauri debug ELF and workspace tests passed; Linux GUI behavior is left NOT_RUN rather than inferred."
     },
     {
       "id": "B11-03-A2",
@@ -1993,7 +1994,8 @@
       ],
       "level": "L6",
       "criterion": "跨平台Capability如实报告",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL at L1-L4: the platform matrix records source-gated Windows-only external window actions, Linux Tauri build/tests, unimplemented native opacity, and NOT_RUN for WSLg GUI, native X11/Wayland sessions, and macOS. The compiled Linux Host capability regression confirms external_window_actions and Codex thread navigation are not advertised."
     },
     {
       "id": "B11-03-A3",
@@ -2004,7 +2006,8 @@
       ],
       "level": "L6",
       "criterion": "不会为迁移破坏Windows现有契约",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS at L1-L4: Windows npm run check:local passed (UI 28, Rust 146, Python 205/1 skipped) and npm run desktop:build exited 0 after the cfg changes. The Windows native action implementation remains under cfg(windows) and its contract tests pass."
     },
     {
       "id": "B11-04-A1",

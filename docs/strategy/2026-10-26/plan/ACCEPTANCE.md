@@ -171,9 +171,9 @@
 | B11-02-A1 | B11-02 | L4-L5 | 发布声明只含实测能力 | NOT_RUN |
 | B11-02-A2 | B11-02 | L4-L5 | 隐藏不销毁与原生minimize语义没有混淆 | NOT_RUN |
 | B11-02-A3 | B11-02 | L4-L5 | 取消/退出后无残留hotkey/窗口/授权资源 | NOT_RUN |
-| B11-03-A1 | B11-03 | L6 | Tauri编译成功不等于原生交互等价 | NOT_RUN |
-| B11-03-A2 | B11-03 | L6 | 跨平台Capability如实报告 | NOT_RUN |
-| B11-03-A3 | B11-03 | L6 | 不会为迁移破坏Windows现有契约 | NOT_RUN |
+| B11-03-A1 | B11-03 | L6 | Tauri编译成功不等于原生交互等价 | PASS |
+| B11-03-A2 | B11-03 | L6 | 跨平台Capability如实报告 | PARTIAL |
+| B11-03-A3 | B11-03 | L6 | 不会为迁移破坏Windows现有契约 | PASS |
 | B11-04-A1 | B11-04 | L0-L6 | 无擅自重许可/定名/归属迁移 | NOT_RUN |
 | B11-04-A2 | B11-04 | L0-L6 | 未获发布授权仅生成材料不发Release | NOT_RUN |
 | B11-04-A3 | B11-04 | L0-L6 | 公众文档可读且适用版本/更新时间明确 | NOT_RUN |

@@ -11,6 +11,7 @@
 | 窗口所有权/快照读取 | [ownership.md](ownership.md) |
 | 原生窗口能力矩阵 | [windows.md](windows.md) |
 | Windows 原生能力探索与分阶段路线 | [windows-roadmap.md](windows-roadmap.md) |
+| Linux/macOS 能力矩阵与受限试构建 | [platforms/capability-matrix.md](platforms/capability-matrix.md) |
 | 安全与网络边界 | [security.md](security.md) |
 | 仓库治理、公开前脱敏与发布门槛 | [governance-release-checklist.md](governance-release-checklist.md) |
 | 自用管理器 | [self-provider.md](self-provider.md) |
