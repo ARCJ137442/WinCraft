@@ -131,7 +131,7 @@
 | B08-02-A4 | B08-02 | L2-L5 | Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。 | STALLED |
 | B08-02-A5 | B08-02 | L2-L5 | 每个来源显示最近成功读取年龄及 stale/disconnected 边界；没有权威逐会话状态时显示 unknown，不将 source process online 等同所有会话 active。 | PARTIAL |
 | B08-03-A1 | B08-03 | L1-L5 | 五类都有明确入口/未知边界，不伪造五种实测 | PASS |
-| B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | PARTIAL |
+| B08-03-A2 | B08-03 | L1-L5 | 至少两种真实独立writer并发验收 | PASS |
 | B08-03-A3 | B08-03 | L1-L5 | 动作路由跟随组件owner，不被后加入者截获 | PARTIAL |
 | B08-03-A4 | B08-03 | L1-L5 | 单一悬浮窗可切换来源/实例/会话视图，切换后保留身份、新鲜度和撤销状态 | PARTIAL |
 | B08-03-A5 | B08-03 | L1-L5 | 首屏显示Codex并行会话量与Claude Code各会话状态，详情渐进披露且不撑高窗口 | PASS |

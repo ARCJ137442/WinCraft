@@ -31,6 +31,8 @@ REQUIRED_PATHS = (
     "examples/integrations/agent-board/README.md",
     "examples/integrations/agent-board/activity_board.py",
     "examples/integrations/agent-board/provider.py",
+    "examples/integrations/agent-board/scoped_live_sources.py",
+    "tests/test_agent_scoped_sources.py",
     "protocol/device-message.schema.json",
     "examples/integrations/device-inbox/README.md",
     "examples/integrations/device-inbox/device_inbox.py",
@@ -120,6 +122,9 @@ def main() -> int:
         return 1
     if "examples/integrations/model_quota/provider.py" not in content:
         print("FAIL: provider skill is missing the TeamSense read-only quota example")
+        return 1
+    if "examples/integrations/agent-board/scoped_live_sources.py" not in content:
+        print("FAIL: provider skill is missing the independent scope writer example")
         return 1
     print(f"PASS: {len(REQUIRED_PATHS)} repository references exist")
     return 0

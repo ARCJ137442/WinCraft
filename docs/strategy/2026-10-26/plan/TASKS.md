@@ -1188,7 +1188,7 @@ cargo test --workspace
 
 **输入：** 当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。
 
-**定位：** `proposed: examples/integrations/agent-board/adapters/`；`skills/wincraft-provider/`；`examples/integrations/agent-board/global_overview.py`；`examples/integrations/agent-board/global_overview_provider.py`；`tests/test_agent_global_overview.py`；`skills/wincraft-provider/SKILL.md`
+**定位：** `proposed: examples/integrations/agent-board/adapters/`；`skills/wincraft-provider/`；`examples/integrations/agent-board/global_overview.py`；`examples/integrations/agent-board/global_overview_provider.py`；`tests/test_agent_global_overview.py`；`skills/wincraft-provider/SKILL.md`；`examples/integrations/agent-board/scoped_live_sources.py`；`tests/test_agent_scoped_sources.py`
 
 ### 实施
 1. 补Claude/Codex/OpenCode/DSH/omp能力与版本矩阵，缺者保留NOT_RUN
@@ -1216,9 +1216,11 @@ python scripts/check_contracts.py
 cargo test --workspace
 python -m unittest tests.test_agent_activity_board tests.test_agent_global_overview -v
 python examples/integrations/agent-board/global_overview_provider.py --runtime <actual local descriptor> --duration-seconds 120
+python -m unittest tests.test_agent_scoped_sources -v
+python examples/integrations/agent-board/scoped_live_sources.py --runtime <actual local descriptor> --duration-seconds 20
 ```
 
-**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Codex App/Claude Code collection uses local process metadata and bounded local files; no Agent bridge is required or invoked. Keep approval/write capability NOT_RUN until separately authorized.
+**说明：** 先补本任务精确正反测试；以下是当前已知基线命令，不替代任务专用用例；原生声明须另跑npm run desktop:build及独立release；外部来源无授权标BLOCKED；B08-03-A6/A7 verify the synthetic read-only view and native release behavior; this does not verify real Harness adapters.；Codex App/Claude Code collection uses local process metadata and bounded local files; no Agent bridge is required or invoked. Keep approval/write capability NOT_RUN until separately authorized.；For B08-03-A2, use scoped_live_sources.py to create one temporary world and run Codex CLI and Claude Code as separate local Provider processes; verify disjoint scope writes, overlapping leases, and cleanup. It does not start Codex App or Claude Code; Codex CLI uses its fixed useStateDbOnly adapter. Output/evidence must remain aggregate-only.
 
 **回滚：** 回到只读聚合器单writer模式；不更改来源任务。
 

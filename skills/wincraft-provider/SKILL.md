@@ -366,6 +366,13 @@ at the original installation's configuration or put source values in evidence.
   per-session status, and last successful read age separate; absent authoritative status
   remains `unknown`, while readable history remains available when the process is offline.
   Do not add an App snapshot relay or invoke a Harness command to discover sessions.
+- `examples/integrations/agent-board/scoped_live_sources.py` — B08-03-A2 local acceptance
+  probe. The authority creates one temporary world and partitions Codex CLI and Claude Code
+  into disjoint scopes, then starts two separate Python Provider processes. Each process
+  reads only its selected source and writes a bounded, sanitized projection through its own
+  scoped lease; the runtime descriptor path and scope grant are not printed. It confirms
+  overlapping writer leases and removes only its own temporary world. It does not start
+  Codex App or Claude Code; Codex CLI uses the explicit `useStateDbOnly=true` adapter.
 - `examples/integrations/model_quota/README.md` and
   `examples/integrations/model_quota/provider.py` — TeamSense cached
   model-quota projection through its fixed `GET /v1/integrations/models` `data:read`

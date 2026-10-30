@@ -957,6 +957,19 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 忽略的本机回归摘要：`evidence/local/nextgen-2026-10-31/b06-03-pack-import-regression.json`。
 
+## 2026-10-31 B08-03-A2 两个真实来源独立 Provider
+
+**Given** 当前 Windows Tauri release；**When** 本机只读 Provider 分别为 Codex CLI 与 Claude Code 启动两个独立 OS 进程，加入同一父世界的不同 scope 并写入只读呈现投影；**Then** 两个 scope 写租约在同一时间窗口内并存、各自 revision 前进，进程离线不伪造逐会话状态，父 Provider 清理其自己的临时世界。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python examples/integrations/agent-board/scoped_live_sources.py --runtime <matched-local-descriptor> --duration-seconds 20` 对当前 Tauri release | PASS（L2；真实本机来源） | 当前 Tauri release SHA-256 `0E5ECCAD24E04653C3E8F878CF96C370E3A74F68AC4EFE742C70EA10284422C7`；退出码 0。两个不同 OS Python Provider 进程分别完成 scope 写入，程序内部验证 PID 不同；scope revision 均到 3，两个写租约重叠 19.91 秒。Codex CLI online/0 条可列状态；Claude Code offline/138 条本机历史状态未知。来源摘要没有会话标题、项目、ID、Agent 输出、PID 或 runtime descriptor；没有启动 Codex App 或 Claude Code 进程。|
+| `npm run check:local` 当前工作树 | PASS | 退出码 0：Node UI 28 项、Rust workspace 144 项、Python 197 项（1 项因 Windows symlink 创建能力不可用而跳过）；Rust fmt/check/test/Clippy、离线契约与 33 个 Provider Skill 引用检查通过。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| 世界与子进程清理 | PASS | authority Provider 确认销毁其临时世界；进程检查确认没有残留 `scoped_live_sources.py --source-worker` worker。|
+| B08-03-A2 判定 | PASS at L2 | 已验证两种真实来源、两个独立 Provider 进程在一个 Tauri Host 同时持有不相交 scope writer 并实际更新各自 namespace。像素和点击验收仍由 A3/A7 跟踪。|
+
+忽略的脱敏汇总证据：`evidence/local/nextgen-2026-10-31/b08-03-a2-independent-source-writers-recheck.json`。
+
 ## 2026-10-31 GitHub Actions checkpoint
 
 | 检查 | 状态 | 实际结果 |

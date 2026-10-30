@@ -1475,8 +1475,8 @@
       ],
       "level": "L1-L5",
       "criterion": "至少两种真实独立writer并发验收",
-      "status": "PARTIAL",
-      "evidence": "PARTIAL at L2: examples/python/scope_probe.py connected with explicit 0.4-preview.1 to the current standard Tauri Host. Two separate authenticated writer sessions updated disjoint scopes while readers received filtered live snapshots; CAS/grant, parent revocation, stable 0.3 refusal, and own-world cleanup passed. Writer identities/data were synthetic and both sessions were orchestrated by one probe process, so this does not yet verify independent live Codex/Claude adapters. Evidence: evidence/local/nextgen-2026-10-30/b08-03-standard-tauri-scope-probe.json."
+      "status": "PASS",
+      "evidence": "PASS at L2: the current Windows Tauri release ran examples/integrations/agent-board/scoped_live_sources.py. One authority partitioned a temporary world into Codex CLI and Claude Code subtrees, then launched two distinct OS Provider processes. Each process queried only its selected real local source and updated only its granted scope. Distinct process IDs were verified but not persisted; each scope reached revision 3 and the active writer leases overlapped for 19.91 seconds. Codex CLI was online with 0 listed rows; Claude Code was offline with 138 readable local history rows, all with unknown per-session status. The provider destroyed its temporary world and the process check found no remaining workers. No raw session text was logged. Evidence: evidence/local/nextgen-2026-10-31/b08-03-a2-independent-source-writers-recheck.json. Native pixel/action UI checks remain tracked separately under A3/A7."
     },
     {
       "id": "B08-03-A3",
