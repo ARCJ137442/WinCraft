@@ -727,6 +727,7 @@ B09-02 保持 `BLOCKED`：用户尚未选择要读取的 app/source，也未授�
 | 修复后本机 count-only smoke | PASS（本机只读） | `.venv\Scripts\python.exe scripts\local_harness_source_smoke.py` 退出码 0、耗时 0.3367 秒：Codex App 进程 `online` / 数据 `partial` / 128 条 / 2 条有界 Agent 输出；Claude Code 进程 `offline` / 数据 `partial` / 128 条 / 23 条有界 Agent 输出；两来源读取年龄均为 0 秒。无目标 Harness 启动，没有打印或持久化标题、ID、路径、prompt 或消息正文。|
 | CodeGraph | PASS | `npm run codegraph:sync` 后 `npm run codegraph:status` 显示 91 files、2,469 nodes、current；count-only 结果另存于忽略的 `evidence/local/nextgen-2026-10-30/b08-02-local-process-disk-smoke.json`。|
 | `npm run check:local` | PASS | 退出码 0：28 项 UI、116 项 Rust workspace、173 项 Python（1 项环境能力跳过），离线契约和 27 个 Provider Skill 引用检查通过。Node v22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| GitHub Actions Windows CI | PASS | run [40999759040](https://github.com/exomind-team/WinCraft/actions/runs/40999759040) 验证提交 `aae58b4` 的 `npm run check:local`，全步骤成功，耗时 11 分 40 秒。|
 | `npm run desktop:build` | PASS（重试） | 首次退出码 1，已有同仓 release 进程占用 EXE；按既有授权停止该进程后重建成功，退出码 0。产物 `<repo>\target\release\wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `C7371C98B747A58D3F5F9FB8B9967B12BBBF66D797B3C89DFE3E9B1578BDEE90`。|
 | 独立 release 启动 `--open-manager` | PARTIAL | 新 release 进程启动，`窗构 · 世界管理器` 被窗口枚举器发现；Computer Use 初次及一次重新枚举恢复均报 `failed to activate captured window`，未取得截图，像素/交互验收为 `NOT_RUN`。|
 | 当前 release 可见呈现与 UUID 深链接 | NOT_RUN | 上述 smoke 只证明本机采集与合并；不证明 Tauri release 像素、原生点击或目标会话加载。|
