@@ -1113,7 +1113,7 @@
       "level": "L1-L4",
       "criterion": "环境变化使旧计划失效并重新规划",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust Host/manager behavior tests cover inventory generation invalidation, expiration, host-approved permission grant followed by re-preview, and stale-plan rejection; a read-only Python SDK hello against the current Tauri release negotiated 0.4-preview.1 and verified the provider-import capability contract. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; re-preview is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust Host/manager behavior tests cover inventory generation invalidation, expiration, host-approved permission grant followed by re-preview, and stale-plan rejection; a read-only Python SDK hello against the current Tauri release negotiated 0.4-preview.1 and verified the provider-import capability contract. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; re-preview is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-03-A2",
@@ -1126,7 +1126,7 @@
       "level": "L1-L4",
       "criterion": "导入取消不会清空既有世界",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust Host/manager tests cover cancellation without creating or clearing existing worlds and explicit confirmation before apply. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; cancel/reopen is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust Host/manager tests cover cancellation without creating or clearing existing worlds and explicit confirmation before apply. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; cancel/reopen is NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-03-A3",
@@ -1139,7 +1139,7 @@
       "level": "L1-L4",
       "criterion": "失败报告部分成功与清理结果，不造假回滚",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: Rust tests cover partial creation failure, idempotent replay, and rollback that removes only ledger-matching unchanged resources while retaining edited/joined resources. npm run check:local exited 0; current-source release was built and launched, but UI state capture failed twice with GetCursorPos access denied; UI/provider round-trip and rollback interaction are NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
+      "evidence": "PARTIAL: Rust tests cover partial creation failure, idempotent replay, and rollback that removes only ledger-matching unchanged resources while retaining edited/joined resources. npm run check:local exited 0; pre-fix feature-equivalent release capture failed twice with GetCursorPos access denied; the e3a4 fix release was rebuilt/launched (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), passed a read-only Tauri capability handshake, and was not visually captured; UI/provider round-trip and rollback interaction are NOT_RUN. Evidence: evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json."
     },
     {
       "id": "B06-04-A1",

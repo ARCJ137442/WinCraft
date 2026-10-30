@@ -2,8 +2,8 @@
   "updated_at": "2026-10-30",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "phase": "active-local-development",
-  "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence and a fresh current-source release; UI acceptance remains PARTIAL after Computer Use capture failure. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 remains BLOCKED/Codex App STALLED per user checkpoint; B09-02 remains BLOCKED pending explicit source selection.",
-  "next_action": "First complete B06-03 manager UI acceptance against the current-source release when a usable authorized UI capture path is available (or the user completes the documented manual flow). Then finish B06-04 two-independent-environment import/re-authorization acceptance. Keep B06-03 and B06-04 PARTIAL until those gates pass. Continue independent handoff tasks; keep Codex App STALLED and B09-02 waiting for explicit source selection. Hosted CI run 40976867333 exposed one Rust 1.99 Clippy lint; the current unpushed fix has local fmt/Clippy/full-suite PASS and must be committed/pushed, then its Actions run checked.",
+  "active_batch": "B06-03 runtime import is implemented with L1-L2 evidence; fix commit e3a4 passed hosted Windows CI and a current-source release is built/launched. Manager UI remains PARTIAL. B06-04 static share fixtures are implemented with two-user acceptance pending. B08-02 remains BLOCKED/Codex App STALLED per user checkpoint; B09-02 remains BLOCKED pending explicit source selection.",
+  "next_action": "The e3a4 fix commit passed Windows Actions run 40979104886 (11m26s). Current release target/release/wincraft-desktop.exe is 13,279,232 bytes, SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A; its read-only Tauri capability handshake passed with no inventory/world writes. Computer Use capture failed on the prior feature-equivalent candidate and was not retried on e3a4; B06-03 A1-A3 remain PARTIAL pending manual manager UI acceptance. Then complete B06-04 two-independent-environment import/re-authorization. Keep Codex App STALLED and B09-02 waiting for explicit source selection.",
   "runtime_implementation_tests": "PARTIAL",
   "task_states": {
     "B00-01": "VERIFIED",
@@ -64,7 +64,7 @@
     "Windows all-virtual-desktops pinning remains unsupported by the public Tauri/tao Windows API; no no-op capability is exposed.",
     "Codex App subgoal STALLED per user instruction after the stage checkpoint: one real authorized snapshot reached the Provider, but no persistent relay exists; the local fallback provides bounded title/project metadata, cannot prove runtime status, and only shows UUID-matched Agent output. Current release visible UI and native UUID click/load remain unverified after Computer Use window activation failed.",
     "B09-02: adb devices -l now shows one online and one offline device, but no Android app/source or notification permission was selected. Do not enumerate app lists or notifications; wait for explicit user selection and authorization.",
-    "B06-03 current-source release built and launched, but Computer Use screenshot/accessibility capture failed twice with GetCursorPos access denied (0x80070005); no UI input was sent. World Manager preview/apply/provider receipt/rollback UI remains NOT_RUN.",
+    "B06-03 pre-fix/e3e8 feature-equivalent manager capture failed twice with GetCursorPos access denied (0x80070005); the e3a4 release was rebuilt/launched and its read-only capability handshake passed, but UI capture was not retried. Preview/apply/provider receipt/rollback UI remains NOT_RUN.",
     "B06-04: static pack/fixture checks pass, but the required two independent user environments and fresh-install no-auto-download/re-authorization flow have not been exercised."
   ],
   "completed_this_delivery": [
@@ -138,7 +138,9 @@
     "B06-03: added bounded .wcp runtime preview, explicit permission grant/replan, locally confirmed world creation, selected-provider join event, idempotent submission and ledger-guarded partial rollback; full local checks pass, release UI remains open.",
     "B06-03 fresh Windows Tauri release built from current source (13,277,184 bytes; SHA-256 AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0) and launched with --open-manager; Computer Use native UI capture remains NOT_RUN after two exact GetCursorPos access-denied failures.",
     "Reconciled B06-01/B06-02 task states to VERIFIED based on their PASS acceptance rows and completed handoff suite; runtime Host import remains separately tracked as B06-03.",
-    "B06-04 static share slice: four synthetic inventory cases, sanitized configuration-only .wcp fixture, no-adapter-execution checks and Chinese two-environment acceptance steps are now recorded; real second-user/device run remains open."
+    "B06-04 static share slice: four synthetic inventory cases, sanitized configuration-only .wcp fixture, no-adapter-execution checks and Chinese two-environment acceptance steps are now recorded; real second-user/device run remains open.",
+    "Windows CI failure repaired and rerun: fix commit e3a4c4d passed Actions 40979104886; release was rebuilt from that commit and Tauri capability smoke passed.",
+    "Built and launched the e3a4 fix-commit release (13,279,232 bytes; SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A); Windows Actions run 40979104886 passed and live Tauri capability smoke passed."
   ],
   "history": [
     null,
@@ -186,6 +188,9 @@
     "2026-10-30: B06-04 guide added a reproducible synthetic two-binding pack flow and explicit two-user acceptance steps; generated workday-synthetic.wcp contains only pack.json and its declared blueprint. npm run check:local exited 0 after plan regeneration. Two separate user environments remain NOT_RUN.",
     "2026-10-30: Current-source Tauri release passed a real local Python SDK hello/capability smoke: 0.4-preview.1 provider_inventory/provider_import fields matched the preview contract. No inventory write or world creation was issued; manager UI remains NOT_RUN after Computer Use access-denied.",
     "2026-10-30: Direct handoff suite recheck after B06-04 fixture/guide updates ran 40 tests and passed; current inventory examples include full, optional-missing, required-missing and no-grant cases.",
-    "2026-10-30: GitHub Actions run 40976867333 for e3e8df4 passed fmt/check/workspace tests but failed Clippy 1.99 lint chunks_exact_to_as_chunks in self_provider.rs. Replaced fixed chunks_exact(2) with as_chunks::<2>(), added malformed/odd/invalid-UTF8 action-segment regression, and reran local fmt, workspace Clippy and npm run check:local successfully; hosted rerun awaits the fix commit."
+    "2026-10-30: GitHub Actions run 40976867333 for e3e8df4 passed fmt/check/workspace tests but failed Clippy 1.99 lint chunks_exact_to_as_chunks in self_provider.rs. Replaced fixed chunks_exact(2) with as_chunks::<2>(), added malformed/odd/invalid-UTF8 action-segment regression, and reran local fmt, workspace Clippy and npm run check:local successfully; hosted rerun awaits the fix commit.",
+    "2026-10-30: Fix commit e3a4c4de4e345ac2230dec8f1aef6f62d049fc93 replaced chunks_exact(2) with as_chunks::<2>() after Actions run 40976867333 failed Clippy 1.99; decoder regression, local fmt/Clippy/full npm run check:local passed. Windows Actions run 40979104886 for the fix commit passed in 11m26s.",
+    "2026-10-30: After fix commit e3a4, target/release/wincraft-desktop.exe rebuilt at 13,279,232 bytes (SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), launched with --open-manager; read-only Python SDK hello/capability smoke passed with no inventory write/world creation. No further Computer Use UI capture was attempted after the prior recovery limit.",
+    "2026-10-30: Fix commit e3a4c4de4e345ac2230dec8f1aef6f62d049fc93 passed Windows Actions run 40979104886 in 11m26s. Rebuilt the release from e3a4 (13,279,232 bytes, SHA-256 0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A), launched --open-manager, and passed a read-only 0.4-preview.1 capability handshake without inventory writes or world creation. UI remained NOT_RUN."
   ]
 }

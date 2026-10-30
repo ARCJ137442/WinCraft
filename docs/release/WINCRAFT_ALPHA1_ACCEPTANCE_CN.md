@@ -12,15 +12,15 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码基线 | `3a0f97e86662de1899f10821042920ef6f28e034` + 当前未提交本机工作树改动 |
+| 源码提交 | `e3a4c4de4e345ac2230dec8f1aef6f62d049fc93` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 13,277,184 bytes |
-| SHA-256 | `AA6A656F08DBC79F2C5900906095CA13CAEE78A780633A23049DD9F0BE124EB0` |
+| 文件大小 | 13,279,232 bytes |
+| SHA-256 | `0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。2026-10-30 用当前本机工作树运行 `npm run desktop:build` 构建，退出码 0；`npm run check:local` 退出码 0：UI 28 项、Rust fmt/check/workspace tests/clippy、Python 176 项（1 项因 Windows symlink 创建返回 `OSError` 而跳过）、离线契约和 27 个 Provider Skill 引用检查通过。该 EXE 已用 `--open-manager` 启动。它包含 B06-03 配置包导入运行时，但当前 Computer Use 两次因 `GetCursorPos` 拒绝访问而无法读取窗口状态；没有发送 UI 点击或文字输入，故本指南新增的 B06-03 UI 项仍待人工验收。
+这是单个 Windows 可执行文件，不是安装器。2026-10-30 基于提交 `e3a4c4d` 运行 `npm run desktop:build`，退出码 0；该提交的 `npm run check:local` 和 Windows Actions run [40979104886](https://github.com/exomind-team/WinCraft/actions/runs/40979104886) 均通过。自动检查覆盖 UI 28 项、Rust fmt/check/workspace tests/clippy、Python 176 项（1 项因 Windows symlink 创建返回 `OSError` 而跳过）、离线契约和 27 个 Provider Skill 引用。当前 EXE 已用 `--open-manager` 启动，真实 Tauri Host 的只读 Python SDK capability handshake 通过。Computer Use 对预修复候选的两次窗口状态读取均遇到 `GetCursorPos` 拒绝访问；修复后新 hash 已启动但未再尝试 UI 输入，因此 B06-03 原生界面项仍待人工验收。
 
-2026-10-29 已提交的上一版 `a0366e1` release 为 12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`，GitHub Actions run [40903194743](https://github.com/exomind-team/WinCraft/actions/runs/40903194743) 对该提交的 Windows `npm run check:local` 通过。那份旧二进制不含本次 B06-03 改动，不能作为本表新 EXE 的验收证据。
+2026-10-29 的旧版 `a0366e1` release 为 12,429,312 bytes，SHA-256 `6FE0BD26E1CD848CA8B28DBA41EF03EDE586DFE1B91D19C28A46DAE1A56A8093`；同日稍后的预修复 `e3e8df4` 候选也已被本表中的 `e3a4c4d` 构建替换。旧 hash 均不代表本表 EXE。
 
 此前同源码 release 的 synthetic Agent Activity UIA 验证过会话名称、状态、项目和输出字段；本次 Computer Use 重新激活失败，故本 hash 没有像素级 UI 验收。最新 live Provider smoke 以 `--sources codex claude-code` 读取这两个来源，明确不查询 Codex App；两次真实 Tauri 协议运行提交了 4/2 个只读场景并正常退出。一次授权 Codex App MCP 快照曾到达 Provider，但持续 relay 尚未打通；真实 Codex App 目标按用户要求标记 `STALLED`。本机只读 fallback 仍限于标题/项目和身份匹配的 Agent 输出，状态未知；原生 UUID 深链接仍 `NOT_RUN`。不要把 synthetic UIA 或两来源 smoke 计作真实 Codex App UI 接入。
 

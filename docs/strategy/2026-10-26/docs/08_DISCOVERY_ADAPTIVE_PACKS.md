@@ -80,4 +80,4 @@ Provider 类型、版本、能力声明、grants 与 freshness 的 inventory 仍
 
 取消预览不会触碰既有世界。提交失败时 Host 仅回收本次创建且仍未改动/加入的窗口并报告清理结果；已被用户或 Provider 修改、接入或接管的窗口会保留。回退按导入账本和当前 revision/epoch/window/scene/membership 核对，不能复原或覆盖后续用户修改。原生多窗口创建按窗口各自应用，未提供 OS 级事务原子性保证。
 
-这是本机管理器实现，不是 protocol 0.3 的新方法。B06-03 的 Rust Host/manager 行为测试通过 L1–L2；当前 release 的真实 Tauri SDK hello/capability handshake 只证明 Host 宣告 `provider_import` 契约，不证明实际导入。Computer Use 两次读取 Manager 窗口状态均遇到 `GetCursorPos` 访问被拒绝，未发送 UI 输入；原生预览、授权重规划、apply、逐窗失败与恢复仍为 NOT_RUN，因此 B06-03 继续标 `IMPLEMENTED_UNVERIFIED`/PARTIAL。Host grants 与导入账本仅在运行期间保留，重启不重建旧计划。B06-04 的四类合成 inventory 与 `.wcp` 静态包检查已完成；两个独立用户环境的重新授权仍 NOT_RUN。
+这是本机管理器实现，不是 protocol 0.3 的新方法。B06-03 的 Rust Host/manager 行为测试通过 L1–L2；当前 `e3a4c4d` Tauri release 的真实 SDK hello/capability handshake 证明 Host 宣告 `provider_import` 契约，不证明实际导入。Computer Use 在前一份功能等价候选上两次读取 Manager 窗口状态均遇到 `GetCursorPos` 访问被拒绝，未发送 UI 输入；修复后的新 hash 已启动但未再次截图，因此原生预览、授权重规划、apply、逐窗失败与恢复仍为 NOT_RUN，B06-03 继续标 `IMPLEMENTED_UNVERIFIED`/PARTIAL。Host grants 与导入账本仅在运行期间保留，重启不重建旧计划。B06-04 的四类合成 inventory 与 `.wcp` 静态包检查已完成；两个独立用户环境的重新授权仍 NOT_RUN。
