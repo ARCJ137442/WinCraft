@@ -552,11 +552,9 @@ fn main() {
             tauri::RunEvent::Exit => {
                 let _ = handle.global_shortcut().unregister_all();
             }
-            tauri::RunEvent::ExitRequested { api, code, .. } => {
+            tauri::RunEvent::ExitRequested { api, code, .. } if code.is_none() => {
                 // Last world closing must not terminate the tray host. Explicit tray Exit has Some(code).
-                if code.is_none() {
-                    api.prevent_exit();
-                }
+                api.prevent_exit();
             }
             _ => {}
         }

@@ -12,7 +12,7 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| 源码分支/基线 | `dev` / `691ca16`，包含本阶段 B04-03 改动 |
+| 源码提交 | `4bc3e81785f2aa5ae4f454e931ad50968c7e40c3` |
 | 程序路径 | `target/release/wincraft-desktop.exe` |
 | 文件大小 | 13,558,784 bytes |
 | SHA-256 | `5E6061827A3B4527BFEEA1307A5945A8EAB8976C8BDC47A86BFE2F4B654B6F8F` |
@@ -51,7 +51,7 @@ audience: maintainer, Windows tester
 | 自动尺寸与文本（W07/W15） | 调宽/调窄 Obsidian Workspace 或 TrafficMonitor；高度随内容布局收敛；长中文/长无空格文本在组件内换行；底部和右侧默认无窗口级滚动条。 | ____ |
 | 折叠、拖动、隐藏（W18/W20） | 折叠后窗口只剩标题栏且宽度收紧；展开恢复；标题栏隐藏时普通背景仍可拖动；隐藏后可从管理器恢复同一 world。 | ____ |
 | 本机全局快捷键（B04-03） | 默认未注册；管理器中明确启用后按下组合键应打开/聚焦管理器；停用后按键不再触发。注册冲突和 IME/系统保留组合必须失败关闭。 | Core/server 回归与 release build：PASS；本机真实按键与撤销：NOT_RUN |
-| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 工作树定向测试与本机 count-only 进程/磁盘 smoke：PASS；当前 release 像素与 UUID 深链：NOT_RUN |
+| Agent Activity 会话卡片（B08-02/B08-03） | Codex App/CLI/Claude 来源卡片显示名称、状态、项目和来源文本；Codex App 输出须经 UUID 与 `session_meta` 匹配，Claude 输出只来自 assistant 文本。进程状态与磁盘读取质量分开；没有权威逐会话状态时显示未知。 | 工作树定向测试与本机 count-only 进程/磁盘 smoke：PASS；Codex App 当前 release UI 与 UUID 深链：用户要求阶段性标记停滞（NOT_RUN） |
 | 置顶与透明度（W12） | 默认置顶且默认透明度 80%；普通窗口不能覆盖；另一个置顶窗口遵循 Windows z-order；provider 配置后实际效果可见。 | ____ |
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |

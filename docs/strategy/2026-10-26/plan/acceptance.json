@@ -1427,7 +1427,8 @@
       ],
       "level": "L2-L5",
       "criterion": "Codex App 与 Codex CLI 保持独立来源；Codex App 从本机状态库/经 UUID 校验的 rollout 显示标题、项目、最近 Agent 输出和诚实状态，标题点击只使用受限 UUID-only 原生线程导航。",
-      "status": "PARTIAL"
+      "status": "PARTIAL",
+      "evidence": "STALLED by user request at the 2026-10-30 stage checkpoint: local process/disk adapter and count-only smoke pass, but current-release Agent Activity rendering and UUID-only navigation remain NOT_RUN after Computer Use was stopped by physical Escape. The overall B08-02 task remains IN_PROGRESS."
     },
     {
       "id": "B08-02-A5",
