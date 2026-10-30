@@ -8,7 +8,7 @@
 
 本文件按时间追加，不回写早期观察。对同一验收项，较新的明确复核段落与生成的 `plan/acceptance.json`、`plan/status.json` 是当前状态；旧日期段落只保留发生当时的事实。
 
-TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：前者读本机 state SQLite 与 rollout token 事件；后者在 TeamSense 本机 collector 内存使用已有凭据查询额度服务。它们都不等于实时会话状态。未来的 Codex、MiniMax、DeepSeek 图形化额度悬浮窗仍是 IDEA；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
+TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询，其提供商识别逻辑会有界读取 `auth.json`。Agent 只读 API 的 `GET /v1/integrations/models` 可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。它们都不等于实时会话状态。Codex、MiniMax、DeepSeek 图形化额度悬浮窗是用户提出的后续方向，源码边界记录在 [`IDEAS.md`](../product/IDEAS.md)；WinCraft 只消费 TeamSense 授权的脱敏只读汇总，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。
 
 ## 2026-10-30 B02-02 主题与无障碍偏好验收
 
@@ -65,16 +65,23 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | B04-02-A3 Windows 前台拒绝 | PARTIAL | Win32 结果到 Host 的失败栅栏有定向回归；本轮没有强制 Windows 拒绝真实 Obsidian 激活。当前 release 标题动作的原生点击仍未通过 Computer Use/人工观察。|
 | B04-02-A5 Host action / Provider ACK 顺序 | PARTIAL | Obsidian Workspace Provider 测试只在 Host focus 调用成功后 ACK；Host native failure 测试不广播、不 ACK。真实 release 点击既有 Obsidian 窗口且不启动新进程仍未实测。|
 
-## 2026-10-30 B04-03 快捷键意图解析与冲突规范化
+## 2026-10-30 B04-03 Manager 本机快捷键首个闭环
 
-**Given** 多个会话提交静态快捷键意图，**When** chord 仅有大小写、修饰键顺序或空格差异，**Then** 它们规范化为同一冲突键；保留组合、无修饰键、重复修饰键与无效语法失败关闭。
+**Given** 用户在内部管理器输入 chord 并显式点击启用，**When** Tauri Rust adapter 注册 `manager.show` 全局快捷键，**Then** 默认启动不注册热键；只监听用户启用的组合，按下后重新呈现管理器，用户可一键停用。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
-| `cargo test -p wincraft-core shortcuts -- --nocapture` | PASS | 3 个 core 测试通过；现含 chord 大小写/空白/修饰顺序规范化、冲突不覆盖 owner、owner revoke/unregister，以及 Windows/IME chord 失败关闭：Alt+Tab、Ctrl+Alt+Delete、Ctrl+Shift+Esc、Win+L/U、Ctrl+Space、Shift+Space、Ctrl+.、Win+Space、Win+/。IME 组合参考 [Microsoft Simplified Chinese IME](https://support.microsoft.com/en-us/windows/hardware/input-devices/microsoft-simplified-chinese-ime) 与 [East Asian input methods](https://support.microsoft.com/en-us/windows/hardware/input-devices/advanced-input-methods-for-east-asian-languages)。|
-| `npm run check:local` | PASS | 退出码 0：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy/离线契约和 27 个 Provider Skill 引用通过。|
-| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `AB114CA6D2BDBA7716B20D73CF7D8ECB409879FF932E6A6755D577E4345C75C7`。|
-| 快捷键 acceptance | PARTIAL | A1/A2/A3 的 intent registry 边界正在实现；当前没有 OS 全局热键监听器、Manager 授权 UI 或真实 IME/输入框门控。它仍是纯 intent registry，不得宣传为已经注册系统快捷键。|
+| Tauri Plugin Rust API | PASS（build） | 新增官方 `tauri-plugin-global-shortcut` 2.4.1，仅从 Rust 内部管理器 adapter 调用，不加入 JavaScript guest bindings/permissions。插件初始化时没有默认快捷键。|
+| `cargo test -p wincraft-core shortcuts -- --nocapture` | PASS | 3 个 core 测试通过；chord 大小写/空白/修饰顺序规范化、等价 chord 冲突、owner revoke/unregister，以及 Windows/IME chord 失败关闭：Alt+Tab、Ctrl+Alt+Delete、Ctrl+Shift+Esc、Win+L/U、Ctrl+Space、Shift+Space、Ctrl+.、Win+Space、Win+/。IME 组合参考 [Microsoft Simplified Chinese IME](https://support.microsoft.com/en-us/windows/hardware/input-devices/microsoft-simplified-chinese-ime) 与 [East Asian input methods](https://support.microsoft.com/en-us/windows/hardware/input-devices/advanced-input-methods-for-east-asian-languages)。|
+| `cargo test -p wincraft-server shortcut -- --nocapture` | PASS | 4 项测试覆盖本机显式启用/一键停用、默认不注册和断线撤销本 session intent。没有把 fake-host 结果当成真实 OS key event。|
+| `cargo test -p wincraft-server failed_native_registration -- --nocapture` | PASS | 1 项测试确认本机注册失败时会回滚刚创建的 core intent；真实 OS 冲突仍未验。|
+| `cargo test -p wincraft-server failed_native_unregistration -- --nocapture` | PASS | 1 项回归验证 native unregister 失败会保留 intent 并允许用户重试；实际 Windows OS unregister 仍未测。|
+| `cargo check -p wincraft-desktop --all-targets` | PASS | 桌面 Tauri crate 与所有目标编译检查通过。|
+| `npm run check:local` | PASS | 退出码 0：28 项 Node UI、141 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy/离线契约和 27 个 Provider Skill 引用通过。|
+| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,558,784 bytes，SHA-256 `5E6061827A3B4527BFEEA1307A5945A8EAB8976C8BDC47A86BFE2F4B654B6F8F`。|
+| Release 启动回归 | 修复后 PASS | 首次以 `--open-manager` 启动曾 exit 101：同步 Tauri setup 回调直接触发 `tokio::spawn`，panic 为 `there is no reactor running`。修复为从 `tauri::async_runtime::spawn` 调度 ManagerProvider；修复后 release 进程在 5 秒观察后仍响应，管理器窗口和可访问性树可读。失败运行生成的 stale descriptor 已在不读取内容的情况下删除。|
+| Release 管理器原生交互 | PARTIAL | Computer Use 截取到当前 release 管理器窗口/可访问性树；用户在快捷键输入框聚焦操作时按物理 Escape 停止了 Computer Use。没有输入或启用热键；字段焦点结果不确定，托盘交互、真实 OS key delivery、冲突和撤销均未验收。截图未保存为证据，因为画面包含本机 runtime 路径。|
+| 快捷键 acceptance | PARTIAL | Manager 仅在本机 enable click 后注册 `manager.show`，并提供 disable；A1/A2/A3 的系统冲突、OS unregister 与 IME/输入焦点仍需真实 Tauri/Windows 验收。Provider 专属热键尚未开放。|
 
 ## 2026-10-28 开发工具链核验
 

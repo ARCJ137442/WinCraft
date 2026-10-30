@@ -4,7 +4,12 @@
 use crate::pack_import::{ImportReceipt, PackPreview, PlanStatus, RollbackReceipt};
 use crate::{Hub, Notice};
 use serde_json::{json, Value};
-use std::{collections::BTreeMap, path::PathBuf, sync::OnceLock, time::Duration};
+use std::{
+    collections::BTreeMap,
+    path::PathBuf,
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 use uuid::Uuid;
 use wincraft_core::*;
 
@@ -14,10 +19,22 @@ pub struct ManagerProvider {
     pub world_id: Uuid,
     pub lease: LeaseKey,
 }
+
+/// The manager supplies the local user-confirmation boundary; the desktop host
+/// performs the OS registration through this narrow adapter.
+pub trait ShortcutHost: Send + Sync {
+    fn register(&self, spec: &ShortcutSpec) -> std::result::Result<(), String>;
+    fn unregister(&self, chord: &str) -> std::result::Result<(), String>;
+}
+
 #[derive(Clone)]
 struct Settings {
     title: String,
     always_on_top: bool,
+    shortcut_draft: String,
+    shortcut_active: Option<String>,
+    shortcut_notice: Option<String>,
+    shortcut_available: bool,
     pending_close: Option<Uuid>,
     pack_path: String,
     pack_selections: BTreeMap<String, String>,
@@ -31,6 +48,10 @@ impl Default for Settings {
         Self {
             title: "空白世界".into(),
             always_on_top: true,
+            shortcut_draft: String::new(),
+            shortcut_active: None,
+            shortcut_notice: None,
+            shortcut_available: false,
             pending_close: None,
             pack_path: String::new(),
             pack_selections: BTreeMap::new(),
@@ -114,10 +135,27 @@ impl ManagerProvider {
         )
     }
     pub fn spawn(&self, hub: Hub, descriptor_path: String) {
+        self.spawn_inner(hub, descriptor_path, None);
+    }
+    pub fn spawn_with_shortcut_host(
+        &self,
+        hub: Hub,
+        descriptor_path: String,
+        shortcut_host: Arc<dyn ShortcutHost>,
+    ) {
+        self.spawn_inner(hub, descriptor_path, Some(shortcut_host));
+    }
+    fn spawn_inner(
+        &self,
+        hub: Hub,
+        descriptor_path: String,
+        shortcut_host: Option<Arc<dyn ShortcutHost>>,
+    ) {
         let manager = self.clone();
         tokio::spawn(async move {
             let mut settings = Settings {
                 title: manager_text(&hub.locale(), "manager.default_world"),
+                shortcut_available: shortcut_host.is_some(),
                 ..Settings::default()
             };
             let mut events = hub.subscribe();
@@ -126,6 +164,18 @@ impl ManagerProvider {
                 tokio::select! {
                     _=timer.tick()=>{
                         let _=hub.dispatch(manager.session,"session.ping",json!({}));
+                        if let Some(chord)=settings.shortcut_active.clone().filter(|chord|!hub.shortcut_registered(chord)){
+                            match shortcut_host.as_deref().map(|host|host.unregister(&chord)){
+                                Some(Err(error))=>{
+                                    eprintln!("manager shortcut revocation cleanup failed: {error}");
+                                    settings.shortcut_notice=Some(manager_text(&hub.locale(),"manager.shortcut.revocation_failed"));
+                                }
+                                Some(Ok(()))|None=>{
+                                    settings.shortcut_active=None;
+                                    settings.shortcut_notice=Some(manager_text(&hub.locale(),"manager.shortcut.revoked"));
+                                }
+                            }
+                        }
                         if let Err(e)=manager.refresh(&hub,&settings,&descriptor_path){eprintln!("manager refresh: {e}");}
                     },
                     event=events.recv()=>{
@@ -133,7 +183,7 @@ impl ManagerProvider {
                             Ok(Notice::Directed(sid,value)) if sid==manager.session=>{
                                 if let Some(data)=value.get("data"){
                                     if let Ok(event)=serde_json::from_value::<UiEvent>(data.clone()){
-                                        let result=manager.handle(&hub,&mut settings,&event);
+                                        let result=manager.handle_with_shortcut_host(&hub,&mut settings,&event,shortcut_host.as_deref());
                                         let (ok,message)=match result{Ok(())=>(true,None),Err(e)=>(false,Some(e.to_string()))};
                                         let _=hub.dispatch(manager.session,"action.result",json!({"world_id":manager.world_id,"lease":manager.lease,
                                             "event_id":event.id,"ok":ok,"message":message}));
@@ -147,9 +197,29 @@ impl ManagerProvider {
                     }
                 }
             }
+            if let Some(chord) = settings.shortcut_active.take() {
+                if let Some(host) = shortcut_host.as_deref() {
+                    if let Err(error) = host.unregister(&chord) {
+                        eprintln!("manager shortcut shutdown cleanup failed: {error}");
+                    }
+                }
+                if let Err(error) = hub.unregister_shortcut(manager.session, &chord) {
+                    eprintln!("manager shortcut intent cleanup failed: {}", error.code);
+                }
+            }
         });
     }
+    #[cfg(test)]
     fn handle(&self, hub: &Hub, s: &mut Settings, event: &UiEvent) -> Result<()> {
+        self.handle_with_shortcut_host(hub, s, event, None)
+    }
+    fn handle_with_shortcut_host(
+        &self,
+        hub: &Hub,
+        s: &mut Settings,
+        event: &UiEvent,
+        shortcut_host: Option<&dyn ShortcutHost>,
+    ) -> Result<()> {
         match event.action.as_str() {
             "new_world" => {
                 hub.dispatch(self.session,"world.create",json!({"window":{"title":s.title,"always_on_top":s.always_on_top},"join_policy":"open_authenticated","claim":false}))?;
@@ -165,6 +235,65 @@ impl ManagerProvider {
             }
             "settings.top" => {
                 s.always_on_top = !s.always_on_top;
+            }
+            "shortcut.draft" => {
+                s.shortcut_draft = event
+                    .value
+                    .as_str()
+                    .unwrap_or_default()
+                    .trim()
+                    .chars()
+                    .take(64)
+                    .collect();
+                s.shortcut_notice = None;
+            }
+            "shortcut.enable" => {
+                if s.shortcut_active.is_some() {
+                    return Err(Fault::new(
+                        "SHORTCUT_ALREADY_ENABLED",
+                        "disable the current shortcut before changing it",
+                    ));
+                }
+                let host = shortcut_host.ok_or_else(|| {
+                    Fault::new(
+                        "NATIVE_UNAVAILABLE",
+                        "global shortcuts require the local desktop host",
+                    )
+                })?;
+                let requested = ShortcutSpec {
+                    chord: s.shortcut_draft.clone(),
+                    action: "manager.show".into(),
+                };
+                let chord = hub.register_shortcut(self.session, requested.clone())?;
+                let normalized = ShortcutSpec {
+                    chord: chord.clone(),
+                    action: requested.action,
+                };
+                if let Err(error) = host.register(&normalized) {
+                    let _ = hub.unregister_shortcut(self.session, &chord);
+                    return Err(Fault::new("SHORTCUT_REGISTRATION_FAILED", error));
+                }
+                s.shortcut_draft = chord.clone();
+                s.shortcut_active = Some(chord);
+                s.shortcut_notice = Some(manager_text(&hub.locale(), "manager.shortcut.enabled"));
+            }
+            "shortcut.disable" => {
+                let Some(chord) = s.shortcut_active.clone() else {
+                    s.shortcut_notice =
+                        Some(manager_text(&hub.locale(), "manager.shortcut.disabled"));
+                    return Ok(());
+                };
+                let host = shortcut_host.ok_or_else(|| {
+                    Fault::new(
+                        "NATIVE_UNAVAILABLE",
+                        "global shortcuts require the local desktop host",
+                    )
+                })?;
+                host.unregister(&chord)
+                    .map_err(|error| Fault::new("SHORTCUT_UNREGISTER_FAILED", error))?;
+                hub.unregister_shortcut(self.session, &chord)?;
+                s.shortcut_active = None;
+                s.shortcut_notice = Some(manager_text(&hub.locale(), "manager.shortcut.disabled"));
             }
             "pack.path" => {
                 s.pack_path = event
@@ -662,6 +791,74 @@ impl ManagerProvider {
                 vec![],
             ),
             node(
+                "shortcut-heading",
+                Kind::Text,
+                json!({"text":manager_text(&locale,"manager.shortcut.section"),"size":"heading"}),
+                vec![],
+            ),
+            node(
+                "shortcut-draft",
+                Kind::Input,
+                json!({
+                    "label":manager_text(&locale,"manager.shortcut.chord"),
+                    "value":settings.shortcut_draft,
+                    "action":"shortcut.draft",
+                    "placeholder":manager_text(&locale,"manager.shortcut.placeholder")
+                }),
+                vec![],
+            ),
+            node(
+                "shortcut-controls",
+                Kind::Row,
+                json!({"gap":8}),
+                vec![
+                    node(
+                        "shortcut-enable",
+                        Kind::Button,
+                        json!({
+                            "label":manager_text(&locale,"manager.shortcut.enable"),
+                            "action":"shortcut.enable",
+                            "tone":"accent",
+                            "disabled":!settings.shortcut_available || settings.shortcut_active.is_some()
+                        }),
+                        vec![],
+                    ),
+                    node(
+                        "shortcut-disable",
+                        Kind::Button,
+                        json!({
+                            "label":manager_text(&locale,"manager.shortcut.disable"),
+                            "action":"shortcut.disable",
+                            "disabled":settings.shortcut_active.is_none()
+                        }),
+                        vec![],
+                    ),
+                ],
+            ),
+            node(
+                "shortcut-status",
+                Kind::Text,
+                json!({
+                    "text":settings.shortcut_notice.as_deref().map(str::to_owned).unwrap_or_else(|| {
+                        settings.shortcut_active.as_ref().map(|chord| {
+                            format!("{}: {chord}", manager_text(&locale,"manager.shortcut.active"))
+                        }).unwrap_or_else(|| manager_text(&locale,if settings.shortcut_available {
+                            "manager.shortcut.not_enabled"
+                        } else {
+                            "manager.shortcut.not_supported"
+                        }))
+                    }),
+                    "tone":"muted"
+                }),
+                vec![],
+            ),
+            node(
+                "shortcut-privacy",
+                Kind::Text,
+                json!({"text":manager_text(&locale,"manager.shortcut.privacy"),"tone":"muted"}),
+                vec![],
+            ),
+            node(
                 "descriptor",
                 Kind::KeyValue,
                 json!({"items":[{"key":manager_text(&locale,"manager.descriptor"),"value":descriptor},{"key":manager_text(&locale,"manager.save_policy_key"),"value":manager_text(&locale,"manager.save_policy")}]}),
@@ -870,8 +1067,39 @@ fn rollback_receipt_text(hub: &Hub, receipt: &RollbackReceipt) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
+    use std::{collections::BTreeSet, io::Write, sync::Mutex};
     use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+
+    #[derive(Default)]
+    struct FakeShortcutHost {
+        registered: Mutex<BTreeSet<String>>,
+        reject_registration: bool,
+        reject_unregistration: bool,
+    }
+
+    impl ShortcutHost for FakeShortcutHost {
+        fn register(&self, spec: &ShortcutSpec) -> std::result::Result<(), String> {
+            if self.reject_registration {
+                return Err("synthetic native shortcut conflict".into());
+            }
+            self.registered
+                .lock()
+                .expect("shortcut fake mutex poisoned")
+                .insert(spec.chord.clone());
+            Ok(())
+        }
+
+        fn unregister(&self, chord: &str) -> std::result::Result<(), String> {
+            if self.reject_unregistration {
+                return Err("synthetic native shortcut cleanup failure".into());
+            }
+            self.registered
+                .lock()
+                .expect("shortcut fake mutex poisoned")
+                .remove(chord);
+            Ok(())
+        }
+    }
 
     fn write_import_fixture() -> PathBuf {
         let path = std::env::temp_dir().join(format!("wincraft-pack-{}.wcp", Uuid::new_v4()));
@@ -922,6 +1150,145 @@ mod tests {
             lease_epoch: 0,
             revision: 0,
         }
+    }
+
+    #[test]
+    fn local_manager_shortcut_requires_click_and_can_be_disabled() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let native = FakeShortcutHost::default();
+        let mut settings = Settings {
+            shortcut_available: true,
+            shortcut_draft: "Ctrl + Shift + M".into(),
+            ..Settings::default()
+        };
+
+        manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.enable".into(), Value::Null),
+                Some(&native),
+            )
+            .expect("local enable action registers the shortcut");
+        assert_eq!(settings.shortcut_active.as_deref(), Some("ctrl+shift+m"));
+        assert!(hub.shortcut_registered("Control+Shift+M"));
+        assert!(native
+            .registered
+            .lock()
+            .expect("shortcut fake mutex is available")
+            .contains("ctrl+shift+m"));
+
+        manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.disable".into(), Value::Null),
+                Some(&native),
+            )
+            .expect("local disable action releases the shortcut");
+        assert!(settings.shortcut_active.is_none());
+        assert!(!hub.shortcut_registered("ctrl+shift+m"));
+        assert!(native
+            .registered
+            .lock()
+            .expect("shortcut fake mutex is available")
+            .is_empty());
+    }
+
+    #[test]
+    fn failed_native_registration_rolls_back_the_core_intent() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let native = FakeShortcutHost {
+            reject_registration: true,
+            ..FakeShortcutHost::default()
+        };
+        let mut settings = Settings {
+            shortcut_available: true,
+            shortcut_draft: "Ctrl+Shift+M".into(),
+            ..Settings::default()
+        };
+
+        let error = manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.enable".into(), Value::Null),
+                Some(&native),
+            )
+            .unwrap_err();
+
+        assert_eq!(error.code, "SHORTCUT_REGISTRATION_FAILED");
+        assert!(!hub.shortcut_registered("Ctrl+Shift+M"));
+        assert!(settings.shortcut_active.is_none());
+    }
+
+    #[test]
+    fn failed_native_unregistration_keeps_intent_for_retry() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let mut native = FakeShortcutHost::default();
+        let mut settings = Settings {
+            shortcut_available: true,
+            shortcut_draft: "Ctrl+Shift+M".into(),
+            ..Settings::default()
+        };
+        manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.enable".into(), Value::Null),
+                Some(&native),
+            )
+            .expect("local enable action registers the shortcut");
+        native.reject_unregistration = true;
+
+        let error = manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.disable".into(), Value::Null),
+                Some(&native),
+            )
+            .expect_err("failed native cleanup must stay visible");
+
+        assert_eq!(error.code, "SHORTCUT_UNREGISTER_FAILED");
+        assert_eq!(settings.shortcut_active.as_deref(), Some("ctrl+shift+m"));
+        assert!(hub.shortcut_registered("ctrl+shift+m"));
+
+        native.reject_unregistration = false;
+        manager
+            .handle_with_shortcut_host(
+                &hub,
+                &mut settings,
+                &action(&manager, "shortcut.disable".into(), Value::Null),
+                Some(&native),
+            )
+            .expect("the user can retry native cleanup");
+        assert!(settings.shortcut_active.is_none());
+        assert!(!hub.shortcut_registered("ctrl+shift+m"));
+    }
+
+    #[test]
+    fn manager_shortcut_is_not_registered_by_default() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let settings = Settings {
+            shortcut_available: true,
+            ..Settings::default()
+        };
+
+        manager
+            .refresh(&hub, &settings, "<synthetic descriptor>")
+            .expect("manager scene renders without enabling a shortcut");
+
+        let snapshot = hub
+            .renderer_snapshot(manager.world_id)
+            .expect("manager snapshot exists");
+        let scene = serde_json::to_string(&snapshot.scene).expect("scene serializes");
+        assert!(scene.contains("未启用任何全局快捷键"));
+        assert!(!hub.shortcut_registered("Ctrl+Alt+M"));
     }
 
     #[test]

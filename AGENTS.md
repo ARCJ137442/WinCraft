@@ -29,6 +29,8 @@ WinCraft uses a per-checkout CodeGraph index for source navigation. The database
 
 质量规则：每次变更写明原因；优先通过 core/server 测试再进入 Tauri；记录实际命令、退出码、环境和未验证项；保留 `NOT_RUN` 而不是填造绿色结果。浏览器演示与真实协议测试必须分别报告。引入的 lockfile 由本机实际依赖解析生成，不编造它们。
 
+Tauri `Builder::setup` 是同步回调；后台异步循环要用 `tauri::async_runtime::spawn` 或显式 runtime handle 调度，不能在 setup 线程直接调用 `tokio::spawn`。
+
 本地开发环境与统一验证入口见 [`docs/engineering/DEVELOPMENT_TOOLCHAIN.md`](docs/engineering/DEVELOPMENT_TOOLCHAIN.md)。功能变更先写一个可观察的 Given/When/Then 场景，再用对应层级的行为测试验证；静态检查、fixture、真实宿主和人工验收分开记录。
 
 不要泄漏 `.runtime.json` 或其中的 bearer token。`evidence/local/` 是机器本地证据，可能含真实凭据、绝对路径、运行日志；保持忽略状态，不直接复制为公开证据，也不覆盖原始记录。分享摘要只使用合成或汇总数据并逐项检查。

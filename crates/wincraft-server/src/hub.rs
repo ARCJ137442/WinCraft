@@ -934,12 +934,18 @@ impl Hub {
         }
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn register_shortcut(&self, session: Uuid, spec: ShortcutSpec) -> Result<()> {
+    pub(crate) fn register_shortcut(&self, session: Uuid, spec: ShortcutSpec) -> Result<String> {
         self.shortcuts
             .lock()
             .expect("shortcut registry mutex poisoned")
             .register(session, spec)
+    }
+
+    pub(crate) fn unregister_shortcut(&self, session: Uuid, chord: &str) -> Result<bool> {
+        self.shortcuts
+            .lock()
+            .expect("shortcut registry mutex poisoned")
+            .unregister(session, chord)
     }
 
     #[allow(dead_code)]

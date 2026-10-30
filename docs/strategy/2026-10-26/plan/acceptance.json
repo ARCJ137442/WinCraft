@@ -808,7 +808,7 @@
       "level": "L1-L4",
       "criterion": "冲突注册失败不占用他人热键",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: in-memory registry canonicalizes order/case/whitespace/Control aliases before conflict checks; equivalent spellings collide without replacing the first owner. Native OS registration/authorization is not yet wired."
+      "evidence": "PARTIAL: core registry canonicalizes equivalent chords before conflict checks, and the server fake-host test confirms a failed native registration rolls back only this session's intent. Real OS-level or cross-process conflict behavior remains unverified."
     },
     {
       "id": "B04-03-A2",
@@ -820,7 +820,7 @@
       "level": "L1-L4",
       "criterion": "断线/撤销/退出后无残留绑定",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: core session unregister/revoke tests clear owned intent registrations and leave other sessions intact. Because no OS hotkey is registered yet, native unregister-on-disconnect/exit remains unverified."
+      "evidence": "PARTIAL: disconnect/revoke cleanup is implemented and fake-host tests cover explicit disable plus retry after native unregister failure. Actual OS unregister after session loss or app exit remains unverified."
     },
     {
       "id": "B04-03-A3",
@@ -832,7 +832,7 @@
       "level": "L1-L4",
       "criterion": "IME/输入框/平台组合键不被默认破坏",
       "status": "PARTIAL",
-      "evidence": "PARTIAL: parser rejects unmodified/malformed/duplicate-modifier chords and Windows/system/IME combinations Alt+Tab, Ctrl+Alt+Delete, Ctrl+Shift+Esc, Win+L/U, Ctrl+Space, Shift+Space, Ctrl+., Win+Space and Win+/. No global OS hook is installed, so input delivery, IME interaction and actual focus behavior remain unverified."
+      "evidence": "PARTIAL: shortcut validation denies reserved Windows and common IME combinations, and no binding exists by default. Real key delivery, OS collision behavior, and WebView2/IME input interaction remain unverified."
     },
     {
       "id": "B04-04-A1",

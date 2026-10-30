@@ -2,15 +2,22 @@
 mod windows;
 use serde_json::Value;
 use std::{
+    collections::BTreeSet,
     fs,
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use uuid::Uuid;
-use wincraft_core::{EventSource, Fault, GeometryControl, InteractionSource, Snapshot};
-use wincraft_server::{self_provider::ManagerProvider, Hub, RunningServer};
+use wincraft_core::{
+    EventSource, Fault, GeometryControl, InteractionSource, ShortcutSpec, Snapshot,
+};
+use wincraft_server::{
+    self_provider::{ManagerProvider, ShortcutHost},
+    Hub, RunningServer,
+};
 
 pub struct DesktopState {
     pub hub: Hub,
@@ -20,6 +27,70 @@ pub struct DesktopState {
     // Keeps the descriptor guard alive. It removes only this host's credential file on normal exit.
     pub server: Mutex<Option<RunningServer>>,
 }
+
+struct TauriShortcutHost {
+    app: tauri::AppHandle,
+    registered: Mutex<BTreeSet<String>>,
+}
+
+impl ShortcutHost for TauriShortcutHost {
+    fn register(&self, spec: &ShortcutSpec) -> std::result::Result<(), String> {
+        if spec.action != "manager.show" {
+            return Err("this host shortcut adapter only supports manager.show".into());
+        }
+        self.app
+            .global_shortcut()
+            .on_shortcut(spec.chord.as_str(), |app, _shortcut, event| {
+                if event.state() != ShortcutState::Pressed {
+                    return;
+                }
+                let state = app.state::<DesktopState>();
+                windows::activate_manager(
+                    app.clone(),
+                    state.hub.clone(),
+                    state.manager.clone(),
+                    state.tray_visibility.clone(),
+                );
+            })
+            .map_err(|error| error.to_string())?;
+        self.registered
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .insert(spec.chord.clone());
+        Ok(())
+    }
+
+    fn unregister(&self, chord: &str) -> std::result::Result<(), String> {
+        self.app
+            .global_shortcut()
+            .unregister(chord)
+            .map_err(|error| error.to_string())?;
+        self.registered
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .remove(chord);
+        Ok(())
+    }
+}
+
+impl Drop for TauriShortcutHost {
+    fn drop(&mut self) {
+        let chords: Vec<String> = self
+            .registered
+            .get_mut()
+            .unwrap_or_else(|error| error.into_inner())
+            .iter()
+            .cloned()
+            .collect();
+        let shortcuts = self.app.global_shortcut();
+        for chord in chords {
+            if shortcuts.is_registered(chord.as_str()) {
+                let _ = shortcuts.unregister(chord.as_str());
+            }
+        }
+    }
+}
+
 fn load_locale(path: &Path) -> String {
     match fs::read_to_string(path)
         .map(|value| value.trim().to_owned())
@@ -432,15 +503,30 @@ fn main() {
             let (server, manager) = tauri::async_runtime::block_on(async {
                 let server = wincraft_server::start(hub.clone(), bind, &runtime_dir).await?;
                 let manager = ManagerProvider::install(&hub).map_err(std::io::Error::other)?;
-                manager.spawn(hub.clone(), server.file.to_string_lossy().into_owned());
                 Ok::<_, std::io::Error>((server, manager))
             })?;
+            let descriptor_path = server.file.to_string_lossy().into_owned();
             app.manage(DesktopState {
                 hub: hub.clone(),
                 manager: manager.clone(),
                 tray_visibility: windows::TrayVisibilityState::default(),
                 locale_path,
                 server: Mutex::new(Some(server)),
+            });
+            app.handle()
+                .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
+            let shortcut_manager = manager.clone();
+            let shortcut_hub = hub.clone();
+            let shortcut_host = Arc::new(TauriShortcutHost {
+                app: app.handle().clone(),
+                registered: Mutex::new(BTreeSet::new()),
+            });
+            tauri::async_runtime::spawn(async move {
+                shortcut_manager.spawn_with_shortcut_host(
+                    shortcut_hub,
+                    descriptor_path,
+                    shortcut_host,
+                );
             });
             let content_fit = windows::ContentFitState::default();
             app.manage(content_fit.clone());
@@ -461,12 +547,18 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("WinCraft startup failed");
-    app.run(|_handle, event| {
-        if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
-            // Last world closing must not terminate the tray host. Explicit tray Exit has Some(code).
-            if code.is_none() {
-                api.prevent_exit();
+    app.run(|handle, event| {
+        match event {
+            tauri::RunEvent::Exit => {
+                let _ = handle.global_shortcut().unregister_all();
             }
+            tauri::RunEvent::ExitRequested { api, code, .. } => {
+                // Last world closing must not terminate the tray host. Explicit tray Exit has Some(code).
+                if code.is_none() {
+                    api.prevent_exit();
+                }
+            }
+            _ => {}
         }
     });
 }

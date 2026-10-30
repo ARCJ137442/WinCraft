@@ -36,6 +36,8 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 Tauri tray Exit 与 headless Ctrl+C 共用 `RunningServer::shutdown()`：停止接受新连接，向 WebSocket 客户端发送关闭信号，撤销并断开普通 provider session，停止 housekeeping/listener 任务，再删除当前宿主拥有的 runtime descriptor。`Drop` 保留 abort 兜底；异常强杀仍可能留下一份失效 descriptor，不能把它当作正在运行的 host。
 
+Tauri `Builder::setup` 本身是同步回调；管理器和原生窗口监督循环从 setup 启动时通过 `tauri::async_runtime::spawn` 进入 Tauri 的 Tokio runtime。setup 中的 `block_on` 只在执行该 Future 时建立 reactor 上下文，返回后直接调用 `tokio::spawn` 会因没有当前 reactor 而 panic。
+
 `apps/desktop/src` 只负责可信组件渲染。相同组件树在外部世界和管理器中使用相同代码。用户提供的数据不会成为 HTML、JS 或任意 CSS。`WindowSpec.text_selectable` 随快照进入 renderer，控制整个窗口内容的默认文本选择；宿主组件样式可对单个元素覆盖，公共标题栏始终不可选。
 
 `Scene.theme` 是经能力表声明的可选 token 对象；Rust 验证格式、边界和颜色对比度，renderer 只将安全值应用到内容容器。自定义标题栏、Provider 身份、连接状态、权限提示与接管入口保持 host-controlled。系统 forced-colors/reduced-motion 和本机字号缩放优先于 Provider theme；任意 stylesheet、远程资源与脚本不进入协议。

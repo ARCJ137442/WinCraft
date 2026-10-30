@@ -36,7 +36,7 @@ pub struct ShortcutRegistry {
 }
 
 impl ShortcutRegistry {
-    pub fn register(&mut self, session: Uuid, spec: ShortcutSpec) -> Result<()> {
+    pub fn register(&mut self, session: Uuid, spec: ShortcutSpec) -> Result<String> {
         let chord = validate(&spec)?;
         if self.by_chord.contains_key(&chord) {
             return Err(Fault::new(
@@ -50,8 +50,11 @@ impl ShortcutRegistry {
         };
         self.by_chord
             .insert(chord.clone(), (session, normalized_spec));
-        self.by_session.entry(session).or_default().insert(chord);
-        Ok(())
+        self.by_session
+            .entry(session)
+            .or_default()
+            .insert(chord.clone());
+        Ok(chord)
     }
 
     pub fn unregister(&mut self, session: Uuid, chord: &str) -> Result<bool> {

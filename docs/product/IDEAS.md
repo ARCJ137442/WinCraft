@@ -4,11 +4,19 @@
 
 ## TeamSense 只读状态卡
 
-**状态：IDEA / NOT_PLANNED。** 这不是当前窗口修复或阶段性交付的范围。
+**状态：用户提出方向 / NOT_PLANNED。** 额度悬浮窗尚未实现、排期或连接真实数据源；这不是当前窗口修复或阶段性交付的范围。
 
 ### 目标
 
-评估把 TeamSense 的关键摘要放进 WinCraft 悬浮窗，作为随时可见的轻量入口。候选首屏包括 Codex、MiniMax、DeepSeek 的额度余量/周期/重置时间，以及必要的服务器健康摘要；视觉上可用服务卡片、数值和有来源依据的进度条快速对比。只有来源明确给出同一额度窗口的单位与分母时才画百分比；数据必须带来源、采样时间、单位与陈旧状态。先核实 TeamSense 是否提供适合本机提供者的受限只读汇总，再选 Codex 额度概况做小原型；当前不假设具体端点或字段已存在。
+评估把 TeamSense 的关键摘要放进 WinCraft 悬浮窗，作为随时可见的轻量入口。候选首屏包括 Codex、MiniMax、DeepSeek 的额度余量/周期/重置时间，以及必要的服务器健康摘要；视觉上可用服务卡片、数值和有来源依据的进度条快速对比。只有来源明确给出同一额度窗口的单位与分母时才画百分比；数据必须带来源、采样时间、单位与陈旧状态。源码核对发现 TeamSense Agent 只读接口已有 DeepSeek、MiniMax 与 Sub2API 缓存摘要，但不包含 Codex；Codex 读取需要另行确认只读授权边界。先用授权汇总做小原型；当前不假设 Codex 端点或字段已存在。
+
+### TeamSense 本地采集器源码复核（2026-10-30）
+
+- Codex 历史用量库增量读取 `CODEX_HOME` 下的 `sessions/`、`archived_sessions/` JSONL 与 `state_*.sqlite` 元数据；从本机 `token_count` 事件提取用量及其中的 `rate_limits.primary` 快照，不连接或启动 Codex App，也不读取 `auth.json`。
+- TeamSense 桌面 collector 另有独立的可选实时额度查询；默认关闭并单独授权。其提供商识别逻辑会有界读取 `auth.json` 来判定配置类型，所以不能把 TeamSense 的所有额度来源都描述为纯磁盘历史解析。WinCraft 仍只接收 TeamSense 授权后的脱敏汇总，不复制这条凭据路径。
+- TeamSense Agent 只读 API 的 `GET /v1/integrations/models` 从缓存返回 DeepSeek balance、MiniMax quota、Sub2API 管理摘要及各自的 `meta`；设计说明规定普通 GET 不访问上游。Codex 的 `/api/codex/usage` 位于既有 `/api` 身份边界，不在 Agent 只读 token 契约中，因此不能直接当成可用的 Provider endpoint。
+- 额度快照与进程在线状态是不同数据：进程用于判断来源是否运行；本机历史/最近快照可在进程退出后继续展示，并需保留采样时间与 stale 状态。MiniMax、DeepSeek 的权威额度来源、窗口口径与刷新方式仍待逐个核验；token 用量或估算费用不能冒充真实额度余量。
+- 本轮只完成源码核验与设计记录，没有调用 TeamSense Agent API、供应商额度 API、读取用户凭据或连接真实数据。
 
 ### 责任边界
 
