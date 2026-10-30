@@ -367,6 +367,8 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 
 阶段提交 `e3e8df4513841c22dd1ca7574e403991c9dbcb16` 的 Windows Actions run `40976867333` 通过格式、编译和 workspace tests 后，在 Clippy 1.99 的新 lint `chunks_exact_to_as_chunks` 失败。修复将 2-byte decoder 改为 `slice::as_chunks::<2>()` 并新增奇数长度/非法 hex/无效 UTF-8 回归；本机 `cargo fmt --check`、workspace Clippy 和 `npm run check:local` 均再次通过。修复提交 [`e3a4c4de`](https://github.com/exomind-team/WinCraft/commit/e3a4c4de4e345ac2230dec8f1aef6f62d049fc93) 的 [Windows Actions run 40979104886](https://github.com/exomind-team/WinCraft/actions/runs/40979104886) 已通过，耗时 11m26s；CI 不覆盖原生管理器 UI。
 
+后续文档同步提交 `10d5881` 的 [Windows Actions run 40982406047](https://github.com/exomind-team/WinCraft/actions/runs/40982406047) 也已通过：Windows hosted source job 11m46s，Node 22、CPython 3.12.10、Rust 1.99.1；`npm ci`、Python requirements 安装与 `npm run check:local` 均成功。该次变更是文档/状态同步，CI 仍不覆盖 Tauri 原生管理器 UI。
+
 预修复候选（功能代码对应 `e3e8df4`）曾以 `--open-manager` 启动，Computer Use 能枚举到“窗构 · 世界管理器”，但两次截图/可访问性读取均因 `GetCursorPos failed: 拒绝访问 (0x80070005)` 失败。按恢复规则已停止 UI 操作，没有点击或输入。修复提交 `e3a4c4d` 的新 release 已重建并启动（13,279,232 bytes，SHA-256 `0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A`）；Python SDK 对该精确 Tauri Host 的只读 capability handshake 通过，未再次尝试 UI 采集。**原生管理器预览/授权/应用/回退仍为 NOT_RUN。** 详细命令、工具链、退出码、二进制哈希和失败证据见 `evidence/local/nextgen-2026-10-30/b06-03-pack-import-20261030.json`。
 
 窗口状态读取失败后，另用当前 release 自己生成的本机 descriptor 做了只读 Python SDK hello/capability smoke：真实 Tauri Host 协商 `0.4-preview.1`，并返回 provider inventory 与 provider import 的预览契约、草案 schema、定向事件、声明 claim、排他写租约和本机确认要求。该请求未登记 inventory、未创建世界，也未调用导入；它只证明 Tauri Host 的真实协议握手，不证明 Manager UI。
