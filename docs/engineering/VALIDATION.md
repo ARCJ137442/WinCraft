@@ -976,5 +976,7 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 |---|---|---|
 | Commit `51be6bad6e3278a2888f2635f6510f06fd03f231` / `origin/dev` | PASS | 使用 `gh` 核对仓库为 `exomind-team/WinCraft` 私有仓库、默认分支 `dev`；提交推送成功，远端 `dev` 与本地 HEAD 一致。|
 | Windows Actions run [41091337537](https://github.com/exomind-team/WinCraft/actions/runs/41091337537) | PASS | `Prototype verification (not native GUI acceptance)` 完成，`source` job 的 `npm run check:local` 成功，耗时 12m02s。该 workflow 不执行原生 UIA/托盘/多屏等人工验收。|
+| Commit [`14a73ad`](https://github.com/exomind-team/WinCraft/commit/14a73adce8f238377195a51a4408566b51062e86) / `origin/dev` | PASS | 使用 GitHub CLI 核实私有仓库 `exomind-team/WinCraft` 的 `dev` 分支与本地提交一致。|
+| Windows Actions run [41100209526](https://github.com/exomind-team/WinCraft/actions/runs/41100209526) | PASS | Actions run、check suite 与 `source` job 均 `completed/success`；`gh run watch --exit-status` 退出码 0，job 用时 12m01s。Workflow 不替代原生 UIA、托盘、多屏与人工交互验收。|
 
 阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery.zip`，包含 EXE、中文验收指南与 build/hash/待验收说明；不是仓库发布附件。
