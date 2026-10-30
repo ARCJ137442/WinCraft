@@ -55,8 +55,8 @@
 | B02-03-A1 | B02-03 | L1-L4 | 新用户可完成建窗/改字/按钮/主题/发现课程 | PARTIAL |
 | B02-03-A2 | B02-03 | L1-L4 | 教程fixture不接真实用户数据 | PASS |
 | B02-03-A3 | B02-03 | L1-L4 | 外部Provider不能冒充内部管理器取得operator权限 | PASS |
-| B02-04-A1 | B02-04 | L3-L4 | 可只用键盘提交并取消，不困住焦点 | NOT_RUN |
-| B02-04-A2 | B02-04 | L3-L4 | 来源更新不打断IME或覆盖草稿 | NOT_RUN |
+| B02-04-A1 | B02-04 | L3-L4 | 可只用键盘提交并取消，不困住焦点 | PARTIAL |
+| B02-04-A2 | B02-04 | L3-L4 | 来源更新不打断IME或覆盖草稿 | PARTIAL |
 | B02-04-A3 | B02-04 | L3-L4 | DOM通过不替代UIA和原生验收 | PASS |
 | B03-01-A1 | B03-01 | L1-L2 | 原输入正反fixture一致；默认stdout摘要、--json结构不变 | PASS |
 | B03-01-A2 | B03-01 | L1-L2 | 关闭/ESC/取消按原reason返回，不当error | PASS |

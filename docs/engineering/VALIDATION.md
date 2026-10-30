@@ -30,6 +30,16 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；离线契约、Clippy 和 27 个 Provider Skill 引用检查通过，退出码 0。|
 | B02-03-A1 新用户完整旅程 | PARTIAL | 本轮增加了动作分支回归，但仍未用当前 release 连续完成五课；真实 Host 窗口无法由 Computer Use 激活，留待人工原生验收。|
 
+## 2026-10-30 B02-04 键盘与 IME renderer 覆盖
+
+`evidence/local/browser-smoke.json` 的 28 项当前编译 renderer smoke 包括方向键选择、Tab 从选项进入备注、Ctrl+Enter 提交多行草稿、Escape 取消、IME composition 期间拒绝覆盖输入，以及迟到 ACK 不抢焦点。它只证明 Chromium 中的 DOM/事件行为。
+
+| 验收 | 状态 | 边界 |
+|---|---|---|
+| B02-04-A1 键盘提交/取消与焦点 | PARTIAL | browser smoke 模拟键盘路径通过；实际 Tauri/WebView2 完整键盘旅程仍 NOT_RUN。|
+| B02-04-A2 更新不打断 IME/草稿 | PARTIAL | synthetic composition 与 DOM draft 回归通过；实际中文 IME + WebView2 源更新仍 NOT_RUN。|
+| B02-04-A3 DOM 不替代原生验收 | PASS | 验证矩阵分别标记 Chromium、UIA、IME、读屏和 native release，不用 browser PASS 推导 Windows 原生 PASS。|
+
 ## 2026-10-30 B03-02 Popup 状态机验收复核
 
 **Given** 一次 Popup-Ask 临时问题，**When** 用户提交、取消、关闭，或 Host/Provider 断线，**Then** 每个路径产生单一确定结果或清楚的 unknown，并只清理本次世界。

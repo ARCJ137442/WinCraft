@@ -448,7 +448,8 @@
       ],
       "level": "L3-L4",
       "criterion": "可只用键盘提交并取消，不困住焦点",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "The compiled Chromium renderer smoke verifies keyboard arrow selection, Tab from option to notes, Ctrl+Enter submit and Escape cancel. No current-release Tauri/WebView2 keyboard-only journey or native focus-trap check was completed."
     },
     {
       "id": "B02-04-A2",
@@ -459,7 +460,8 @@
       ],
       "level": "L3-L4",
       "criterion": "来源更新不打断IME或覆盖草稿",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "Compiled-renderer smoke dispatches composition and update events, verifies active IME composition is not overwritten, and confirms late ACK does not steal focus. Actual Windows IME composition in WebView2 remains unverified."
     },
     {
       "id": "B02-04-A3",
@@ -471,7 +473,7 @@
       "level": "L3-L4",
       "criterion": "DOM通过不替代UIA和原生验收",
       "status": "PASS",
-      "evidence": "validation matrix retains native UIA, keyboard, IME, and screen-reader cases as NOT_RUN despite 25 Chromium DOM checks; new Tauri release is not under active native acceptance."
+      "evidence": "Validation records explicitly separate Chromium DOM behavior from WebView2 UIA, IME, screen-reader and native-window acceptance; browser smoke is never used as a substitute for those gates."
     },
     {
       "id": "B03-01-A1",
