@@ -1,0 +1,12 @@
+[
+  {
+    "world_id": "00000000-0000-4000-8000-000000000001",
+    "scope_id": "00000000-0000-4000-8000-000000000002",
+    "requested_generation": 1,
+    "current_generation": 1,
+    "revision": 2,
+    "sequence": 5,
+    "status": "online",
+    "writer_session_id": "00000000-0000-4000-8000-000000000099"
+  }
+]

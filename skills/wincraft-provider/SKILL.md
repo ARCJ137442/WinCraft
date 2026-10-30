@@ -275,6 +275,15 @@ owned subtree. The Host sends `scope.interaction` only to that component's curre
 scope writer; acknowledge with `client.scope_action_result()` and its current scoped
 lease. Stale world revisions and revoked scope generations fail closed. Interactive
 controls in unowned layout and native-window actions inside scopes remain unsupported.
+Scope lifecycle inspection is a separate optional capability. Call
+`client.require_scope_status(version=1)` and `client.read_scope_status(world_id,
+scope_id, generation)` only when the Host advertises `component_leases.scope_status`.
+The response contains lifecycle metadata only (`online`, `stale`, `vacant`, `revoked`,
+or `unknown`); it does not reveal sibling data or writer identity. A trusted local
+operator or active parent authority may inspect child scopes, while a scope member may
+inspect only its own.
+This Host component status does not determine whether a Codex/Claude business session
+was revoked; retain `unknown` when the source does not report that fact.
 B07-03 also exposes explicitly shared, typed state slots with owner-scope CAS. Values are bounded scalars, reader grants are
 scope-generation specific, and slots never become provider business truth or arbitrary
 JSON references. Call `client.require_state_slots(version=1)` before using slot helpers.

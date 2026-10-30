@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:wincraft:protocol:0.4-preview.1:scope-status-response",
+  "title": "WinCraft metadata-only component scope lifecycle response",
+  "description": "Contains lifecycle metadata only. It never returns component data, writer session identity, or business content.",
+  "type": "object",
+  "properties": {
+    "world_id": {"type": "string", "format": "uuid"},
+    "scope_id": {"type": "string", "format": "uuid"},
+    "requested_generation": {"type": "integer", "minimum": 1},
+    "current_generation": {"type": ["integer", "null"], "minimum": 1},
+    "revision": {"type": ["integer", "null"], "minimum": 0},
+    "sequence": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["online", "stale", "vacant", "revoked", "unknown"]}
+  },
+  "required": [
+    "world_id",
+    "scope_id",
+    "requested_generation",
+    "current_generation",
+    "revision",
+    "sequence",
+    "status"
+  ],
+  "additionalProperties": false
+}

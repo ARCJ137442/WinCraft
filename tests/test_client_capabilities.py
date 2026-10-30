@@ -128,6 +128,48 @@ class CapabilityTests(unittest.TestCase):
         }
         client.require_scope_interactions()
 
+    def test_scope_status_is_fail_closed_and_sends_only_scope_metadata_request(self):
+        client = self.client_with({
+            "component_leases": {"status": "preview", "version": 1}
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        with self.assertRaisesRegex(RuntimeError, "scope_status:preview-v1"):
+            client.require_scope_status()
+
+        client.ready["capabilities"]["component_leases"]["scope_status"] = {
+            "status": "preview",
+            "version": 1,
+            "method": "scope.status",
+            "data": "lifecycle_metadata_only",
+            "authorization": "active_world_authority_or_scope_member",
+            "states": ["online", "stale", "vacant", "revoked", "unknown"],
+        }
+        with self.assertRaisesRegex(RuntimeError, "scope_status:preview-v1"):
+            client.require_scope_status()
+
+        client.ready["capabilities"]["component_leases"]["scope_status"] = {
+            "status": "preview",
+            "version": 1,
+            "method": "scope.status",
+            "data": "lifecycle_metadata_only",
+            "authorization": "local_operator_or_active_world_authority_or_scope_member",
+            "states": ["online", "stale", "vacant", "revoked", "unknown"],
+        }
+        client.require_scope_status()
+        calls = []
+
+        async def capture(method, params):
+            calls.append((method, params))
+            return {"status": "stale"}
+
+        client.call = capture
+        result = asyncio.run(client.read_scope_status("world", "scope", 1))
+        self.assertEqual(result, {"status": "stale"})
+        self.assertEqual(calls, [(
+            "scope.status",
+            {"world_id": "world", "scope_id": "scope", "generation": 1},
+        )])
+
     def test_scope_action_result_uses_the_current_scoped_lease(self):
         client = self.client_with({
             "component_leases": {

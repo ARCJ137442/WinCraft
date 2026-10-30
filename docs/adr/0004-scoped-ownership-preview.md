@@ -16,6 +16,7 @@
 4. Scope 读请求只返回该 scope 的根节点及其数据命名空间。普通 `world.snapshot` 对 scoped world 的外部会话失败关闭；只有可信本地操作员能读取用于渲染的完整聚合快照。
 5. `scope.patch` 在 B07-01 只接受作用于本 scope 现有节点的属性更新，并以 `scope_revision` 检查冲突；`scope.data.replace` 只能替换本 scope 的命名空间。跨 scope 插入、删除、替换、移动、父级撤销与在途动作清理留给 B07-02 的结构事务。
 6. Root authority 只管理布局边界、子 scope 授权及窗口 authority，不把子提供者的业务数据变成自己的权威事实。退出、过期、撤销与本机接管会撤销对应 scope lease 并推进 fencing generation/epoch。
+7. `scope.status` 是可选的 metadata-only 子能力。可信本机 operator 或当前有效的 root authority 可观察子 scope 的 `online/stale/vacant/revoked/unknown` 生命周期；scope member 仅可读取自己的范围。响应不包含业务数据、组件树或 writer identity，删除状态由有界 tombstone 维持；过期 authority 不能读取 sibling scope。该 Host 状态不得推断外部 Provider 自身的业务会话已撤销。
 
 ## 影响与回滚
 

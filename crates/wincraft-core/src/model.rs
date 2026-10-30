@@ -396,6 +396,31 @@ pub struct ScopeSnapshot {
     pub root: crate::scene::Node,
     pub data: Value,
 }
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScopeLifecycleState {
+    Online,
+    Stale,
+    Vacant,
+    Revoked,
+    Unknown,
+}
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct ScopeStatusSnapshot {
+    pub world_id: Uuid,
+    pub scope_id: Uuid,
+    pub requested_generation: u64,
+    pub current_generation: Option<u64>,
+    pub revision: Option<u64>,
+    pub sequence: u64,
+    pub status: ScopeLifecycleState,
+}
+#[derive(Clone, Debug)]
+pub struct ScopeRevocationTombstone {
+    pub generation: u64,
+    pub revision: u64,
+    pub sequence: u64,
+}
 #[derive(Clone, Debug, Serialize)]
 pub struct ScopeJoinResult {
     pub snapshot: ScopeSnapshot,
@@ -521,6 +546,7 @@ pub struct World {
     pub ownership_mode: OwnershipMode,
     pub authority: Option<WorldAuthorityLease>,
     pub scopes: BTreeMap<Uuid, ComponentScope>,
+    pub scope_revocations: BTreeMap<Uuid, ScopeRevocationTombstone>,
     pub state_slots: BTreeMap<Uuid, crate::state_slots::StateSlot>,
     pub readers: BTreeMap<Uuid, JoinMode>,
     pub ever_claimed: bool,

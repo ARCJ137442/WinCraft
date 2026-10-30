@@ -1,0 +1,21 @@
+[
+  {
+    "id": "scope-status-zero-generation",
+    "method": "scope.status",
+    "params": {
+      "world_id": "00000000-0000-4000-8000-000000000001",
+      "scope_id": "00000000-0000-4000-8000-000000000002",
+      "generation": 0
+    }
+  },
+  {
+    "id": "scope-status-no-writer-identity",
+    "method": "scope.status",
+    "params": {
+      "world_id": "00000000-0000-4000-8000-000000000001",
+      "scope_id": "00000000-0000-4000-8000-000000000002",
+      "generation": 1,
+      "writer_session_id": "00000000-0000-4000-8000-000000000099"
+    }
+  }
+]

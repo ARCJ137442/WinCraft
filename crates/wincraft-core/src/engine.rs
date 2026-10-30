@@ -3,6 +3,8 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use uuid::Uuid;
 
+const MAX_SCOPE_REVOCATION_TOMBSTONES: usize = 128;
+
 /// All mutations are serialized by the host. Time is a monotonic host clock;
 /// callers cannot supply timestamps over the wire.
 #[derive(Default)]
@@ -544,6 +546,7 @@ impl Engine {
             ownership_mode: OwnershipMode::ExclusiveWorld,
             authority: None,
             scopes: BTreeMap::new(),
+            scope_revocations: BTreeMap::new(),
             state_slots: BTreeMap::new(),
             readers: BTreeMap::new(),
             ever_claimed: false,
@@ -986,6 +989,117 @@ impl Engine {
             .filter(|scope| scope.readers.contains_key(&session))
             .map(|scope| Self::build_scope_snapshot(world, scope))
             .collect()
+    }
+
+    pub fn scope_status(
+        &self,
+        session: Uuid,
+        world_id: Uuid,
+        scope_id: Uuid,
+        requested_generation: u64,
+        now: u64,
+    ) -> Result<ScopeStatusSnapshot> {
+        self.require_component_leases_protocol(session)?;
+        if requested_generation == 0 {
+            return Err(Fault::new(
+                "INVALID_SCOPE",
+                "scope generation must be greater than zero",
+            ));
+        }
+        let world = self
+            .worlds
+            .get(&world_id)
+            .ok_or_else(|| Fault::new("NOT_FOUND", "world missing"))?;
+        if world.ownership_mode != OwnershipMode::ScopedSubtrees {
+            return Err(Fault::new("SCOPE_MODE", "world has no component scopes"));
+        }
+        let operator = self.operator(session);
+        if world.system && !operator {
+            return Err(Fault::new("FORBIDDEN", "system world is private"));
+        }
+        let active_authority = world
+            .authority
+            .as_ref()
+            .is_some_and(|authority| authority.session == session && authority.expires_at > now);
+        let expired_authority = world
+            .authority
+            .as_ref()
+            .is_some_and(|authority| authority.session == session && authority.expires_at <= now);
+        let scope = world.scopes.get(&scope_id);
+        let scope_member = scope.is_some_and(|scope| scope.readers.contains_key(&session));
+        if !operator && !active_authority && !scope_member {
+            if expired_authority {
+                return Err(Fault::new("LEASE_EXPIRED", "world authority has expired"));
+            }
+            return Err(Fault::new(
+                "FORBIDDEN",
+                "active world authority or scope membership required",
+            ));
+        }
+
+        let (current_generation, revision, sequence, status) = match scope {
+            Some(scope) if requested_generation < scope.generation => (
+                Some(scope.generation),
+                Some(scope.revision),
+                world.sequence,
+                ScopeLifecycleState::Revoked,
+            ),
+            Some(scope) if requested_generation > scope.generation => (
+                Some(scope.generation),
+                Some(scope.revision),
+                world.sequence,
+                ScopeLifecycleState::Unknown,
+            ),
+            Some(scope)
+                if scope
+                    .writer
+                    .as_ref()
+                    .is_some_and(|writer| writer.expires_at > now) =>
+            {
+                (
+                    Some(scope.generation),
+                    Some(scope.revision),
+                    world.sequence,
+                    ScopeLifecycleState::Online,
+                )
+            }
+            Some(scope) if scope.ever_claimed => (
+                Some(scope.generation),
+                Some(scope.revision),
+                world.sequence,
+                ScopeLifecycleState::Stale,
+            ),
+            Some(scope) => (
+                Some(scope.generation),
+                Some(scope.revision),
+                world.sequence,
+                ScopeLifecycleState::Vacant,
+            ),
+            None => match world.scope_revocations.get(&scope_id) {
+                Some(tombstone) if requested_generation <= tombstone.generation => (
+                    None,
+                    Some(tombstone.revision),
+                    tombstone.sequence,
+                    ScopeLifecycleState::Revoked,
+                ),
+                Some(tombstone) => (
+                    None,
+                    Some(tombstone.revision),
+                    tombstone.sequence,
+                    ScopeLifecycleState::Unknown,
+                ),
+                None => (None, None, world.sequence, ScopeLifecycleState::Unknown),
+            },
+        };
+        Ok(ScopeStatusSnapshot {
+            world_id,
+            scope_id,
+            requested_generation,
+            current_generation,
+            revision,
+            sequence,
+            status,
+        })
     }
     pub fn create_state_slot(
         &mut self,
@@ -1645,8 +1759,37 @@ impl Engine {
         }
         next_scene.validate()?;
 
+        let tombstones = revoked_scopes
+            .iter()
+            .filter_map(|revocation| {
+                world.scopes.get(&revocation.scope_id).map(|scope| {
+                    (
+                        revocation.scope_id,
+                        ScopeRevocationTombstone {
+                            generation: revocation.generation,
+                            revision: scope.revision.saturating_add(1),
+                            sequence: world.sequence.saturating_add(1),
+                        },
+                    )
+                })
+            })
+            .collect::<Vec<_>>();
         for scope_id in &revoked_ids {
             world.scopes.remove(scope_id);
+        }
+        for (scope_id, tombstone) in tombstones {
+            world.scope_revocations.insert(scope_id, tombstone);
+        }
+        while world.scope_revocations.len() > MAX_SCOPE_REVOCATION_TOMBSTONES {
+            let oldest = world
+                .scope_revocations
+                .iter()
+                .min_by_key(|(_, tombstone)| tombstone.sequence)
+                .map(|(scope_id, _)| *scope_id);
+            let Some(oldest) = oldest else {
+                break;
+            };
+            world.scope_revocations.remove(&oldest);
         }
         let revoked_scope_ids = revoked_ids
             .iter()

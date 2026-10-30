@@ -1082,6 +1082,13 @@ struct ScopeReadParams {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ScopeStatusParams {
+    world_id: Uuid,
+    scope_id: Uuid,
+    generation: u64,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ScopeLeaseParams {
     world_id: Uuid,
     lease: ScopedLeaseKey,
@@ -1885,6 +1892,9 @@ impl Hub {
                 "scope_interactions":{"status":"preview","version":1,"event":"scope.interaction",
                     "acknowledge_method":"scope.action.result","routing":"component_scope_owner",
                     "native_window_actions":false},
+                "scope_status":{"status":"preview","version":1,"method":"scope.status",
+                    "data":"lifecycle_metadata_only","authorization":"local_operator_or_active_world_authority_or_scope_member",
+                    "states":["online","stale","vacant","revoked","unknown"]},
                 "parent_revocation":"generation_fence",
                 "state_slots":{"status":"preview","version":1,"schema_types":["boolean","integer","number","string","enum"],
                     "max_slots_per_world":MAX_STATE_SLOTS_PER_WORLD,"max_slots_per_scope":MAX_STATE_SLOTS_PER_SCOPE,
@@ -2195,6 +2205,10 @@ impl Hub {
             "scope.snapshot" => {
                 let p: ScopeReadParams = decode(params)?;
                 encode(e.read_scope(sid, p.world_id, p.scope_id, p.generation)?)?
+            }
+            "scope.status" => {
+                let p: ScopeStatusParams = decode(params)?;
+                encode(e.scope_status(sid, p.world_id, p.scope_id, p.generation, now)?)?
             }
             "scope.patch" => {
                 let p: ScopePatchParams = decode(params)?;

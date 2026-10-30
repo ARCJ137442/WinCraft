@@ -987,6 +987,27 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 忽略的脱敏汇总证据：`evidence/local/nextgen-2026-10-31/b08-03-a2-independent-source-writers-recheck.json`。
 
+## 2026-10-31 B08-03-A4 metadata-only scope lifecycle signal
+
+**Given** 一个仍有效的 0.4-preview.1 parent authority、一个 lifecycle scope 和两个分离的本地来源 scope；**When** 两个 Provider 各自写入并断线，parent 删除 Codex scope 根；**Then** Host 分别返回 `online`、`stale`、`revoked`，Claude Code sibling 仍为 `stale`，且只向 parent 暴露 generation/revision/sequence/status 元数据。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo fmt --all -- --check` | PASS | 退出码 0。|
+| `cargo test -p wincraft-core parent_reads_metadata_only_scope_lifecycle_without_sibling_data -- --nocapture` | PASS | 1/1 通过；覆盖 trusted local operator 读取、active authority 过期后成员仍可读自己的 scope但不能读 sibling、future generation `unknown`、撤销 tombstone、无 business data/Writer identity。|
+| `cargo test -p wincraft-server preview_websocket_scopes_allow_disjoint_writers_and_filter_readers -- --nocapture` | PASS | 1/1 通过，真实 loopback Rust Host WebSocket；覆盖能力声明、metadata-only status、权限隔离、撤销与旧协议拒绝。|
+| `python -m unittest tests.test_agent_scoped_sources tests.test_client_capabilities tests.test_scope_preview_contract -v` | PASS | 37/37 通过；Python 校验精确字段白名单、请求身份、generation 和 metadata 类型。|
+| `python scripts/check_contracts.py` | PASS | 退出码 0；请求/响应 schema、正反 fixture 与本地协议检查通过。|
+| `npm run check:local` | PASS | 退出码 0：Node UI 28 项、Rust workspace 145 项、Python 203 项（1 项因 Windows symlink 能力跳过）、Provider Skill 引用 33 项；含 Rust fmt/check/test/Clippy。环境：Windows 11 专业版 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| `npm run desktop:build` | PASS | 退出码 0；`target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `64458EA768A36FE012230EA34D0E37936FB1ACF1FA74C1A49802C8D456BD7314`。旧 QA 宿主因锁定输出 EXE，已先按用户授权退出；本轮新构建未启动进行像素验收。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 最终代码/格式化后同步 6 个变更文件；索引为 current（98 files、2,763 nodes、9,208 edges）。|
+| 新编译 headless Rust Host + `scoped_live_sources.py --duration-seconds 5` | PASS（L4 protocol/source integration） | `cargo build -p wincraft-server --bin wincraft-headless` 退出码 0；使用 authority-expiry 修正后的二进制，Provider smoke 退出码 0，两个独立本地来源 Provider lease 并发重叠 4.89 秒；Codex 为 `online → stale → revoked`，Claude Code 为 `online → stale → stale`；父 Provider 更新 lifecycle panel 并确认销毁临时世界。终端摘要只含汇总字段，无会话标题、项目、ID 或 Agent 输出。|
+| 首次撤销路径尝试 | FAIL（已修复并重跑） | 退出码 1，`SCOPE_REVISION_CONFLICT`：父 Provider 在写入 stale 状态后未使用返回的新 scope revision。修复为每次写入后传递新 revision；修复后的同一真实 Host smoke 退出码 0。|
+| headless Host / runtime descriptor 清理 | FAIL | 最终 TTY 启动的 Host 已清理本次 descriptor，Provider 子进程和临时世界已清理，headless 进程数为 0；ignored local directory 仍留 1 个来自此前非 TTY stop 的旧 runtime descriptor。Provider SDK 只在运行时解析 descriptor 以连接；我未手动检查或复制其内容，也未纳入 Git；旧描述文件清理仍需解决。|
+| B08-03-A4 判定 | PARTIAL | Host 生命周期 API 与真实 Provider 状态转换已通过；`global_overview_provider.py` 仍使用合成会话记录，尚未把权威 Host 撤销状态并入选中 source/instance/session 的 detail/tombstone。当前未做桌面像素复验。|
+
+忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/scope-status-lifecycle-smoke.json`。它不包含 runtime descriptor 内容；本机残留 descriptor 不属于证据文件。
+
 ## 2026-10-31 GitHub Actions checkpoint
 
 | 检查 | 状态 | 实际结果 |

@@ -73,6 +73,25 @@
       "type": "object",
       "properties": {
         "id": {"type": "string", "minLength": 1, "maxLength": 80},
+        "method": {"const": "scope.status"},
+        "params": {
+          "type": "object",
+          "properties": {
+            "world_id": {"type": "string", "format": "uuid"},
+            "scope_id": {"type": "string", "format": "uuid"},
+            "generation": {"type": "integer", "minimum": 1}
+          },
+          "required": ["world_id", "scope_id", "generation"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["id", "method", "params"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 80},
         "method": {"const": "scope.patch"},
         "params": {
           "type": "object",

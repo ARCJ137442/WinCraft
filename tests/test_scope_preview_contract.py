@@ -68,6 +68,43 @@ class ComponentScopePreviewContractTests(unittest.TestCase):
             event_schema, format_checker=jsonschema.FormatChecker()
         ).validate(event)
 
+    def test_scope_status_preview_is_metadata_only_and_fully_schema_checked(self):
+        manifest = load_json(PREVIEW / "methods.json")
+        self.assertIn(
+            {"name": "scope_status", "version": 1},
+            manifest["optional_capabilities"],
+        )
+        self.assertIn("scope.status", manifest["methods"])
+        self.assertEqual(
+            manifest["constraints"]["scope_status"]["data"],
+            "lifecycle_metadata_only",
+        )
+        self.assertEqual(
+            manifest["constraints"]["scope_status"]["authorization"],
+            "local_operator_or_active_world_authority_or_scope_member",
+        )
+
+        request_schema = load_json(PREVIEW / "scope-request.schema.json")
+        request_validator = jsonschema.Draft202012Validator(
+            request_schema, format_checker=jsonschema.FormatChecker()
+        )
+        for request in load_json(PREVIEW / "examples/scope-status-requests.json"):
+            request_validator.validate(request)
+        for request in load_json(PREVIEW / "examples/scope-status-invalid-requests.json"):
+            self.assertTrue(list(request_validator.iter_errors(request)))
+
+        response_schema = load_json(PREVIEW / "scope-status-response.schema.json")
+        response_validator = jsonschema.Draft202012Validator(
+            response_schema, format_checker=jsonschema.FormatChecker()
+        )
+        for response in load_json(PREVIEW / "examples/scope-status-responses.json"):
+            response_validator.validate(response)
+            self.assertNotIn("data", response)
+            self.assertNotIn("writer", response)
+            self.assertNotIn("writer_session_id", response)
+        for response in load_json(PREVIEW / "examples/scope-status-invalid-responses.json"):
+            self.assertTrue(list(response_validator.iter_errors(response)))
+
 
 if __name__ == "__main__":
     unittest.main()

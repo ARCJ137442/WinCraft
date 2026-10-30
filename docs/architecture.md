@@ -28,6 +28,8 @@ Tauri 原生窗口适配器                 内部管理提供者
 
 稳定协议 0.3 中 `Engine` 对每个 world 持有一个独占 writer。实验性 `0.4-preview.1` 在单独的 ownership mode 中把 world authority、非重叠 component scopes 与各自的数据 namespace 分开；其他 0.3 world 写入入口在该 mode 失败关闭。Tauri 的可信 operator 仍取得合并快照用于 renderer；外部 session 只读到授权 scope 投影。
 
+同一 preview 还提供独立 capability `scope_status`：可信本机 operator 或有效的 parent authority 可只读各 child scope 的 lifecycle metadata，scope member 只能读自己的 scope。本机 Host 不把 component lease 的 revoked 状态映射成 Codex/Claude 等来源会话的撤销事实；后者仍属于来源 Provider，缺少权威来源时必须保持 unknown。删除 scope 后以最多 128 条 Host tombstone 保留 generation/revision/sequence，超过容量则旧身份回到 unknown。
+
 状态变更通过 per-world latest-value watch 推送完整快照，几何/逻辑显隐的类型订阅从相邻快照计算并允许合并；交互和删除等 occurrence 走独立有界广播，队列滞后时显式重同步并断开。订阅只对本连接已加入的世界有效，不授予写租约，断线即清理。
 
 `apps/desktop/src-tauri` 负责真实窗口，将已接受的窗口意图应用到系统。它不能决定外心是否暂停。通过受限的 caller-window IPC 接收交互，不允许某个渲染器指定另一个世界的 ID。

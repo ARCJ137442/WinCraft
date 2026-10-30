@@ -32,6 +32,8 @@
 
 上述是**源码覆盖范围**，不是全部运行验收通过的功能清单。尤其 Tauri/Win32、WS 端到端与外心实机链路必须由本地 Codex 验证。
 
+组件子树租约与 metadata-only `scope.status` 仅属于显式选择的 `0.4-preview.1` 实验协议；稳定 0.3 的整窗独占语义不变。`scope.status` 只报告 WinCraft scope 的 `online/stale/vacant/revoked/unknown`，不读取 sibling 业务数据，也不替来源 Provider 判断 Codex/Claude 会话是否撤销。提供者接入步骤见 [组件 scope preview 指南](skills/wincraft-provider/references/component-scopes-preview.md)。
+
 ## 快速开始
 
 准备 Rust stable、Node.js 22、Python 3.11+；Windows 桌面构建另需微软 C++ 构建工具与 WebView2。先依据 Tauri 官方 prerequisites 完成机器环境。

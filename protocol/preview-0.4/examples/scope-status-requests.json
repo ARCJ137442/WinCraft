@@ -1,0 +1,11 @@
+[
+  {
+    "id": "scope-status-valid",
+    "method": "scope.status",
+    "params": {
+      "world_id": "00000000-0000-4000-8000-000000000001",
+      "scope_id": "00000000-0000-4000-8000-000000000002",
+      "generation": 1
+    }
+  }
+]

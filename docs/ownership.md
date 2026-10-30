@@ -51,7 +51,8 @@ human 模式允许本地拖动；提供者试图改位置/尺寸会收到 HUMAN_
 - Stable `0.3` 的 world lease 和既有客户端语义保持不变。Provider 必须在 `hello` 明确选择 `0.4-preview.1`，并验证 Host `component_leases` capability；无 capability 时 SDK 失败关闭。
 - 当前 preview 允许 root authority 将一个独占世界原子分区成至少两个不相交子树；旧 world lease 被 fencing，root authority 与子树租约使用不同的 key 类型。
 - 每个 scope 具有自己的 generation 和 revision，并绑定唯一顶层 `scene.data` namespace。scope snapshot 只返回本子树和本 namespace；普通读者不能通过 `world.snapshot` 取得完整组合场景。
-- B07-02 允许 scope 内 display-only 节点的原子 props/insert/remove/replace/move，并通过 `scope.structure.patch` 执行父布局事务。scope owner 不能移动/删除固定根、跨 scope 偷取节点或插入交互组件；root authority 只能移动完整 scope 根/祖先或删除边界，不能改 scope 内部 props。父 authority 撤销会 fence 子 generation/epoch；已加入读者收到过滤后的 stale `scope.snapshot`，被删除的 scope 收到 `scope.revoked`。跨 scope move、按组件 owner 路由动作、CAS 状态槽仍未实现。
+- 可选 `scope_status` capability 只返回 `online/stale/vacant/revoked/unknown` 与 generation/revision/sequence metadata，不返回 scope data、component tree 或 writer identity。trusted local operator 和 active parent authority 可查看 child scopes；scope member 只能读自己的 scope。Host tombstone 有界保存 128 项，逐出后返回 `unknown`。
+- Scope-owned components may use click/text input/context interactions only when the Host advertises `scope_interactions` and the provider opts in; events route only to the current owner lease. Unowned layout stays non-interactive and `native_window_action` inside a scope remains unsupported. `scope.structure.patch` may move an intact scope root or remove its boundary, but cross-scope moves remain rejected. Parent revocation fences child generation/epoch; readers receive filtered stale snapshots or `scope.revoked` for deleted scopes. Typed, generation-bound state slots use owner-scope CAS and explicit reader grants; they remain rebuildable coordination state, not business truth.
 - Composition world 不会静默合回 0.3 整窗租约。当前回退方法是由本地管理器销毁该临时世界，再以新 world ID 重建 exclusive 模式。
 
 可复现的真实 Rust WebSocket 验证入口：`examples/python/scope_probe.py`。它使用 synthetic 数据，不连接外部业务来源。

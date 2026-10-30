@@ -43,6 +43,7 @@ from live_sources import (  # noqa: E402
 )
 
 SOURCE_IDS = ("codex", "claude-code")
+LIFECYCLE_SCOPE = {"root_node_id": "scope-lifecycle", "data_namespace": "host"}
 SOURCE_SCOPES = {
     "codex": {"root_node_id": "scope-codex", "data_namespace": "codex"},
     "claude-code": {
@@ -54,6 +55,7 @@ PREVIEW_LIMIT = 3
 MAX_BOOTSTRAP_BYTES = 16_384
 MAX_CHILD_OUTPUT_BYTES = 65_536
 MAX_SOURCE_READ_SECONDS = 120
+SCOPE_STATUS_POLL_SECONDS = 0.2
 WORKER_NAME_PREFIX = "python.agent-board.scoped-source"
 
 PROCESS_HEALTH_LABELS = {
@@ -87,6 +89,14 @@ STATUS_LABELS = {
     "failed": "失败",
     "idle": "空闲",
 }
+SCOPE_STATUS_PRESENTATION = {
+    "online": ("Writer 在线", "success"),
+    "stale": ("Writer 离线 · 数据保留", "warning"),
+    "vacant": ("尚未接入", "muted"),
+    "revoked": ("Scope 已撤销", "danger"),
+    "unknown": ("Scope 状态未知", "muted"),
+}
+LIFECYCLE_DATA_KEYS = {"codex": "codex", "claude-code": "claude_code"}
 
 
 def _node(
@@ -109,6 +119,31 @@ def _empty_scope_data() -> dict[str, Any]:
             {"identity": "", "context": ""} for _ in range(PREVIEW_LIMIT)
         ],
     }
+
+
+def _empty_lifecycle_data() -> dict[str, str]:
+    return {
+        key: value
+        for source_id in SOURCE_IDS
+        for key, value in (
+            (f"{LIFECYCLE_DATA_KEYS[source_id]}_status", "等待 Host 状态"),
+            (f"{LIFECYCLE_DATA_KEYS[source_id]}_tone", "muted"),
+        )
+    }
+
+
+def _lifecycle_data(statuses: Mapping[str, str]) -> dict[str, str]:
+    if set(statuses) != set(SOURCE_IDS):
+        raise ValueError("scope lifecycle status must cover both source providers")
+    data: dict[str, str] = {}
+    for source_id in SOURCE_IDS:
+        label, tone = SCOPE_STATUS_PRESENTATION.get(
+            statuses[source_id], SCOPE_STATUS_PRESENTATION["unknown"]
+        )
+        namespace = LIFECYCLE_DATA_KEYS[source_id]
+        data[f"{namespace}_status"] = label
+        data[f"{namespace}_tone"] = tone
+    return data
 
 
 def _preview_nodes(root_id: str, namespace: str) -> list[dict[str, Any]]:
@@ -177,6 +212,42 @@ def _source_panel(source_id: str) -> dict[str, Any]:
     )
 
 
+def _lifecycle_panel() -> dict[str, Any]:
+    children = [
+        _node(
+            "scope-lifecycle-title",
+            "text",
+            {"text": "Host 观察到的 scope 生命周期", "size": "small"},
+        )
+    ]
+    for source_id in SOURCE_IDS:
+        label = LIVE_SOURCE_LABELS[source_id]
+        key = LIFECYCLE_DATA_KEYS[source_id]
+        children.append(
+            _node(
+                f"scope-lifecycle-{key}",
+                "row",
+                {"gap": 4},
+                [
+                    _node(
+                        f"scope-lifecycle-{key}-label",
+                        "text",
+                        {"text": label, "size": "small"},
+                    ),
+                    _node(
+                        f"scope-lifecycle-{key}-status",
+                        "badge",
+                        {
+                            "text": {"$path": f"/host/{key}_status"},
+                            "tone": {"$path": f"/host/{key}_tone"},
+                        },
+                    ),
+                ],
+            )
+        )
+    return _node(LIFECYCLE_SCOPE["root_node_id"], "stack", {"gap": 3}, children)
+
+
 def scene() -> dict[str, Any]:
     """Build one fixed layout; each source child owns a separate panel subtree."""
     return {
@@ -195,13 +266,17 @@ def scene() -> dict[str, Any]:
                     "text",
                     {"text": "本机只读快照；每个来源 Provider 仅更新自己的组件区。", "size": "small"},
                 ),
+                _lifecycle_panel(),
                 _source_panel("codex"),
                 _source_panel("claude-code"),
             ],
         ),
         "data": {
-            SOURCE_SCOPES[source_id]["data_namespace"]: _empty_scope_data()
-            for source_id in SOURCE_IDS
+            LIFECYCLE_SCOPE["data_namespace"]: _empty_lifecycle_data(),
+            **{
+                SOURCE_SCOPES[source_id]["data_namespace"]: _empty_scope_data()
+                for source_id in SOURCE_IDS
+            },
         },
     }
 
@@ -436,7 +511,7 @@ async def _partition_source_scopes(
         world_id,
         world_lease,
         int(replaced["revision"]),
-        [SOURCE_SCOPES[source_id] for source_id in SOURCE_IDS],
+        [LIFECYCLE_SCOPE, *(SOURCE_SCOPES[source_id] for source_id in SOURCE_IDS)],
     )
     authority_lease = partition.get("authority_lease")
     if not isinstance(authority_lease, dict):
@@ -446,7 +521,10 @@ async def _partition_source_scopes(
         for grant in partition.get("scopes", [])
         if isinstance(grant, Mapping)
     }
-    expected_roots = {SOURCE_SCOPES[source_id]["root_node_id"] for source_id in SOURCE_IDS}
+    expected_roots = {
+        LIFECYCLE_SCOPE["root_node_id"],
+        *(SOURCE_SCOPES[source_id]["root_node_id"] for source_id in SOURCE_IDS),
+    }
     if set(grants) != expected_roots:
         raise RuntimeError("host did not issue both independent source scopes")
     return authority_lease, grants
@@ -537,6 +615,121 @@ def _verified_source_summary(
     }
 
 
+def _validated_scope_status(
+    value: object,
+    *,
+    world_id: str,
+    scope_id: str,
+    generation: int,
+) -> str:
+    if not isinstance(value, Mapping):
+        raise RuntimeError("Host returned an invalid scope lifecycle response")
+    if (
+        value.get("world_id") != world_id
+        or value.get("scope_id") != scope_id
+        or value.get("requested_generation") != generation
+    ):
+        raise RuntimeError("Host scope lifecycle response does not match the requested scope")
+    if any(field in value for field in ("data", "root", "writer", "writer_session_id")):
+        raise RuntimeError("Host scope lifecycle response contains business data or writer identity")
+    expected_fields = {
+        "world_id",
+        "scope_id",
+        "requested_generation",
+        "current_generation",
+        "revision",
+        "sequence",
+        "status",
+    }
+    if set(value) != expected_fields:
+        raise RuntimeError("Host scope lifecycle response contains unsupported fields")
+    current_generation = value["current_generation"]
+    revision = value["revision"]
+    if (
+        type(value["requested_generation"]) is not int
+        or (current_generation is not None and (type(current_generation) is not int or current_generation < 1))
+        or (revision is not None and (type(revision) is not int or revision < 0))
+        or type(value["sequence"]) is not int
+        or value["sequence"] < 0
+    ):
+        raise RuntimeError("Host returned invalid scope lifecycle metadata")
+    status = value.get("status")
+    if status not in {"online", "stale", "vacant", "revoked", "unknown"}:
+        raise RuntimeError("Host returned an unknown scope lifecycle state")
+    return str(status)
+
+
+async def _wait_for_scope_statuses(
+    client: Client,
+    world_id: str,
+    grants: Mapping[str, Mapping[str, Any]],
+    expected_status: str,
+    timeout_seconds: float,
+) -> dict[str, str]:
+    if expected_status not in {"online", "stale"}:
+        raise ValueError("scope lifecycle probe only waits for online or stale")
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_seconds
+    pending = set(SOURCE_IDS)
+    statuses: dict[str, str] = {}
+    while pending:
+        async def read_status(source_id: str) -> tuple[str, str]:
+            root_id = SOURCE_SCOPES[source_id]["root_node_id"]
+            grant = grants[root_id]
+            status = await _read_scope_status(client, world_id, grant)
+            return source_id, status
+
+        observed = await asyncio.gather(*(read_status(source_id) for source_id in pending))
+        for source_id, status in observed:
+            if status == expected_status:
+                statuses[source_id] = status
+                pending.remove(source_id)
+            elif status in {"revoked", "unknown"}:
+                raise RuntimeError(f"{source_id} scope became {status} before {expected_status}")
+            elif expected_status == "online" and status == "stale":
+                raise RuntimeError(f"{source_id} scope disconnected before becoming online")
+            elif expected_status == "stale" and status == "vacant":
+                raise RuntimeError(f"{source_id} scope became vacant instead of stale")
+        if pending:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError("source scope lifecycle state did not reach the expected value")
+            await asyncio.sleep(min(SCOPE_STATUS_POLL_SECONDS, remaining))
+    return statuses
+
+
+async def _read_scope_status(
+    client: Client,
+    world_id: str,
+    grant: Mapping[str, Any],
+) -> str:
+    scope_id = str(grant["scope_id"])
+    generation = int(grant["generation"])
+    value = await client.read_scope_status(world_id, scope_id, generation)
+    return _validated_scope_status(
+        value,
+        world_id=world_id,
+        scope_id=scope_id,
+        generation=generation,
+    )
+
+
+async def _publish_lifecycle_status(
+    client: Client,
+    world_id: str,
+    lease: Mapping[str, Any],
+    expected_scope_revision: int,
+    statuses: Mapping[str, str],
+) -> int:
+    updated = await client.replace_scope_data(
+        world_id,
+        dict(lease),
+        expected_scope_revision,
+        _lifecycle_data(statuses),
+    )
+    return int(updated["revision"])
+
+
 async def run_host(args: argparse.Namespace) -> None:
     processes: dict[str, asyncio.subprocess.Process] = {}
     async with Client(
@@ -546,6 +739,7 @@ async def run_host(args: argparse.Namespace) -> None:
         protocol_version=COMPONENT_LEASES_PREVIEW_PROTOCOL,
     ) as client:
         client.require_component_leases()
+        client.require_scope_status()
         client.require_capabilities(components=("stack", "text", "badge", "metric"))
         world_id, world_lease, expected_revision = await _create_parent_world(client, args)
         cleanup_lease = world_lease
@@ -553,9 +747,82 @@ async def run_host(args: argparse.Namespace) -> None:
             cleanup_lease, grants = await _partition_source_scopes(
                 client, world_id, world_lease, expected_revision
             )
+            lifecycle_join = await client.join_scope(
+                world_id,
+                grants[LIFECYCLE_SCOPE["root_node_id"]],
+                "write",
+            )
+            lifecycle_lease = lifecycle_join.get("lease")
+            if not isinstance(lifecycle_lease, dict):
+                raise RuntimeError("parent Provider did not receive its lifecycle scope writer lease")
+            lifecycle_revision = int(lifecycle_join["snapshot"]["revision"])
             await _start_source_workers(args, world_id, grants, processes)
+            writer_statuses = await _wait_for_scope_statuses(
+                client,
+                world_id,
+                grants,
+                "online",
+                MAX_SOURCE_READ_SECONDS,
+            )
+            lifecycle_revision = await _publish_lifecycle_status(
+                client,
+                world_id,
+                lifecycle_lease,
+                lifecycle_revision,
+                writer_statuses,
+            )
             reports = await _collect_source_reports(args, processes)
+            disconnected_statuses = await _wait_for_scope_statuses(
+                client,
+                world_id,
+                grants,
+                "stale",
+                10,
+            )
+            lifecycle_revision = await _publish_lifecycle_status(
+                client,
+                world_id,
+                lifecycle_lease,
+                lifecycle_revision,
+                disconnected_statuses,
+            )
+            current_parent = await client.call("world.snapshot", {"world_id": world_id})
+            await client.patch_structure(
+                world_id,
+                dict(cleanup_lease),
+                int(current_parent["revision"]),
+                [{"op": "remove", "node_id": SOURCE_SCOPES["codex"]["root_node_id"]}],
+            )
+            revoked_statuses = {
+                "codex": await _read_scope_status(
+                    client,
+                    world_id,
+                    grants[SOURCE_SCOPES["codex"]["root_node_id"]],
+                ),
+                "claude-code": await _read_scope_status(
+                    client,
+                    world_id,
+                    grants[SOURCE_SCOPES["claude-code"]["root_node_id"]],
+                ),
+            }
+            if revoked_statuses != {"codex": "revoked", "claude-code": "stale"}:
+                raise RuntimeError("source scope removal did not preserve revoked and sibling stale states")
+            await _publish_lifecycle_status(
+                client,
+                world_id,
+                lifecycle_lease,
+                lifecycle_revision,
+                revoked_statuses,
+            )
             summary = _verified_source_summary(processes, reports)
+            summary["scope_lifecycle"] = {
+                source_id: {
+                    "during_write": writer_statuses[source_id],
+                    "after_disconnect": disconnected_statuses[source_id],
+                    "after_revocation": revoked_statuses[source_id],
+                }
+                for source_id in SOURCE_IDS
+            }
             print(json.dumps(summary, ensure_ascii=False, separators=(",", ":")), flush=True)
         finally:
             try:

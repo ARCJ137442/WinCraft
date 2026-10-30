@@ -229,7 +229,8 @@ class Client:
                              state_slots_version: int | None = None,
                              state_slot_schema_types: tuple[str, ...] = (),
                              provider_inventory_version: int | None = None,
-                             provider_import_version: int | None = None) -> None:
+                             provider_import_version: int | None = None,
+                             scope_status_version: int | None = None) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
         if not isinstance(capabilities, dict):
@@ -243,6 +244,8 @@ class Client:
         advertised_events = event_subscriptions.get("events") if isinstance(event_subscriptions, dict) else None
         component_leases = capabilities.get("component_leases")
         scope_interactions = component_leases.get("scope_interactions") \
+            if isinstance(component_leases, dict) else None
+        scope_status = component_leases.get("scope_status") \
             if isinstance(component_leases, dict) else None
         state_slots = component_leases.get("state_slots") \
             if isinstance(component_leases, dict) else None
@@ -288,6 +291,27 @@ class Client:
             or scope_interactions.get("native_window_actions") is not False
         ):
             missing.append(f"scope_interactions:preview-v{scope_interactions_version}")
+        if scope_status_version is not None and (
+            self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+            or not isinstance(component_leases, dict)
+            or not isinstance(scope_status, dict)
+            or scope_status.get("status") != "preview"
+            or scope_status.get("version") != scope_status_version
+            or scope_status.get("method") != "scope.status"
+            or scope_status.get("data") != "lifecycle_metadata_only"
+            or scope_status.get("authorization") != "local_operator_or_active_world_authority_or_scope_member"
+        ):
+            missing.append(f"scope_status:preview-v{scope_status_version}")
+        advertised_scope_states = scope_status.get("states") \
+            if isinstance(scope_status, dict) else None
+        scope_state_set = {
+            value for value in advertised_scope_states if isinstance(value, str)
+        } if isinstance(advertised_scope_states, list) else set()
+        missing.extend(
+            f"scope_status_state:{value}"
+            for value in ("online", "stale", "vacant", "revoked", "unknown")
+            if scope_status_version is not None and value not in scope_state_set
+        )
         advertised_scope_operations = component_leases.get("scope_patch_operations") \
             if isinstance(component_leases, dict) else None
         scope_operation_set = {
@@ -361,6 +385,13 @@ class Client:
         self.require_capabilities(
             component_leases_version=1,
             scope_interactions_version=version,
+        )
+
+    def require_scope_status(self, version: int = 1) -> None:
+        """Fail closed unless the Host exposes metadata-only component scope lifecycle."""
+        self.require_capabilities(
+            component_leases_version=1,
+            scope_status_version=version,
         )
 
     def require_state_slots(self, version: int = 1) -> None:
@@ -524,6 +555,20 @@ class Client:
         })
         self._remember_scope_snapshot(snapshot)
         return snapshot
+
+    async def read_scope_status(
+        self,
+        world_id: str,
+        scope_id: str,
+        generation: int,
+    ) -> dict[str, Any]:
+        """Read scope lifecycle metadata without requesting another scope's business data."""
+        self.require_scope_status()
+        return await self.call("scope.status", {
+            "world_id": world_id,
+            "scope_id": scope_id,
+            "generation": generation,
+        })
 
     async def patch_scope(
         self,

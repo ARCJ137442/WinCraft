@@ -39,10 +39,12 @@ class ScopedLiveSourceTests(unittest.TestCase):
 
         roots = {child["id"] for child in value["root"]["children"]}
         expected_roots = {
-            definition["root_node_id"] for definition in scoped.SOURCE_SCOPES.values()
+            scoped.LIFECYCLE_SCOPE["root_node_id"],
+            *(definition["root_node_id"] for definition in scoped.SOURCE_SCOPES.values()),
         }
         expected_namespaces = {
-            definition["data_namespace"] for definition in scoped.SOURCE_SCOPES.values()
+            scoped.LIFECYCLE_SCOPE["data_namespace"],
+            *(definition["data_namespace"] for definition in scoped.SOURCE_SCOPES.values()),
         }
         self.assertTrue(expected_roots.issubset(roots))
         self.assertEqual(set(value["data"]), expected_namespaces)
@@ -67,6 +69,20 @@ class ScopedLiveSourceTests(unittest.TestCase):
             ]
             self.assertIn(f"/{namespace}/health_label", bindings)
             self.assertTrue(all(path.startswith(f"/{namespace}/") for path in bindings))
+
+        lifecycle_panel = next(
+            child
+            for child in value["root"]["children"]
+            if child["id"] == scoped.LIFECYCLE_SCOPE["root_node_id"]
+        )
+        lifecycle_bindings = [
+            prop["$path"]
+            for node in walk(lifecycle_panel)
+            for prop in node.get("props", {}).values()
+            if isinstance(prop, dict) and isinstance(prop.get("$path"), str)
+        ]
+        self.assertTrue(lifecycle_bindings)
+        self.assertTrue(all(path.startswith("/host/") for path in lifecycle_bindings))
 
         serialized = json.dumps(value, ensure_ascii=False)
         self.assertNotIn('"action"', serialized)
@@ -152,6 +168,65 @@ class ScopedLiveSourceTests(unittest.TestCase):
         self.assertEqual(parsed["root_node_id"], "scope-codex")
         with self.assertRaisesRegex(ValueError, "does not match"):
             scoped._validate_worker_payload(payload, "claude-code")
+
+    def test_lifecycle_projection_displays_only_allowlisted_source_states(self):
+        data = scoped._lifecycle_data({"codex": "online", "claude-code": "revoked"})
+
+        self.assertEqual(data["codex_status"], "Writer 在线")
+        self.assertEqual(data["codex_tone"], "success")
+        self.assertEqual(data["claude_code_status"], "Scope 已撤销")
+        self.assertEqual(data["claude_code_tone"], "danger")
+        self.assertNotIn("scope_id", json.dumps(data, ensure_ascii=False))
+        with self.assertRaisesRegex(ValueError, "both source providers"):
+            scoped._lifecycle_data({"codex": "online"})
+
+    def test_scope_status_probe_accepts_only_matching_metadata_without_data(self):
+        response = {
+            "world_id": "world",
+            "scope_id": "scope",
+            "requested_generation": 1,
+            "current_generation": 1,
+            "revision": 4,
+            "sequence": 9,
+            "status": "stale",
+        }
+        self.assertEqual(
+            scoped._validated_scope_status(
+                response,
+                world_id="world",
+                scope_id="scope",
+                generation=1,
+            ),
+            "stale",
+        )
+        with self.assertRaisesRegex(RuntimeError, "does not match"):
+            scoped._validated_scope_status(
+                response,
+                world_id="world",
+                scope_id="other-scope",
+                generation=1,
+            )
+        with self.assertRaisesRegex(RuntimeError, "business data"):
+            scoped._validated_scope_status(
+                {**response, "data": {"session_text": "must not be returned"}},
+                world_id="world",
+                scope_id="scope",
+                generation=1,
+            )
+        with self.assertRaisesRegex(RuntimeError, "unsupported fields"):
+            scoped._validated_scope_status(
+                {**response, "session_text": "must not be returned"},
+                world_id="world",
+                scope_id="scope",
+                generation=1,
+            )
+        with self.assertRaisesRegex(RuntimeError, "invalid scope lifecycle metadata"):
+            scoped._validated_scope_status(
+                {**response, "requested_generation": True},
+                world_id="world",
+                scope_id="scope",
+                generation=1,
+            )
 
 
 if __name__ == "__main__":

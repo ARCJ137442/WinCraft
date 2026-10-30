@@ -1881,6 +1881,228 @@ fn disjoint_component_scopes_use_independent_revisions_and_data_namespaces() {
 }
 
 #[test]
+fn parent_reads_metadata_only_scope_lifecycle_without_sibling_data() {
+    let mut state = setup_scoped_world();
+    let vacant = state
+        .engine
+        .scope_status(
+            state.owner,
+            state.world_id,
+            state.scope_a.scope_id,
+            state.scope_a.generation,
+            3,
+        )
+        .unwrap();
+    assert_eq!(vacant.status, ScopeLifecycleState::Vacant);
+    let encoded = serde_json::to_value(&vacant).unwrap();
+    assert_eq!(encoded["status"], "vacant");
+    assert!(encoded.get("data").is_none());
+    assert!(encoded.get("writer").is_none());
+    assert!(encoded.get("writer_session_id").is_none());
+
+    let local_operator = state
+        .engine
+        .register_with_protocol(
+            "local operator".into(),
+            true,
+            ProtocolVersion::ComponentLeasesPreview01,
+        )
+        .unwrap();
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                local_operator,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+                3,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Vacant
+    );
+
+    let future_generation = state
+        .engine
+        .scope_status(
+            state.owner,
+            state.world_id,
+            state.scope_a.scope_id,
+            state.scope_a.generation + 1,
+            3,
+        )
+        .unwrap();
+    assert_eq!(future_generation.status, ScopeLifecycleState::Unknown);
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+                u64::MAX,
+            )
+            .unwrap_err()
+            .code,
+        "LEASE_EXPIRED"
+    );
+    state
+        .engine
+        .join_scope(
+            state.owner,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Read),
+            3,
+        )
+        .unwrap();
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_a.scope_id,
+                state.scope_a.generation,
+                u64::MAX,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Vacant
+    );
+
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.observer,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+                3,
+            )
+            .unwrap_err()
+            .code,
+        "FORBIDDEN"
+    );
+
+    let joined_a = state
+        .engine
+        .join_scope(
+            state.writer_a,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_a, JoinMode::Write),
+            4,
+        )
+        .unwrap();
+    let joined_b = state
+        .engine
+        .join_scope(
+            state.writer_b,
+            ScopeJoinRequest::from_grant(state.world_id, &state.scope_b, JoinMode::Write),
+            4,
+        )
+        .unwrap();
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_a.scope_id,
+                state.scope_a.generation,
+                5,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Online
+    );
+
+    state.engine.disconnect(state.writer_a);
+    let stale = state
+        .engine
+        .scope_status(
+            state.owner,
+            state.world_id,
+            state.scope_a.scope_id,
+            state.scope_a.generation,
+            6,
+        )
+        .unwrap();
+    assert_eq!(stale.status, ScopeLifecycleState::Stale);
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+                6,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Online
+    );
+
+    let expected_revision = state.engine.worlds[&state.world_id].revision;
+    state
+        .engine
+        .patch_scope_structure(
+            state.owner,
+            state.world_id,
+            &state.authority_lease,
+            expected_revision,
+            &[SceneOp::Remove {
+                node_id: "focus-panel".into(),
+            }],
+            7,
+        )
+        .unwrap();
+    let revoked = state
+        .engine
+        .scope_status(
+            state.owner,
+            state.world_id,
+            state.scope_a.scope_id,
+            state.scope_a.generation,
+            8,
+        )
+        .unwrap();
+    assert_eq!(revoked.status, ScopeLifecycleState::Revoked);
+    assert_eq!(revoked.current_generation, None);
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_a.scope_id,
+                state.scope_a.generation + 1,
+                8,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Unknown
+    );
+    assert_eq!(
+        state
+            .engine
+            .scope_status(
+                state.owner,
+                state.world_id,
+                state.scope_b.scope_id,
+                state.scope_b.generation,
+                8,
+            )
+            .unwrap()
+            .status,
+        ScopeLifecycleState::Online
+    );
+    assert!(joined_a.lease.is_some());
+    assert!(joined_b.lease.is_some());
+}
+
+#[test]
 fn component_scope_reads_are_filtered_and_readers_get_no_write_alias() {
     let mut state = setup_scoped_world();
     let joined = state

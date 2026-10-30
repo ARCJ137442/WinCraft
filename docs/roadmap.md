@@ -16,7 +16,7 @@ Rust core/server 与 Tauri release 已构建并通过对应测试；最新真实
 
 ## 阶段 2：从一世界单写到多提供者组合
 
-B07-01/02 的 `0.4-preview.1` 已实现窗口 authority、不相交子树租约、scope generation/local revision、原子子树结构 patch、父 authority revoke fencing、scope 删除通知与服务端过滤的 live scope snapshots；稳定 0.3 仍保持整窗独占。core invariants、Rust WebSocket integration 与真实 headless `scope_probe.py` 覆盖这三个 B07-02 验收点。B07-03 类型状态槽和 B07-04 多来源性质/按组件 owner 路由动作仍待推进。首个 host-owned `native_window_action` 已限制在 Obsidian/TrafficMonitor 与激活/恢复/最小化，且只在用户点击后执行；更广的应用注册、工作区锚定和窗口组合仍需逐项评审。
+B07-01/02 的 `0.4-preview.1` 已实现窗口 authority、不相交子树租约、scope generation/local revision、原子子树结构 patch、父 authority revoke fencing、scope 删除通知与服务端过滤的 live scope snapshots；稳定 0.3 仍保持整窗独占。可选 `scope.status` 只暴露 metadata-only 的 scope 生命周期，不读取 sibling business data。B07-03 类型状态槽与 scope-owned interaction routing 已在 preview 实现；跨 scope 移动、scope 内 native-window action 和稳定协议采纳仍未开放。core invariants、Rust WebSocket integration 与 headless probes 覆盖协议行为；原生点击/像素验收仍按 validation matrix 管理。首个 host-owned `native_window_action` 已限制在 Obsidian/TrafficMonitor 与激活/恢复/最小化，且只在用户点击后执行；更广的应用注册、工作区锚定和窗口组合仍需逐项评审。
 
 ## 阶段 3：窗口行为成为可复用原语
 

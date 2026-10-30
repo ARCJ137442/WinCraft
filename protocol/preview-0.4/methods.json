@@ -8,7 +8,8 @@
   },
   "optional_capabilities": [
     { "name": "provider_inventory", "version": 1 },
-    { "name": "scope_interactions", "version": 1 }
+    { "name": "scope_interactions", "version": 1 },
+    { "name": "scope_status", "version": 1 }
   ],
   "handshake_schema": "hello.schema.json",
   "request_schema": "scope-request.schema.json",
@@ -18,6 +19,7 @@
     "scope.partition",
     "scope.join",
     "scope.snapshot",
+    "scope.status",
     "scope.patch",
     "scope.action.result",
     "scope.structure.patch",
@@ -65,6 +67,15 @@
       "result_method": "scope.action.result",
       "routing": "component_scope_owner",
       "native_window_actions": false
+    },
+    "scope_status": {
+      "status": "preview",
+      "version": 1,
+      "method": "scope.status",
+      "response_schema": "scope-status-response.schema.json",
+      "data": "lifecycle_metadata_only",
+      "authorization": "local_operator_or_active_world_authority_or_scope_member",
+      "states": ["online", "stale", "vacant", "revoked", "unknown"]
     },
     "interactive_scope_components": true,
     "stable_0_3_world_writer_and_scope_writers_may_not_coexist": true

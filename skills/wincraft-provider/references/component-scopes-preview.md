@@ -1,6 +1,6 @@
 # Component scope leases: 0.4 preview
 
-**Status:** experimental preview, not part of stable protocol 0.3. B07-01/02 provide disjoint scope writers, scoped structural transactions, parent revocation, and filtered live snapshots. B07-03 adds typed, explicitly shared state slots. Component action routing remains unavailable.
+**Status:** experimental preview, not part of stable protocol 0.3. B07-01/02 provide disjoint scope writers, scoped structural transactions, parent revocation, and filtered live snapshots. B07-03 adds typed, explicitly shared state slots. Scope-owned component interactions and metadata-only lifecycle reads are optional capabilities; native window actions inside scopes remain unavailable.
 
 ## Opt in explicitly
 
@@ -66,7 +66,22 @@ Each scope admits one writer and any number of readers. A scoped lease contains 
 
 `scope.snapshot` returns only the granted subtree and its local data namespace. Paths are localized within that projection (`/value` rather than `/focus/value`). A scope-only member receives `SCOPE_REQUIRED` from full `world.snapshot`; it cannot read sibling subtree contents or sibling namespace data.
 
-`scope.patch` supports atomic `props`, `insert`, `remove`, `replace`, and `move` batches inside the caller's subtree. The scope root itself cannot be removed or moved by its child writer. Inserted/replaced nodes must remain display-only until component action routing is implemented. Data bindings are localized on snapshots and written back under the scope's own namespace.
+`scope.patch` supports atomic `props`, `insert`, `remove`, `replace`, and `move` batches inside the caller's subtree. The scope root itself cannot be removed or moved by its child writer. Keep controls display-only unless the Host advertises `scope_interactions` and the provider has called `client.require_scope_interactions()`. Data bindings are localized on snapshots and written back under the scope's own namespace.
+
+## Read scope lifecycle metadata
+
+The optional `scope_status` capability reports whether a scope is `online`, `stale`, `vacant`, `revoked`, or `unknown`. It returns only world/scope IDs, requested/current generation, scope revision, world sequence, and status. It does not expose scope data, component trees, or writer identity.
+
+```python
+client.require_scope_status(version=1)
+status = await client.read_scope_status(
+    world_id,
+    scope_id,
+    scope_generation,
+)
+```
+
+Only a trusted local operator, an active world authority, or a member of the requested scope may read its status. An expired authority cannot inspect sibling scopes; a session that remains a member can still inspect its own scope. `stale` means a writer previously claimed the scope but no current valid writer lease exists. `revoked` means the requested generation was fenced or a retained removal tombstone confirms deletion. A future generation, unknown scope, or evicted tombstone returns `unknown`; do not infer that an external business session was revoked from this Host status. Source health and local-file freshness remain separate provider-owned facts.
 
 ## Share typed state deliberately
 

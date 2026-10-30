@@ -73,6 +73,10 @@ def main() -> None:
     preview_scope_interaction_schema = json.loads(
         (preview_directory / "scope-interaction-event.schema.json").read_text(encoding="utf-8")
     )
+    preview_scope_status_schema = json.loads(
+        (preview_directory / preview_manifest["constraints"]["scope_status"]["response_schema"])
+        .read_text(encoding="utf-8")
+    )
     pack_schema_path = ROOT / "docs/strategy/2026-10-26/contracts/pack.schema.json"
     pack_examples = ROOT / "docs/strategy/2026-10-26/examples"
     Draft202012Validator.check_schema(request_schema)
@@ -88,6 +92,7 @@ def main() -> None:
     Draft202012Validator.check_schema(provider_inventory_registration_schema)
     Draft202012Validator.check_schema(preview_request_schema)
     Draft202012Validator.check_schema(preview_scope_interaction_schema)
+    Draft202012Validator.check_schema(preview_scope_status_schema)
     pack_schema = json.loads(pack_schema_path.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(pack_schema)
     scene_registry = (
@@ -114,6 +119,9 @@ def main() -> None:
     )
     preview_scope_interaction_validator = Draft202012Validator(
         preview_scope_interaction_schema, format_checker=FormatChecker()
+    )
+    preview_scope_status_validator = Draft202012Validator(
+        preview_scope_status_schema, format_checker=FormatChecker()
     )
     pack_validator = Draft202012Validator(pack_schema)
     requests = json.loads((ROOT / "protocol/examples/requests.json").read_text(encoding="utf-8"))
@@ -196,6 +204,26 @@ def main() -> None:
         json.loads((preview_examples / "scope-interaction-event.json").read_text(encoding="utf-8"))
     )
     checks.append("preview_0_4_scope_interaction_schema_and_fixtures")
+    scope_status_request_validator = Draft202012Validator(
+        preview_request_schema, format_checker=FormatChecker()
+    )
+    for request in json.loads(
+        (preview_examples / "scope-status-requests.json").read_text(encoding="utf-8")
+    ):
+        scope_status_request_validator.validate(request)
+    for request in json.loads(
+        (preview_examples / "scope-status-invalid-requests.json").read_text(encoding="utf-8")
+    ):
+        assert not scope_status_request_validator.is_valid(request), request
+    for response in json.loads(
+        (preview_examples / "scope-status-responses.json").read_text(encoding="utf-8")
+    ):
+        preview_scope_status_validator.validate(response)
+    for response in json.loads(
+        (preview_examples / "scope-status-invalid-responses.json").read_text(encoding="utf-8")
+    ):
+        assert not preview_scope_status_validator.is_valid(response), response
+    checks.append("preview_0_4_scope_status_schema_and_fixtures")
     for bad in [
         {"id":"x","method":"world.create","params":{"window":{"width":-1}}},
         {"id":"x","method":"scene.execute_javascript","params":{}},

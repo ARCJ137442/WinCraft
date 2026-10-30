@@ -1218,6 +1218,18 @@ mod tests {
             true
         );
         assert_eq!(
+            capabilities["result"]["component_leases"]["scope_status"]["version"],
+            1
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["scope_status"]["data"],
+            "lifecycle_metadata_only"
+        );
+        assert_eq!(
+            capabilities["result"]["component_leases"]["scope_status"]["authorization"],
+            "local_operator_or_active_world_authority_or_scope_member"
+        );
+        assert_eq!(
             capabilities["result"]["component_leases"]["state_slots"]["status"],
             "preview"
         );
@@ -1296,6 +1308,21 @@ mod tests {
             .iter()
             .find(|grant| grant["root_node_id"] == "tasks-panel")
             .unwrap();
+        let vacant_tasks_status = rpc(
+            &mut owner,
+            "tasks-status-vacant",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(vacant_tasks_status["ok"], true);
+        assert_eq!(vacant_tasks_status["result"]["status"], "vacant");
+        assert!(vacant_tasks_status["result"].get("data").is_none());
+        assert!(vacant_tasks_status["result"].get("writer").is_none());
 
         let focus_join = rpc(
             &mut owner,
@@ -1334,6 +1361,19 @@ mod tests {
         .await;
         assert_eq!(tasks_join["ok"], true);
         let tasks_lease = tasks_join["result"]["lease"].clone();
+        let active_tasks_status = rpc(
+            &mut owner,
+            "tasks-status-online",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(active_tasks_status["ok"], true);
+        assert_eq!(active_tasks_status["result"]["status"], "online");
 
         let (mut observer, _) = connect_test_provider_with_protocol(
             &server.descriptor,
@@ -1355,6 +1395,19 @@ mod tests {
         )
         .await;
         assert_eq!(observer_join["ok"], true);
+        let sibling_status = rpc(
+            &mut observer,
+            "sibling-status-forbidden",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(sibling_status["ok"], false);
+        assert_eq!(sibling_status["error"]["code"], "FORBIDDEN");
         let scope_projection = serde_json::to_string(&observer_join["result"]["snapshot"]).unwrap();
         assert!(scope_projection.contains("focus-secret"));
         assert!(!scope_projection.contains("tasks-secret"));
@@ -1684,6 +1737,39 @@ mod tests {
             .unwrap()
             .iter()
             .all(|node| node["id"] != "tasks-panel"));
+        let revoked_tasks_status = rpc(
+            &mut owner,
+            "tasks-status-revoked",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":tasks["scope_id"],
+                "generation":tasks["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(revoked_tasks_status["ok"], true);
+        assert_eq!(revoked_tasks_status["result"]["status"], "revoked");
+        assert_eq!(
+            revoked_tasks_status["result"]["current_generation"],
+            Value::Null
+        );
+        let focus_status_after_sibling_revoke = rpc(
+            &mut owner,
+            "focus-status-after-sibling-revocation",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus["scope_id"],
+                "generation":focus["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(focus_status_after_sibling_revoke["ok"], true);
+        assert_eq!(
+            focus_status_after_sibling_revoke["result"]["status"],
+            "online"
+        );
         let revoked_event = next_event_matching(&mut tasks_provider, "scope.revoked", |event| {
             event.pointer("/data/scope_id").and_then(Value::as_str) == tasks["scope_id"].as_str()
         })
@@ -1714,6 +1800,19 @@ mod tests {
         )
         .await;
         assert_eq!(legacy_capabilities["result"]["component_leases"], false);
+        let legacy_status = rpc(
+            &mut legacy,
+            "legacy-scope-status",
+            "scope.status",
+            json!({
+                "world_id":world_id,
+                "scope_id":focus["scope_id"],
+                "generation":focus["generation"]
+            }),
+        )
+        .await;
+        assert_eq!(legacy_status["ok"], false);
+        assert_eq!(legacy_status["error"]["code"], "PROTOCOL_MISMATCH");
         let legacy_join = rpc(
             &mut legacy,
             "legacy-join",
