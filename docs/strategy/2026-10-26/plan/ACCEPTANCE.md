@@ -80,9 +80,9 @@
 | B04-02-A3 | B04-02 | L1-L4 | Windows拒绝前台激活时返回明确失败，不能把系统不允许的 SetForegroundWindow 报成成功。 | PARTIAL |
 | B04-02-A4 | B04-02 | L1-L4 | 仅原生host宣告 external_window_actions；应用ID/操作/title filter严格allowlist且有界；headless拒绝，disabled/stale/revoked按钮不执行 | PASS |
 | B04-02-A5 | B04-02 | L1-L4 | 真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执 | PARTIAL |
-| B04-03-A1 | B04-03 | L1-L4 | 冲突注册失败不占用他人热键 | NOT_RUN |
-| B04-03-A2 | B04-03 | L1-L4 | 断线/撤销/退出后无残留绑定 | NOT_RUN |
-| B04-03-A3 | B04-03 | L1-L4 | IME/输入框/平台组合键不被默认破坏 | NOT_RUN |
+| B04-03-A1 | B04-03 | L1-L4 | 冲突注册失败不占用他人热键 | PARTIAL |
+| B04-03-A2 | B04-03 | L1-L4 | 断线/撤销/退出后无残留绑定 | PARTIAL |
+| B04-03-A3 | B04-03 | L1-L4 | IME/输入框/平台组合键不被默认破坏 | PARTIAL |
 | B04-04-A1 | B04-04 | L2-L5 | 可以复现一项实际工作流而非只弹空窗 | NOT_RUN |
 | B04-04-A2 | B04-04 | L2-L5 | 无法实现的功能不标等价 | NOT_RUN |
 | B04-04-A3 | B04-04 | L2-L5 | 不复制未审许可源码进Host | NOT_RUN |

@@ -1145,7 +1145,7 @@
       "id": "B04-03",
       "batch": "B04",
       "title": "授权快捷键资源",
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "depends_on": [
         "B01-02",
         "B04-01"

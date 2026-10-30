@@ -65,6 +65,17 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | B04-02-A3 Windows 前台拒绝 | PARTIAL | Win32 结果到 Host 的失败栅栏有定向回归；本轮没有强制 Windows 拒绝真实 Obsidian 激活。当前 release 标题动作的原生点击仍未通过 Computer Use/人工观察。|
 | B04-02-A5 Host action / Provider ACK 顺序 | PARTIAL | Obsidian Workspace Provider 测试只在 Host focus 调用成功后 ACK；Host native failure 测试不广播、不 ACK。真实 release 点击既有 Obsidian 窗口且不启动新进程仍未实测。|
 
+## 2026-10-30 B04-03 快捷键意图解析与冲突规范化
+
+**Given** 多个会话提交静态快捷键意图，**When** chord 仅有大小写、修饰键顺序或空格差异，**Then** 它们规范化为同一冲突键；保留组合、无修饰键、重复修饰键与无效语法失败关闭。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-core shortcuts -- --nocapture` | PASS | 3 个 core 测试通过；现含 chord 大小写/空白/修饰顺序规范化、冲突不覆盖 owner、owner revoke/unregister、Windows 保留键与畸形 chord 拒绝。|
+| `npm run check:local` | PASS | 退出码 0：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy/离线契约和 27 个 Provider Skill 引用通过。|
+| `npm run desktop:build` | PASS | Exit 0；当前 EXE `target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `51C5D834844483F25BB931171F06CC2CA5EAEF7F7D3D1B218206DD96AFB5AEAC`。|
+| 快捷键 acceptance | PARTIAL | A1/A2/A3 的 intent registry 边界正在实现；当前没有 OS 全局热键监听器、Manager 授权 UI 或真实 IME/输入框门控。它仍是纯 intent registry，不得宣传为已经注册系统快捷键。|
+
 ## 2026-10-28 开发工具链核验
 
 | 检查 | 状态 | 实际结果 |

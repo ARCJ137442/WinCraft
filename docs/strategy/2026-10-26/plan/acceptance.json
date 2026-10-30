@@ -807,7 +807,8 @@
       ],
       "level": "L1-L4",
       "criterion": "冲突注册失败不占用他人热键",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: in-memory registry canonicalizes order/case/whitespace/Control aliases before conflict checks; equivalent spellings collide without replacing the first owner. Native OS registration/authorization is not yet wired."
     },
     {
       "id": "B04-03-A2",
@@ -818,7 +819,8 @@
       ],
       "level": "L1-L4",
       "criterion": "断线/撤销/退出后无残留绑定",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: core session unregister/revoke tests clear owned intent registrations and leave other sessions intact. Because no OS hotkey is registered yet, native unregister-on-disconnect/exit remains unverified."
     },
     {
       "id": "B04-03-A3",
@@ -829,7 +831,8 @@
       ],
       "level": "L1-L4",
       "criterion": "IME/输入框/平台组合键不被默认破坏",
-      "status": "NOT_RUN"
+      "status": "PARTIAL",
+      "evidence": "PARTIAL: parser rejects unmodified/malformed chords and reserved Alt+Tab, Ctrl+Alt+Delete, Ctrl+Shift+Esc, Win+L/Win+U; no global OS hook is installed, so IME/input-field and OS key routing remain unverified."
     },
     {
       "id": "B04-04-A1",
