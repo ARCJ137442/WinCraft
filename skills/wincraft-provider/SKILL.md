@@ -287,6 +287,53 @@ was revoked; retain `unknown` when the source does not report that fact.
 B07-03 also exposes explicitly shared, typed state slots with owner-scope CAS. Values are bounded scalars, reader grants are
 scope-generation specific, and slots never become provider business truth or arbitrary
 JSON references. Call `client.require_state_slots(version=1)` before using slot helpers.
+
+### Presenting several windows as one group (0.4-preview.1)
+
+When a provider owns several worlds that belong together on screen — a HUD, a
+workbench, a dashboard — it can register them as a **presentation group**. A group
+is a host-side projection over worlds the provider already owns. It is not shared
+memory, not a new ownership mode, and not an access-control system.
+
+```python
+client.require_presentation_groups()
+group = await client.create_presentation_group(
+    "workbench",
+    members=[{"world_id": left_id, "order": 0},
+             {"world_id": right_id, "order": 1}],
+    roles=[{"name": "primary", "member": None}],
+)
+outcome = await client.apply_presentation_group(
+    group["id"],
+    leases={left_id: left_lease, right_id: right_lease},
+    expected_revisions={left_id: left_revision, right_id: right_revision},
+    visible=False,
+)
+```
+
+Three rules decide how you use it:
+
+1. **A group grants nothing.** Every member keeps its own write lease, revision
+   and fencing epoch. The group creates no lease and transfers none. Supply the
+   lease and expected revision **per member**; a member without one refuses.
+2. **Nothing is atomic.** `apply_presentation_group` returns `atomic: false` and a
+   per-member `result.results` list where each entry is `applied` or `refused`
+   with a machine-readable fault code. `changed` lists only the members that
+   actually accepted the operation. Never report a partial application as a
+   group-wide success, and never retry a refused member blindly — the code says
+   why (`STALE_LEASE`, `REVISION_CONFLICT`, `HUMAN_GEOMETRY`, and so on).
+3. **Roles are labels.** A role is a descriptive string for the whole group or
+   for one member. Roles carry no authority, no priority and no business
+   meaning, and the Host never uses one to decide what a member may do.
+
+Groups are visible only to the session that registered them. Another session
+neither sees them in `presentation.group.list` nor may operate on them: discovery
+grants no operation right. The group registry is in-memory and is rebuilt after
+a Host restart, so a provider must be able to recreate its groups.
+
+Follow the [presentation group guide](references/presentation-groups.md) for the
+full method list, limits and rollback.
+
 Follow the [scope preview guide](references/component-scopes-preview.md) exactly; use
 the capability-aware SDK helpers and never treat preview methods as stable 0.3.
 For real-source scope isolation, `examples/python/composition_probe.py` requires an
