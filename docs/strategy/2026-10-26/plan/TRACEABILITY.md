@@ -2,7 +2,7 @@
 {
   "doc_id": "plan__TRACEABILITY",
   "title": "需求—规范—任务—验收追踪（生成视图）",
-  "updated_at": "2026-10-31",
+  "updated_at": "2026-11-01",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",

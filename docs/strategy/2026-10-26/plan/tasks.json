@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-31",
+  "updated_at": "2026-11-01",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "execution_policy": "依赖满足后按纵向闭环逐批执行；源码目标需再次核对。",
   "tasks": [
@@ -2663,7 +2663,7 @@
       "id": "B10-03",
       "batch": "B10",
       "title": "窗口组与角色可能性最小POC",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B04-02",
         "B06-03"

@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-31",
+  "updated_at": "2026-11-01",
   "cases": [
     {
       "id": "B00-01-A1",
@@ -1845,7 +1845,7 @@
       ],
       "level": "L1-L4",
       "criterion": "部分OS操作失败可观察，不假装全组原子",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B10-03-A2",
@@ -1858,7 +1858,7 @@
       ],
       "level": "L1-L4",
       "criterion": "减少动画/关闭/救援可用",
-      "status": "NOT_RUN"
+      "status": "PARTIAL"
     },
     {
       "id": "B10-03-A3",
