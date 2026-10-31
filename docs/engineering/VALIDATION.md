@@ -1269,6 +1269,7 @@ Audit evidence is in ignored `evidence/local/`; it contains no runtime descripto
 | `python -m unittest tests.test_quota_projection tests.test_codex_quota tests.test_codex_rollout_quota tests.test_provider_quota_sources -v` | PASS | 36 项 synthetic tests：额度投影、`token_count.rate_limits` 事件读取、超时/过期/未知、固定 DeepSeek/MiniMax GET、密钥 gate、重定向/响应上限、MiniMax 模型截断披露、last-good 标陈旧及 Provider 场景脱敏。没有真实 Codex 文件、供应商 key 或网络请求。|
 | `python skills/wincraft-provider/scripts/verify.py` | PASS | 41 个 Provider Skill 源码、示例、测试、脚本和文档引用存在；引用清单已从 TeamSense 模块名改为本机 quota adapter。|
 | `npm run check:local` | PASS | 退出码 0；UI 28 项、Rust workspace 149 项、Python 239 项（1 项 Windows symlink 能力跳过）、离线 schema/配置一致性与 strict Clippy 通过。|
+| GitHub Actions commit `d95e396` / run `41189190278` | PASS | `dev` 远端 source job 执行 `npm run check:local` 完成；CI source validation 仍不替代真实账户、Tauri 原生窗口或人工像素验收。|
 | `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 索引同步后为 current：109 files、3,084 nodes、10,036 edges；数据库留在被忽略的 `.codegraph/`。|
 | `python scripts/model_quota_headless_smoke.py` | PASS（真实 release Rust Host） | 退出码 0；隔离 loopback descriptor 创建成功，Provider 读取仅由本次测试生成的 `token_count` fixture、发布 quota 场景并在有界运行期后清理自己的世界。无真实文件、凭据或外网访问；测试后强制结束的仅是本次启动的 headless Host。临时 descriptor、fixture 与日志已清理。|
 | TeamSense API、真实 Codex rollout/auth、DeepSeek/MiniMax live API | NOT_RUN | TeamSense 不再是 WinCraft 数据源；本轮只研究其本地实现。未读取真实用户 rollout/auth 文件、未设置/读取供应商 key、未发起真实上游请求。|
