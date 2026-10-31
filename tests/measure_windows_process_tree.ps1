@@ -16,9 +16,6 @@ $ErrorActionPreference = 'Stop'
 $LogicalProcessors = [Math]::Max(1, [Environment]::ProcessorCount)
 $CpuTicksByProcess = @{}
 $Samples = [System.Collections.Generic.List[object]]::new()
-$Timer = [System.Diagnostics.Stopwatch]::StartNew()
-$PreviousCpuTicks = $null
-$PreviousSampleSeconds = $null
 
 function Get-ProcessTreeSnapshot {
     param([int]$ProcessId)
@@ -107,6 +104,37 @@ function Get-Percentile {
     return [double]$ordered[$index]
 }
 
+function Get-PowerContext {
+    $schemeName = 'unknown'
+    try {
+        $schemeText = (& powercfg /getactivescheme 2>$null | Out-String).Trim()
+        $match = [regex]::Match($schemeText, '\((?<name>[^()]*)\)\s*$')
+        if ($match.Success) {
+            $schemeName = $match.Groups['name'].Value
+        }
+    } catch { }
+
+    $batteryCount = $null
+    try { $batteryCount = @(Get-CimInstance Win32_Battery -ErrorAction Stop).Count } catch { }
+    $acpiSourceCount = $null
+    try {
+        $acpiSourceCount = @(
+            Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_PowerSource -ErrorAction Stop
+        ).Count
+    } catch { }
+
+    [pscustomobject]@{
+        active_power_scheme = $schemeName
+        battery_device_count = $batteryCount
+        acpi_power_source_device_count = $acpiSourceCount
+    }
+}
+
+$PowerContextBefore = Get-PowerContext
+$Timer = [System.Diagnostics.Stopwatch]::StartNew()
+$PreviousCpuTicks = $null
+$PreviousSampleSeconds = $null
+
 while ($Timer.Elapsed.TotalSeconds -lt $DurationSeconds) {
     $snapshot = Get-ProcessTreeSnapshot -ProcessId $RootProcessId
     if ($null -eq $snapshot) {
@@ -141,6 +169,7 @@ while ($Timer.Elapsed.TotalSeconds -lt $DurationSeconds) {
 }
 
 $Timer.Stop()
+$PowerContextAfter = Get-PowerContext
 $cpuMachine = @($Samples | Where-Object { $null -ne $_.cpu_machine_percent } | ForEach-Object { [double]$_.cpu_machine_percent })
 $workingSets = @($Samples | ForEach-Object { [double]$_.working_set_bytes })
 $privateSets = @($Samples | ForEach-Object { [double]$_.private_bytes })
@@ -165,6 +194,12 @@ $summary = [ordered]@{
     peak_handles = [long](($handleCounts | Measure-Object -Maximum).Maximum)
     p95_cpu_machine_percent = Get-Percentile -Values $cpuMachine -Percentile 0.95
     p95_cpu_one_core_percent = Get-Percentile -Values @($Samples | Where-Object { $null -ne $_.cpu_one_core_percent } | ForEach-Object { [double]$_.cpu_one_core_percent }) -Percentile 0.95
+    power_context = @{
+        before = $PowerContextBefore
+        after = $PowerContextAfter
+        sleep_wake_transition_injected = $false
+        sleep_wake_behavior_verified = $false
+    }
     process_names_seen = @($Samples | ForEach-Object { $_.process_names.Keys } | Sort-Object -Unique)
     samples = @($Samples)
 }
