@@ -12,16 +12,16 @@ audience: maintainer, Windows tester
 
 | 项目 | 值 |
 |---|---|
-| Tauri Host EXE 源码提交 | `c8368023fba08ef620c56bb1a436e1c5e2d87ed6` |
+| Tauri Host EXE 源码基线 | `17ddee408b0fca2a93b5827d7abee7a5b4cfdfdb` + 本机 B06-03 stale-action 修复工作树 |
 | Agent Activity Provider 示例 | `0696cbeb9b3ef69cb9c6a9b43901fae6e922ea7b`（仓库内 Python 示例，单独运行，不打包进 EXE）|
 | 程序路径 | `target/release/wincraft-desktop.exe` |
-| 文件大小 | 13,595,648 bytes |
-| SHA-256 | `A09C1CA0E1D5CCB86131A94AE51EC2BEAE1592530952880EFB3CCDB5E48EB6CB` |
+| 文件大小 | 13,600,256 bytes |
+| SHA-256 | `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器。Tauri Host EXE 来自源码提交 `c836802`；该提交的 `npm run check:local` 退出码 0：28 项 UI、146 项 Rust、205 项 Python（1 项 Windows symlink 用例因环境能力跳过）、离线契约、Clippy 和 Provider Skill 检查通过。`npm run desktop:build` 退出码 0，产物信息见上表。对应 Windows Actions run [41140899841](https://github.com/exomind-team/WinCraft/actions/runs/41140899841) 通过，Windows source job 用时 11m43s。Agent Activity Python Provider 的此前跨来源详情保留修复位于仓库提交 `0696cbe`，Codex App 详情恢复回归位于 `c3928722`；这些 Python 示例不打包进 EXE。B11-03 的 Linux ELF 只证明 Linux 编译，X11/Wayland GUI 与 macOS 仍未验收。自动测试和 CI 不替代原生 GUI 验收。
+这是单个 Windows 可执行文件，不是安装器。`npm run desktop:build` 从上方所示本机工作树构建，退出码 0；`npm run check:local` 通过 28 项 UI、149 项 Rust workspace、216 项 Python（1 项 Windows symlink 能力跳过）及严格 Clippy。真实 release headless Rust Host 和独立启动的当前 Tauri release 各自通过 Python `lease_probe.py` 41 项检查。Manager 回归同时确认过期 grant 被拒绝、失效预览被清除，以及旧动作不会清除较新的有效预览。上一提交 `17ddee4` 的 Windows Actions run [41151206263](https://github.com/exomind-team/WinCraft/actions/runs/41151206263) 通过（该 run 早于本机 stale-action 修复）；当前修复提交的 CI 需在推送后核对。Agent Activity Python Provider 的此前跨来源详情保留修复位于仓库提交 `0696cbe`，Codex App 详情恢复回归位于 `c3928722`；这些 Python 示例不打包进 EXE。自动测试和 CI 不替代原生 GUI 验收。
 
-首次 release 曾因在同步 Tauri setup 回调直接调用 `tokio::spawn` 而以 101 退出；现已改为通过 `tauri::async_runtime::spawn` 调度并通过完整本地门禁。当前 `c836802` release EXE 构建完成，但本轮未启动该 Tauri EXE 做像素/托盘验收；Linux ELF 也未启动，临时 scope 生命周期验证使用真实 headless Rust Host。以下空白人工验收项仍需由维护者实测。
+首次 release 曾因在同步 Tauri setup 回调直接调用 `tokio::spawn` 而以 101 退出；现已改为通过 `tauri::async_runtime::spawn` 调度。当前 `17ddee4` release EXE 已构建但未启动；Manager grant/re-preview 的 Rust Host/Provider 路由测试通过，仍未做窗口像素、托盘或人工点击验收。以下空白人工验收项仍需由维护者实测。
 
 2026-10-30 用户明确要求改用本机进程状态与磁盘会话数据，不需要与 Codex App 通信。当前源码包含 Codex App state DB/rollout 与 Claude Code JSONL/subagent 只读适配；count-only smoke 确认 Codex App 进程在线、Claude Code 进程离线但历史可读。标准 release 上的只读 live provider 以 `codex`、`codex-app`、`claude-code` 三源运行，真实提交了三次场景快照并清理自己的临时世界；来源摘要为 Codex CLI online/0、Codex App online/128、Claude Code offline/128。它证明三源进入同一个 Host scene 更新路径，不证明像素呈现：本机没有取得 Agent Activity 截图或 accessibility tree，所以标题/项目/Agent 输出卡片、freshness 展示和 UUID-only 深链接仍为 `NOT_RUN`。
 
@@ -66,7 +66,7 @@ audience: maintainer, Windows tester
 
 ## B06-03 配置包导入人工验收
 
-此前 release 的管理器 accessibility tree 已读取；当前 `a78b3c9` release 尚未启动，B06-03 的预览、授权重规划、应用、Provider 回执和回退操作仍未逐项实测。以下步骤可由维护者在“窗构 · 世界管理器”中完成。数据全部为合成样例；不使用真实 Provider 或用户世界。
+当前基于 `17ddee4` 的本机 B06-03 stale-action 修复 release（SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`）已在 tray-only 默认模式独立启动，并通过真实 Tauri Host 的 41 项 Python 协议探针；管理器 UI 尚未打开，因此预览、授权重规划、应用、Provider 回执和回退操作仍需逐项人工实测。以下步骤可由维护者在“窗构 · 世界管理器”中完成。数据全部为合成样例；不使用真实 Provider 或用户世界。
 
 ### 样例与提供者
 

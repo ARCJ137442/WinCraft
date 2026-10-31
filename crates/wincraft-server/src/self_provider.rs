@@ -346,7 +346,15 @@ impl ManagerProvider {
                         "review the current provider inventory again",
                     ));
                 }
-                hub.authorize_pack_binding(self.session, preview_id, &binding_id, &instance_id)?;
+                if let Err(error) =
+                    hub.authorize_pack_binding(self.session, preview_id, &binding_id, &instance_id)
+                {
+                    if matches!(error.code.as_str(), "STALE_PLAN" | "PLAN_NOT_FOUND") {
+                        s.pack_preview = None;
+                        s.pack_notice = Some(manager_text(&hub.locale(), "manager.import.stale"));
+                    }
+                    return Err(error);
+                }
                 // Permission approval changes the inventory generation. Generate a new preview
                 // immediately so no stale plan can be submitted.
                 let preview = hub.preview_pack_file(
@@ -1142,6 +1150,48 @@ mod tests {
         path
     }
 
+    fn register_metrics_inventory(hub: &Hub, session: Uuid, generation: u64) {
+        let observed_at = time::OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .expect("inventory timestamp formats");
+        hub.dispatch(
+            session,
+            "provider.inventory.register",
+            json!({
+                "kind":"wincraft.inventory.registration",
+                "schema_version":"draft-2026-10-29",
+                "generation":generation,
+                "observed_at":observed_at.clone(),
+                "valid_for_seconds":300,
+                "providers":[{
+                    "source_id":"source.metrics",
+                    "source_instance_id":"instance-a",
+                    "provider_type":"metrics",
+                    "display_name":"Metrics provider",
+                    "adapter_contract":1,
+                    "state":"online",
+                    "capabilities":["metrics.read","world.import.accept"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":300
+                }]
+            }),
+        )
+        .expect("provider inventory registers");
+    }
+
+    fn register_metrics_provider(hub: &Hub) -> Uuid {
+        let session = hub
+            .lock()
+            .register_with_protocol(
+                "metrics-provider".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .expect("preview provider registers");
+        register_metrics_inventory(hub, session, 1);
+        session
+    }
+
     fn action(manager: &ManagerProvider, action: String, value: Value) -> UiEvent {
         UiEvent {
             id: Uuid::new_v4(),
@@ -1582,40 +1632,7 @@ mod tests {
     fn manager_permission_button_grants_then_repreviews_before_apply() {
         let hub = Hub::new(false);
         let manager = ManagerProvider::install(&hub).expect("manager installs");
-        let provider_session = hub
-            .lock()
-            .register_with_protocol(
-                "metrics-provider".into(),
-                false,
-                ProtocolVersion::ComponentLeasesPreview01,
-            )
-            .expect("preview provider registers");
-        let observed_at = time::OffsetDateTime::now_utc()
-            .format(&time::format_description::well_known::Rfc3339)
-            .expect("inventory timestamp formats");
-        hub.dispatch(
-            provider_session,
-            "provider.inventory.register",
-            json!({
-                "kind":"wincraft.inventory.registration",
-                "schema_version":"draft-2026-10-29",
-                "generation":1,
-                "observed_at":observed_at.clone(),
-                "valid_for_seconds":300,
-                "providers":[{
-                    "source_id":"source.metrics",
-                    "source_instance_id":"instance-a",
-                    "provider_type":"metrics",
-                    "display_name":"Metrics provider",
-                    "adapter_contract":1,
-                    "state":"online",
-                    "capabilities":["metrics.read","world.import.accept"],
-                    "source_updated_at":observed_at,
-                    "fresh_for_seconds":300
-                }]
-            }),
-        )
-        .expect("provider inventory registers without grants");
+        let provider_session = register_metrics_provider(&hub);
 
         let pack_path = write_import_fixture(&["metrics.read"]);
         let mut settings = Settings {
@@ -1707,6 +1724,135 @@ mod tests {
                 .writer,
             Some(provider_session)
         );
+
+        std::fs::remove_file(pack_path).unwrap();
+    }
+
+    #[test]
+    fn stale_permission_action_clears_the_manager_preview_and_shows_replan_notice() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let provider_session = register_metrics_provider(&hub);
+        let pack_path = write_import_fixture(&["metrics.read"]);
+        let mut settings = Settings {
+            pack_path: pack_path.to_string_lossy().into_owned(),
+            ..Settings::default()
+        };
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("manager previews the pending permission");
+        assert!(settings.pack_preview.is_some(), "initial preview is stored");
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let grant_action = hub
+            .renderer_snapshot(manager.world_id)
+            .unwrap()
+            .scene
+            .root
+            .find("pack-grant-0-0")
+            .and_then(|node| node.props.get("action"))
+            .and_then(Value::as_str)
+            .expect("manager renders the grant action")
+            .to_owned();
+
+        register_metrics_inventory(&hub, provider_session, 2);
+        let error = manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, grant_action, Value::Null),
+            )
+            .expect_err("stale plan cannot grant a permission");
+
+        assert_eq!(error.code, "STALE_PLAN");
+        assert!(settings.pack_preview.is_none());
+        assert_eq!(
+            settings.pack_notice.as_deref(),
+            Some(manager_text(&hub.locale(), "manager.import.stale").as_str())
+        );
+        assert_eq!(hub.lock().worlds.len(), 1);
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let stale_scene = hub.renderer_snapshot(manager.world_id).unwrap().scene;
+        assert!(stale_scene.root.find("pack-preview-heading").is_none());
+        assert!(stale_scene.root.find("pack-notice").is_some());
+
+        std::fs::remove_file(pack_path).unwrap();
+    }
+
+    #[test]
+    fn stale_rendered_grant_does_not_clear_a_newer_manager_preview() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let _provider_session = register_metrics_provider(&hub);
+        let pack_path = write_import_fixture(&["metrics.read"]);
+        let mut settings = Settings {
+            pack_path: pack_path.to_string_lossy().into_owned(),
+            ..Settings::default()
+        };
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("manager creates the first preview");
+        let stale_preview_id = settings
+            .pack_preview
+            .as_ref()
+            .expect("first preview is stored")
+            .preview_id;
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let stale_action = hub
+            .renderer_snapshot(manager.world_id)
+            .unwrap()
+            .scene
+            .root
+            .find("pack-grant-0-0")
+            .and_then(|node| node.props.get("action"))
+            .and_then(Value::as_str)
+            .expect("first preview renders a grant action")
+            .to_owned();
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("manager replaces it with a newer preview");
+        let current_preview_id = settings
+            .pack_preview
+            .as_ref()
+            .expect("new preview is stored")
+            .preview_id;
+        assert_ne!(stale_preview_id, current_preview_id);
+
+        let error = manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, stale_action, Value::Null),
+            )
+            .expect_err("an old action cannot target the newer preview");
+
+        assert_eq!(error.code, "STALE_PLAN");
+        assert_eq!(
+            settings
+                .pack_preview
+                .as_ref()
+                .map(|preview| preview.preview_id),
+            Some(current_preview_id)
+        );
+        assert!(settings.pack_notice.is_none());
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let current_scene = hub.renderer_snapshot(manager.world_id).unwrap().scene;
+        assert!(current_scene.root.find("pack-preview-heading").is_some());
+        assert!(current_scene.root.find("pack-grant-0-0").is_some());
 
         std::fs::remove_file(pack_path).unwrap();
     }

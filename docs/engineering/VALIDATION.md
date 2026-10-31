@@ -1067,34 +1067,27 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 本机脱敏证据 [`b05-02-codex-quota-optin.json`](../../evidence/local/nextgen-2026-10-31/b05-02-codex-quota-optin.json) 被 `.gitignore` 忽略，仅记命令与汇总结果，不含令牌、账户 ID、runtime descriptor 或业务数据。
 
-## 2026-10-31 B06-03 Manager permission-action re-preview regression
+## 2026-10-31 B06-03 Manager permission/re-preview and stale-action regression
 
-**Given** 一个经 inventory 声明 `metrics.read` 的合成 Provider 和要求该 permission 的配置包；**When** 用户在内部 Manager 的通用组件场景中点击 grant action；**Then** Host 只授予该来源已声明的权限，generation 增加并立即重新预览，旧 preview 不能提交，已授权候选不再显示空 grant 按钮，只有新 preview 显示 apply 并创建世界给该 Provider。
-
-| 检查 | 状态 | 实际结果 |
-|---|---|---|
-| 首次 `cargo test --locked -p wincraft-server manager_permission_button_grants_then_repreviews_before_apply -- --nocapture` | FAIL（已修复） | 退出码 1；授权并重预览后，选中的已授权 candidate 仍渲染成空权限 `pack.grant` 按钮，点击将返回 `NO_PERMISSION_REQUIRED`。|
-| 修复后同一 ManagerProvider 流程回归 | PASS | 退出码 0；从 `Scene` 读取真实渲染的 grant action，验证授权、generation 增长、旧计划 `PLAN_NOT_FOUND`、grant 控件消失、apply 控件出现，并确认新世界 writer 是选定的 provider session。|
-| `cargo fmt --all -- --check` / `cargo check --locked -p wincraft-server` | PASS | 退出码均为 0。|
-| `cargo test --locked -p wincraft-server --no-fail-fast` | PASS | 54 项 server 测试通过，0 失败；包括上述 ManagerProvider action-flow 回归。|
-| `cargo clippy --locked -p wincraft-server --all-targets -- -D warnings` | PASS | 退出码 0，无 warning。|
-| `npm run desktop:build` | PASS | 退出码 0；当前 `target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `1D9541317F971A311BA0B11E76DB117B83B5CB126935D292A92E3EC9EFBABF9B`。 |
-| 当前 release 的 Manager UI | NOT_RUN | 原生 Computer Use/UIA 本轮不可用；没有把 Rust handler 测试或 release build 写成屏幕点击验收。B06-03-A1/A2/A3 仍为 `PARTIAL`。|
-
-本机脱敏回归摘要 `evidence/local/nextgen-2026-10-31/b06-03-manager-permission-repreview.json` 默认被 `.gitignore` 忽略，不含 runtime descriptor 或真实 Provider 数据。
-
-## 2026-10-31 B06-03 Manager permission action re-preview regression
-
-**Given** 一个需要 `metrics.read`、inventory 中存在已声明但尚未授权的合成 Provider；**When** 内部 Manager 通过通用组件场景触发 `pack.grant`；**Then** 旧 preview 被撤销、generation 变化后立即生成新 preview，授权完的候选不再显示空权限 grant 按钮，旧 preview 不能提交，只有新 `Ready` preview 可以创建 world 并将单窗写租约交给该 Provider。
+**Given** 一个需要 `metrics.read`、inventory 中存在已声明但尚未授权的合成 Provider；**When** 内部 Manager 通过通用组件场景触发 `pack.grant`；**Then** 成功授权后旧 preview 被撤销、generation 变化后立即生成新 preview，已授权候选不再显示空权限 grant 按钮，只有新 `Ready` preview 可以创建 world 并将单窗写租约交给该 Provider。若 inventory 在点击旧 grant 动作前变化，Host 返回 `STALE_PLAN`、Manager 清除旧 preview 并显示重新规划提示，且不创建 world。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | 首次 `cargo test --locked -p wincraft-server manager_permission_button_grants_then_repreviews_before_apply -- --nocapture` | FAIL（已修复） | 退出码 1；发现已授权且已选中的候选仍被渲染为 `pack.grant` 按钮，显示空权限并会收到 `NO_PERMISSION_REQUIRED`。这是真实 Manager scene 逻辑缺陷，不是测试夹具问题。|
 | 修复后的定向管理器流程测试 | PASS | 相同命令退出码 0；测试从 Manager 场景读取实际 `pack-grant` 静态动作，授权后检查新的 preview ID 与 inventory generation、旧 preview `PLAN_NOT_FOUND`、grant 按钮消失、apply 按钮出现，最终导入 Provider 获得该 world 的 writer。|
+| 首次 `cargo test --locked -p wincraft-server stale_permission_action_clears_the_manager_preview_and_shows_replan_notice -- --nocapture` | FAIL（已修复） | 退出码 1；先复现到 generation 改变时 `authorize_pack_binding` 返回 `STALE_PLAN`，但 Manager 内存仍保留旧 preview。|
+| 修复后同一 stale-action 定向测试 | PASS | 退出码 0；拒绝旧 grant 动作、清空 preview、显示本地化重新规划 notice，world 数量保持不变；错误仍通过 `action.result` 回执，不绕过 Host 授权。|
+| `cargo test --locked -p wincraft-server stale_ -- --nocapture` | PASS | 2 项过期 grant 回归通过：Host 判定当前 preview 过期时清除它；旧渲染动作到达时保留管理器更新后的有效 preview。|
 | `cargo fmt --all -- --check` / `cargo check --locked -p wincraft-server` | PASS | 分别退出码 0；格式检查与 server 编译通过。|
-| `cargo test --locked -p wincraft-server --no-fail-fast` | PASS | 54 项 server 单测通过，0 失败；包含完整 `ManagerProvider` 权限授权/重新预览/应用流程测试。|
+| `cargo test --locked -p wincraft-server --no-fail-fast` | PASS | 56 项 server 单测通过，0 失败；包含成功授权/重规划/应用以及两种过期动作边界回归。|
 | `cargo clippy --locked -p wincraft-server --all-targets -- -D warnings` | PASS | 退出码 0，无 warning。|
-| `npm run desktop:build` | PASS | 退出码 0；当前 Tauri release `target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `1D9541317F971A311BA0B11E76DB117B83B5CB126935D292A92E3EC9EFBABF9B`。本轮未启动该 EXE做像素/鼠标验收。|
+| `npm run check:local` | PASS | 退出码 0：28 项 Node UI、149 项 Rust workspace、216 项 Python（1 项 Windows symlink 能力跳过）；Rust fmt/check/test/Clippy、离线契约和 33 个 Provider Skill 引用均通过。环境：Windows 11 build 22000、Node 22.23.4、npm 11.19.0、Rust/Cargo 1.93.0、Python 3.11.4。|
+| `npm run desktop:build` | PASS | 退出码 0；本机修复工作树 release `target/release/wincraft-desktop.exe` 为 13,600,256 bytes，SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`。该 EXE 已独立启动并通过下方真实 Tauri Host probe；本轮未打开管理器 UI，也未做像素/鼠标验收。|
+| release headless Rust Host + `python examples/python/lease_probe.py --runtime <isolated descriptor>` | PASS | `cargo build --locked --release -p wincraft-server --bin wincraft-headless` 和真实 Host 上的 Provider probe 均退出码 0，41 项协议检查通过；临时世界由 probe 清理，Host 停止，isolated descriptor 已删除。只用合成数据与 loopback，不访问账户/API。脱敏汇总位于忽略目录 `evidence/local/nextgen-2026-10-31/evidence/local/nextgen-2026-10-31/b06-03-final-host-1793408885298/summary.json`。|
+| 独立启动当前 Tauri release + Python `lease_probe.py` | PASS | 无参数启动 `target/release/wincraft-desktop.exe`（tray-only 默认启动），真实 Tauri Host 上的 Provider probe 退出码 0，41 项检查通过；Provider 临时世界清理、Host 停止、该 Host 的 runtime descriptor 精确删除。一次 `LOCALAPPDATA` 隔离尝试未被 Tauri Known Folder resolver 采用；随后从 Host 日志定位并清理本次创建的 descriptor，再以默认路径完成成功 smoke。未读取 descriptor 内容或记录 bearer token。管理器 UI 像素/点击仍 NOT_RUN。忽略目录脱敏汇总：`evidence/local/nextgen-2026-10-31/evidence/local/nextgen-2026-10-31/b06-03-tauri-release-1793409332677/summary.json`。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 同步 1 个 Rust 文件；索引 current：100 files、2,866 nodes、9,542 edges。|
+| GitHub Actions run [41151206263](https://github.com/exomind-team/WinCraft/actions/runs/41151206263) | PASS（旧提交） | Windows source job 对 commit `17ddee4` 完成成功；它早于本机新增 stale-action 修复，不计作该修复的 CI 证据。|
+| 重复 release build hash | NOT_DETERMINISTIC（待调查） | 两次此前 B06 build、源码输入未改时的 `npm run desktop:build` 分别得到 SHA-256 `D0DA99635BB206BBEE4F31CF06B7DEA7D9F357D3A40CD138DADC65147E56A34B` 与 `A0A4981ECCD9710BA0B44A54D0A23749A7AFBC0EF5FCB383AD117D7716D160EB`，文件大小相同；后一产物 PE TimeDateStamp 为 `2026-10-31 08:40:39`。这说明相同源码可能含时间相关构建差异，但具体原因尚未验证；当前工作树的 SHA-256 绑定于本次实际产物，不宣称可复现 hash。|
 | B06-03-A1/A2/A3 | PARTIAL / PARTIAL / PARTIAL | Host 与 Manager action 路由增加了更强的 L1-L2 证据；Computer Use/UIA 不可用，Windows release 的人工预览、授权、应用、回执、取消和回退路径仍未验收。|
 
 本机脱敏回归摘要 [`b06-03-manager-permission-repreview.json`](../../evidence/local/nextgen-2026-10-31/b06-03-manager-permission-repreview.json) 位于默认忽略的 `evidence/local/`；不含 runtime descriptor、Provider source 内容或业务数据。
