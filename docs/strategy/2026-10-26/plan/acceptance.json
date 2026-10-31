@@ -560,7 +560,7 @@
       "level": "L2-L5",
       "criterion": "并发多个问题有配额与可发现入口，不强抢焦点",
       "status": "PARTIAL",
-      "evidence": "Cross-process mutex and busy-before-client tests pass; Rust manager logic lists invite Popup worlds without changing writer/epoch. Current release visibility and no-focus-steal behavior were not observed."
+      "evidence": "Cross-process mutex and busy-before-client tests pass. A current standard Tauri release run used two independent Python Provider processes with the installed Popup-Ask validator and a synthetic request: the first world was cleaned after its bounded wait; the concurrent second request returned the busy/no-second-window error. Rust manager logic lists invite Popup worlds without changing writer/epoch. Current-screen focus behavior and discoverability in the manager were not observed because Computer Use native pipe was unavailable; acceptance remains PARTIAL. Local evidence: evidence/local/nextgen-2026-10-31/b03-02-popup-concurrent-20261031-142801/summary.json."
     },
     {
       "id": "B03-02-A4",

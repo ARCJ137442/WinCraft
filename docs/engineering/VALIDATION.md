@@ -65,6 +65,19 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 
 忽略的脱敏本机证据：`evidence/local/nextgen-2026-10-31/b03-02-popup-bounded-host-smoke.json`；合成请求文件同在忽略目录，没有 bearer token/runtime descriptor。
 
+## 2026-10-31 B03-02 current Tauri Popup 并发槽位 smoke
+
+**Given** 一个仅含合成选项的 Popup-Ask structured request；**when** 第一个 Provider 在当前标准 Tauri release 建立临时世界，另一个同用户会话的 Provider 并发启动；**then** 第二个调用返回 busy 错误“本次没有创建第二个窗口”，第一个请求结束后确认清理自己的世界。两个 Provider 均使用 `--no-remember-position`；本用例验证并发门控，不代替对焦点行为的屏幕观察。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| 已安装 Popup-Ask `--validate-only` | PASS | 当前合成请求有效；只做本地结构校验，不打开 Popup-Ask 自己的 Tk 窗口。|
+| 当前 Tauri release + 两个独立 `popup_ask_provider.py` 进程 | PASS（busy gate） | 第一 Provider 打印临时世界已创建，bounded wait 结束并确认 `world.destroy`；退出码 1 对应 Popup 状态 `error`。第二 Provider 同用户 Mutex 返回 busy/error，退出码 1，消息明确说明未创建第二个窗口。busy-before-Client/create 的 focused regression 另外证明 busy 分支不实例化 Host Client。原始 response 文本未保留。|
+| B03-02-A3 | PARTIAL | 真实 Tauri Host 上的并发槽位通过；界面是否抢焦点、管理器中如何发现现有 Popup 尚无原生截图/点击证据，Computer Use pipe 仍不可用。|
+| Tauri Host、两个 Provider、descriptor 与位置记忆 | PASS | 首 Provider 世界清理成功；测试 Host 和两个 Provider 均退出；精确 runtime descriptor 已删除；`--no-remember-position` 避免读取/写入用户位置偏好。|
+
+本机聚合证据为 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b03-02-popup-concurrent-20261031-142801/summary.json)；只保留合成场景、退出类别与清理状态，不保留响应文本、请求答案、PID 或 descriptor。
+
 ## 2026-10-30 B04-02 前台激活失败栅栏
 
 **Given** 提供者请求经由用户点击触发的受限原生窗口动作，**When** `SetForegroundWindow` 报告拒绝且目标并未成为 foreground window，**Then** Host 返回明确错误，不写成功回执，也不把这次交互发布给 Provider。
@@ -346,7 +359,7 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | 当前代码的真实 headless Rust host | PASS（协议） | `lease_probe.py` 31 项通过；`native_windows=false` 时不宣告并拒绝外部窗口动作。临时 headless 进程已退出；临时目录尚有一个 descriptor 文件，内容未读取，也未复制进仓库或证据。|
 | TrafficMonitor provider | PASS（真实来源链路） | 新 x64 TrafficMonitor 副本仍运行；新 provider 连上本次 release，状态为空、age=0、generation/revision 持续增长并报告 1.8.6.0。日志没有记录指标读数。|
 | Obsidian Obsidian Workspace 数据链路 | PASS（只读） | 用户选择的仪表盘只读投影曾持续更新并获得 native applied 回执；公共记录不含 vault 标识、投影数量、笔记内容或 runtime 信息。|
-| Popup-Ask 并发配额子项 | PASS（unit/cross-process） | Windows 本机会话命名互斥体限制一个 Popup-Ask provider；同进程、独立子进程竞争和 busy-before-client/create 均有回归。server unit 还确认 manager scene 会列出 invite Popup world 且不改变其 writer/epoch；当前 release 的真实管理器可见性与不抢焦点仍 NOT_RUN，故 B03-02-A3 总体验收维持 NOT_RUN。|
+| Popup-Ask 并发配额子项 | PASS（unit/cross-process/current Tauri busy smoke） | Windows 本机会话命名互斥体限制一个 Popup-Ask provider；同进程、独立子进程竞争和 busy-before-client/create 均有回归。当前 Tauri release 上第一个合成 Popup 世界创建并由 Provider 清理，第二个独立 Provider 返回 busy/no-second-window。server unit 还确认 manager scene 会列出 invite Popup world 且不改变其 writer/epoch；管理器可见性、实际焦点是否被抢仍 NOT_RUN，因此 B03-02-A3 整体保持 PARTIAL。|
 | Popup provider 状态机与 headless wire | PASS（自动） | 22 项 Popup 专项测试覆盖成功 ACK 后单次销毁、重复 submit、取消/Escape/窗口关闭、超过 10 秒的整体等待、断线、ACK未知、busy 时错误退出与清理失败；Rust manager unit 确认 invite Popup world 出现在管理器 scene 且 writer/epoch 不变；真实 Rust headless host + 安装的 Popup-Ask skill 对合成请求验证 timeout/world.destroy 与并发 busy 拒绝，关闭后 descriptor count=0。首次 PowerShell 汇总器对空 stderr 调用 `.Contains` 而退出 1；后续 Python 结构化解析确认了所有结果字段，失败与复核均保存在本机证据。真实 Tauri Popup 的成功/取消、键盘/IME/读屏、管理器可见性及 native position reopen 仍 NOT_RUN。|
 | 原生窗口动作人工点击 | NOT_RUN | 当前 release 的 Obsidian Workspace 标题声明 `obsidian/activate`；等待用户点击标题确认确实激活现有 Obsidian 窗口。后台 Python 进程直接调用 `SetForegroundWindow` 的诊断失败，故已移除提供者直接操作路径，改由接收用户点击的 Tauri 宿主执行。|
 | 托盘管理器打开与全局隐藏/显示 | NOT_RUN | 早期版本中用户报告“显示世界管理器”无响应；新 release 尚待用户重新检查托盘菜单、管理器聚焦和全局隐藏/恢复。|
