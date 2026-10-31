@@ -1314,3 +1314,22 @@ Audit evidence is in ignored `evidence/local/`; it contains no runtime descripto
 | GitHub Actions run `41209376248` | PASS | 公开后首次推送触发，耗时 5m50s，`npm run check:local` 步骤全绿（setup-python / rust-toolchain / npm ci / pip install / check:local）。CI 只验证源码，不替代原生窗口验收。|
 
 重写前的本机备份为被忽略的 `target/wincraft-before-path-scrub.bundle`，仅用于本机恢复，不进入提交。历史中曾出现的私人业务提供者名称已在更早一次改写中移除，本次只处理路径标识。
+
+## 2026-11-01 B10-03 窗口组与角色最小 POC
+
+**Given** 一个已拥有多个世界的 Provider 希望把若干窗口作为一组呈现；**When** 通过 `0.4-preview.1` 的 `presentation.group.*` 方法注册有序成员、附加角色标签，并对整组执行一次窗口 patch；**Then** 每个成员独立校验自己的租约与 revision，拒绝的成员保留自己的故障码并被如实报告，宿主绝不把部分失败包装成整组成功，角色只是展示标签而不携带任何权限。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo test -p wincraft-core presentation_group` | PASS | 7 项：成员有序去重、成员上限 32、部分失败逐成员报告、失败后仍访问每个成员、角色不隐含成员身份、移除成员同时清理其成员级角色、空角色名拒绝。|
+| `cargo test -p wincraft-server presentation_group` | PASS | 3 项：一个成员持正确租约、另一个持错误租约时 `applied=1 / refused=1` 且拒绝项保留 `STALE_LEASE`；另一会话既在 `presentation.group.list` 看不到该组也无法 apply；稳定 0.3 会话调用返回 `UNSUPPORTED_CAPABILITY`。|
+| 能力表断言（`capability_tests`） | PASS | 稳定 0.3 不含 `presentation_groups`；preview 下 `status=preview`、`version=1`、`atomic=false`、`apply_semantics=per_member_independent`、`lease_required_per_member=true`、`discovery_grants_operation_right=false`。|
+| `python -m unittest tests.test_client_capabilities` | PASS | 新增 4 项：缺 capability 失败关闭；Host 若声称原子语义、或声称发现即授权，均被 SDK 拒绝。|
+| `python scripts/presentation_group_headless_smoke.py` | PASS（真实 release headless Rust Host） | 真实 WebSocket 上 17 项检查全绿：能力门、组创建、列举、角色、逐成员 apply（第二个成员故意给错租约）、拒绝故障码、changed 仅列接受者、跨会话不可见、接受成员可见性确实改变、拒绝成员保持不变、两个世界均被销毁。|
+| `python examples/python/presentation_group_demo.py --runtime <本机 descriptor>` | PASS（真实桌面 release 宿主） | 面向用户的示例在运行中的 Tauri release 上完成：第一个成员 applied、第二个 refused（`STALE_LEASE`）、`atomic=false`、`changed` 只含接受者，两个世界在结束时被自行销毁。全程只使用合成面板内容。|
+| `npm run desktop:build` | PASS | 产物 `target/release/wincraft-desktop.exe`，14,345,728 bytes，SHA-256 `D5BF7A251ECE376AD48A099A44492A61F225CBE316FEBE5DFC30D5934301FAC2`。首次构建因旧 release 进程占用 EXE 失败（退出码 1），按既有授权停止该进程后重建成功。|
+| 本地回归 | PASS | UI 30 项；Rust workspace 165 项通过、1 项 ignored；Python 246 项通过、1 项 skipped；Clippy `-D warnings` 与 `cargo fmt --check` 通过；Provider Skill 45 个引用存在。|
+| 原生分组窗口的减少动画/关闭/救援 | PARTIAL / NOT_RUN | 协议层已保证逐成员结果与每个世界自己的 `native` 报告；分组窗口的真实减少动画、关闭与点击穿透救援仍需 Windows 原生人工验收，未实测。|
+| 捕获排除与保密承诺 | NOT_RUN | 本轮未实现任何屏幕捕获或捕获排除功能，因此不存在"仅用户启用"与"不承诺保密"的实际行为可验收；该约束已写入 [`docs/poc/presentation-extensions.md`](../poc/presentation-extensions.md) 作为后续实现的硬性前提。|
+
+窗口组不产生新权限：每个成员仍持有自己的写租约、revision 与 fencing epoch，组只是宿主侧编排投影。角色只是展示标签，没有业务语义、情绪引擎或独立权限。AppBar/DWM、区域输入与屏幕捕获在本轮全部未实现，保持未开工状态而不是半开放。
