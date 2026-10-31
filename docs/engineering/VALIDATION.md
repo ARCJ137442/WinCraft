@@ -8,7 +8,7 @@
 
 本文件按时间追加，不回写早期观察。对同一验收项，较新的明确复核段落与生成的 `plan/acceptance.json`、`plan/status.json` 是当前状态；旧日期段落只保留发生当时的事实。
 
-TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询，其提供商识别逻辑会有界读取 `auth.json`。Agent 只读 API 的 `GET /v1/integrations/models` 受 `data:read` token 保护，可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。WinCraft 的 B05-02 Provider 已实现为该 API 的只读使用者，不读取 `auth.json`、不接触供应商密钥，也不把额度写操作加入首版。真实 TeamSense 联调与像素验收仍未完成；账户 ID 不由该 endpoint 返回，Codex 也仍是 unknown。
+TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询。Agent 只读 API 的 `GET /v1/integrations/models` 受 `data:read` token 保护，可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。WinCraft B05-02 使用该 TeamSense 固定缓存 GET；新增 Codex 额度源默认关闭，只有显式传 `--codex-quota` 才使用固定的实验性 HTTPS GET，并只在适配器内使用本机 `auth.json` 的 access token/account ID，不刷新或写回、不显示或记录凭据/账户标识。该 Codex backend route 不是稳定公开 API；本轮只做合成回归，没有读取真实 auth 文件或发起真实账户请求。真实 TeamSense 联调、Codex 实时请求与原生像素验收仍未完成。
 
 ## 2026-10-30 B02-02 主题与无障碍偏好验收
 
@@ -1048,3 +1048,20 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-03-A1/A2/A3 | PASS / PARTIAL / PASS（受限） | A1 明确区分 Tauri 编译与原生交互。A2 已给出源代码与 Linux 构建能力矩阵，但原生 Linux GUI 与 macOS 仍 NOT_RUN，故 PARTIAL。A3 Windows 全门禁与 release build 通过；改动仅收窄 Windows-only helper 编译边界并新增平台 capability 回归，未改变 Windows API 路径。B11-03 保持 `IMPLEMENTED_UNVERIFIED`，B11-01 性能基线仍单独未关闭。|
 
 详细平台边界见 [`docs/platforms/capability-matrix.md`](../platforms/capability-matrix.md)。本机补充证据 `evidence/local/nextgen-2026-10-31/b11-03-linux-platform-build.json` 默认忽略，不提交 Cargo target、runtime descriptor 或 WSL 系统依赖包。
+
+## 2026-10-31 B05-02 Codex opt-in quota source
+
+**Given** 合成 Codex auth 文件与合成 usage 响应，**When** 来源未启用或 Provider 显式传入 `--codex-quota`，**Then** 未启用时不读凭据也不联网；启用时只投影主/次窗口的剩余比例与时间，不公开令牌/账户 ID；账号切换或身份无法确认时清掉旧读数，普通网络失败则保留并标为读取失败。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_codex_quota tests.test_team_sense_quota -v` | PASS | 22 项定向合成测试通过：固定 HTTPS GET、重定向拒绝、响应/凭据大小上限、无效值不变零、极值拒绝、凭据脱敏、账号切换清理与默认未启用不读取。未读取真实 `auth.json`，HTTP opener 全部为模拟对象。|
+| `npm run check:python` | PASS | 216 项测试通过，1 项因当前 Windows symlink 创建能力不可用而跳过；Provider Skill 引用 33/33 通过。第一次运行因测试导入了另一集成的同名 `provider` 模块而失败；将 disabled-source 回归收窄至独立 Codex quota adapter 后整套重跑通过。|
+| `python scripts/check_contracts.py` / handoff validator | PASS | 离线协议/fixture 检查通过；handoff 一致性检查报告 43 文档、143 相对链接、74 条需求、48 个任务、155 个验收项且无错误。|
+| `cargo build --locked --release -p wincraft-server --bin wincraft-headless` | PASS | 退出码 0；新建 `target/release/wincraft-headless.exe`，3,240,960 bytes，SHA-256 `87DAA64BA9F973AB84996FFD9811C3B54CD052F3C8ACD0894DDF8BF086DF373B`。|
+| 新建 release headless Rust Host + Provider `--demo --duration-seconds 3` | PASS（L2 WebSocket/场景） | 退出码 0；真实 Rust Host 接受含 Codex 双窗口、MiniMax 周期条与 DeepSeek 独立币种的合成场景，Provider 清理了自己的临时世界。runtime descriptor 在专用临时目录中短暂存在，未写入证据，测试后进程与文件均已清理。Demo 无凭据读取、无外部网络请求。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 索引 current：100 个文件、2,856 个节点、9,470 条边。|
+| Codex/TeamSense 实时账户数据、当前桌面像素 | NOT_RUN | 未读取用户 Codex auth 文件、未发送 Codex/TeamSense 请求，也没有运行当前桌面 UI 截图。Codex route 是未公开稳定契约，故保持默认关闭与实验性说明；真实账号新鲜度与视觉验收不宣称通过。|
+| B05-02-A1/A2/A3/A4 | PARTIAL / PARTIAL / PARTIAL / PARTIAL | 合成模型、账户切换和来源隔离规则已测；TeamSense 账户归属、真实服务 freshness 与当前窗口像素仍待验收。B05-02 维持 `IMPLEMENTED_UNVERIFIED`。|
+
+本机脱敏证据 [`b05-02-codex-quota-optin.json`](../../evidence/local/nextgen-2026-10-31/b05-02-codex-quota-optin.json) 被 `.gitignore` 忽略，仅记命令与汇总结果，不含令牌、账户 ID、runtime descriptor 或业务数据。

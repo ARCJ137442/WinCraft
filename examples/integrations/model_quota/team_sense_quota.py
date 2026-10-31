@@ -53,6 +53,7 @@ class TeamSenseApiError(RuntimeError):
 
 
 API_ERROR_LABELS = {
+    "NOT_CONFIGURED": "未配置 TeamSense 连接",
     "HTTP_401": "凭据未被接受",
     "HTTP_403": "token 缺少 data:read 权限",
     "HTTP_404": "只读接口路径不存在",
@@ -308,6 +309,9 @@ def _api_read_state(
     elif api_connected:
         api_state_label, api_tone = "TeamSense API 可读", "success"
         api_detail = "读取成功 · 仅使用缓存 GET"
+    elif api_error_code == "NOT_CONFIGURED":
+        api_state_label, api_tone = "TeamSense 未配置", "muted"
+        api_detail = "本面板可以单独读取已显式启用的本机来源"
     else:
         api_state_label, api_tone = "TeamSense API 不可达", "danger"
         api_detail = API_ERROR_LABELS.get(api_error_code or "NETWORK_ERROR", "TeamSense API 不可达")
@@ -383,8 +387,14 @@ def normalize_models_snapshot(
             "state_label": "管理快照不是额度余额",
         },
         "codex": {
-            "state_label": "未知",
-            "detail": "此只读接口未提供 Codex 额度；不从其他历史数据推算。",
+            "state_label": "未启用",
+            "state_tone": "muted",
+            "freshness_label": "尚未读取",
+            "freshness_tone": "muted",
+            "observed_at": None,
+            "observed_label": "尚无成功读取时间",
+            "detail": "Codex 本机配额来源未启用；不会从会话历史推算。",
+            "windows": [],
         },
         "sources": ["deepseek", "minimax", "sub2api"],
     }
@@ -467,6 +477,35 @@ def build_quota_scene(projection: Mapping[str, Any]) -> dict[str, Any]:
                 "text",
                 {"text": _bound("/minimax/omitted_models_label"), "size": "small"},
             )
+        )
+
+    codex_windows = codex.get("windows") if isinstance(codex.get("windows"), list) else []
+    codex_children: list[dict[str, Any]] = []
+    for index, item in enumerate(codex_windows[:2]):
+        if not isinstance(item, Mapping):
+            continue
+        if isinstance(item.get("value"), (int, float)) and isinstance(item.get("maximum"), (int, float)):
+            codex_children.append(
+                _node(
+                    f"quota-codex-window-{index}",
+                    "progress",
+                    {
+                        "label": _bound(f"/codex/windows/{index}/label"),
+                        "value": _bound(f"/codex/windows/{index}/value"),
+                        "max": _bound(f"/codex/windows/{index}/maximum"),
+                    },
+                )
+            )
+            codex_children.append(
+                _node(
+                    f"quota-codex-detail-{index}",
+                    "text",
+                    {"text": _bound(f"/codex/windows/{index}/detail"), "size": "small"},
+                )
+            )
+    if not codex_children:
+        codex_children.append(
+            _node("quota-codex-empty", "text", {"text": _bound("/codex/detail"), "size": "small"})
         )
 
     root = _node(
@@ -590,18 +629,31 @@ def build_quota_scene(projection: Mapping[str, Any]) -> dict[str, Any]:
                             _node(
                                 "quota-codex-state",
                                 "badge",
-                                {"text": _bound("/codex/state_label"), "tone": "muted"},
+                                {
+                                    "text": _bound("/codex/state_label"),
+                                    "tone": _bound("/codex/state_tone"),
+                                },
                             ),
                         ],
                     ),
-                    _node("quota-codex-detail", "text", {"text": _bound("/codex/detail"), "size": "small"}),
+                    _node(
+                        "quota-codex-freshness",
+                        "text",
+                        {"text": _bound("/codex/observed_label"), "size": "small"},
+                    ),
+                    *codex_children,
+                    _node(
+                        "quota-codex-source-note",
+                        "text",
+                        {"text": _bound("/codex/detail"), "size": "small"},
+                    ),
                 ],
             ),
             _node(
                 "quota-panel-footer",
                 "text",
                 {
-                    "text": "各币种、模型与额度周期独立显示；Sub2API 管理快照不冒充额度。",
+                    "text": "各来源、币种与额度周期独立显示；Codex 为本机实验性只读源。",
                     "size": "small",
                 },
             ),
@@ -621,9 +673,22 @@ def build_quota_scene(projection: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def quota_window_spec(*, demo: bool = False) -> dict[str, Any]:
+def quota_window_spec(
+    *,
+    demo: bool = False,
+    codex_enabled: bool = False,
+    teamsense_enabled: bool = True,
+) -> dict[str, Any]:
+    if demo:
+        title = "模型额度 · 合成演示"
+    elif codex_enabled and teamsense_enabled:
+        title = "模型额度 · 本机"
+    elif codex_enabled:
+        title = "Codex 额度 · 本机"
+    else:
+        title = "模型额度 · TeamSense"
     return {
-        "title": "模型额度 · 合成演示" if demo else "模型额度 · TeamSense",
+        "title": title,
         "width": 430,
         "height": 500,
         "always_on_top": True,

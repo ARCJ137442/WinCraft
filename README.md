@@ -76,6 +76,7 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 配置包 `.wcp` 是可分享的蓝图/需求声明，不封存提供者；导出与本机管理器导入边界见 [`tools/pack/README.md`](tools/pack/README.md)。
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
 Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
+模型额度 HUD 的 TeamSense 缓存投影与默认关闭的 Codex 本机实验源见 [集成说明](examples/integrations/model_quota/README.md)；未显式启用时不会读取 Codex 凭据或发出额度请求。
 
 只读 Agent Activity 总览示例见 [`examples/integrations/agent-board/README.md`](examples/integrations/agent-board/README.md)。它把 Claude Code、Codex CLI 本机状态库和 Codex App 本机状态文件分成独立来源；Codex App 从 Desktop-originator state DB 与 UUID 匹配的有限 rollout 尾部读取标题、项目和最近 Agent 输出，Claude Code 从本地项目 JSONL/固定子 Agent 目录读取历史。Codex App 与 Claude Code 的在线状态来自只读进程元数据，进程离线时仍可显示历史，不会因读取磁盘而假报在线。采集不启动 App/Claude、不使用 App connector/MCP 或 `agents --json`；源文本有界、脱敏，不读取完整会话、thinking、用户提示或工具输出。会话状态没有权威文件证据时显示未知；Codex App 标题导航只在用户点击后走 Host 限制的 UUID-only `codex://threads/<UUID>`。
 

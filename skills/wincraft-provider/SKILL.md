@@ -385,13 +385,17 @@ at the original installation's configuration or put source values in evidence.
   overlapping writer leases and removes only its own temporary world. It does not start
   Codex App or Claude Code; Codex CLI uses the explicit `useStateDbOnly=true` adapter.
 - `examples/integrations/model_quota/README.md` and
-  `examples/integrations/model_quota/provider.py` — TeamSense cached
-  model-quota projection through its fixed `GET /v1/integrations/models` `data:read`
-  endpoint. `--demo` uses synthetic values without network access. The endpoint omits
-  account IDs and Codex quota, so keep both unknown; never read provider credentials or
-  use the refresh/admin/vendor API paths. Do not swap in the broader `/v1/dashboard`
-  response: it contains unrelated finance/project summaries and its quota rows do not
-  establish account or window identity.
+  `examples/integrations/model_quota/provider.py` — independent quota projection for
+  TeamSense cached data and an optional Codex source authenticated by the local
+  profile. TeamSense uses only the fixed `GET /v1/integrations/models` with `data:read`;
+  do not use refresh/admin/vendor paths or the broad `/v1/dashboard` response. Codex
+  remains disabled unless `--codex-quota` is explicitly supplied; it parses the bounded
+  selected local `auth.json` in memory but uses only `tokens.access_token` and
+  `tokens.account_id`, ignoring other fields. It uses one fixed experimental HTTPS GET.
+  It never refreshes or writes credentials, displays account IDs, or derives quota from
+  session history. The Codex backend route is undocumented, not a stable public API;
+  keep it opt-in and fail closed on schema/auth changes. `--demo` uses synthetic values
+  without network or credential reads.
 - Codex App title links require `codex_thread_navigation`. The host accepts only a typed
   UUID and constructs `codex://threads/<UUID>` itself; never send a general URL or shell
   command. Clicks are explicit user actions, and OS acceptance is not proof that the

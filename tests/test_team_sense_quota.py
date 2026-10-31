@@ -171,8 +171,8 @@ class TeamSenseQuotaProjectionTests(unittest.TestCase):
     def test_given_no_codex_quota_in_read_api_when_projected_then_codex_remains_unknown(self):
         projection = normalize_models_snapshot(synthetic_snapshot(), api_connected=True)
 
-        self.assertEqual(projection["codex"]["state_label"], "未知")
-        self.assertIn("此只读接口未提供", projection["codex"]["detail"])
+        self.assertEqual(projection["codex"]["state_label"], "未启用")
+        self.assertIn("本机配额来源未启用", projection["codex"]["detail"])
         self.assertNotIn("codex", projection["sources"])
 
     def test_given_extra_account_and_management_fields_when_projected_then_only_display_fields_remain(self):
@@ -209,7 +209,7 @@ class TeamSenseQuotaProjectionTests(unittest.TestCase):
         self.assertIn("metric", kinds)
         self.assertGreaterEqual(kinds.count("badge"), 3)
         self.assertIn("identity_scope", scene["data"])
-        self.assertEqual(scene["data"]["codex"]["state_label"], "未知")
+        self.assertEqual(scene["data"]["codex"]["state_label"], "未启用")
 
     def test_given_http_endpoint_when_validated_then_only_loopback_is_permitted_without_tls(self):
         self.assertEqual(validate_base_url("http://127.0.0.1:8787"), "http://127.0.0.1:8787")

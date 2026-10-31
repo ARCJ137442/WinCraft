@@ -936,8 +936,19 @@
         "R063"
       ],
       "level": "L0-L5",
-      "criterion": "真实接口未定位时只有合成演示，不改TeamSense",
-      "status": "PASS"
+      "criterion": "TeamSense 仅请求已授权的缓存 GET；Codex 仅请求默认关闭的固定实验性只读 GET；不调用 TeamSense 写接口或使用宽泛 dashboard API",
+      "status": "PARTIAL"
+    },
+    {
+      "id": "B05-02-A4",
+      "task_id": "B05-02",
+      "requirement_ids": [
+        "R013",
+        "R063"
+      ],
+      "level": "L0-L5",
+      "criterion": "Codex 额度需显式 opt-in；有界解析本机 auth.json 后只使用必要 access_token/account_id 字段到本机内存，账号切换/身份无法确认时清除旧读数，令牌和账户 ID 不进入投影/日志；主次窗口、剩余比例与读取时间分开展示",
+      "status": "PARTIAL"
     },
     {
       "id": "B05-03-A1",

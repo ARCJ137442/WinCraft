@@ -91,7 +91,8 @@
 | B05-01-A3 | B05-01 | L1-L5 | 桥接断开后来源stale而非继续显示实时 | NOT_RUN |
 | B05-02-A1 | B05-02 | L0-L5 | 账号/提供商/窗口期不同数据不混算 | PARTIAL |
 | B05-02-A2 | B05-02 | L0-L5 | 数据过期和断线清晰 | PARTIAL |
-| B05-02-A3 | B05-02 | L0-L5 | 真实接口未定位时只有合成演示，不改TeamSense | PASS |
+| B05-02-A3 | B05-02 | L0-L5 | TeamSense 仅请求已授权的缓存 GET；Codex 仅请求默认关闭的固定实验性只读 GET；不调用 TeamSense 写接口或使用宽泛 dashboard API | PARTIAL |
+| B05-02-A4 | B05-02 | L0-L5 | Codex 额度需显式 opt-in；有界解析本机 auth.json 后只使用必要 access_token/account_id 字段到本机内存，账号切换/身份无法确认时清除旧读数，令牌和账户 ID 不进入投影/日志；主次窗口、剩余比例与读取时间分开展示 | PARTIAL |
 | B05-03-A1 | B05-03 | L1-L5 | 不承诺任意网页一键变原生APP | NOT_RUN |
 | B05-03-A2 | B05-03 | L1-L5 | 页面关闭/导航后错误地绑定旧对话被拒绝 | NOT_RUN |
 | B05-03-A3 | B05-03 | L1-L5 | 用户发送内容有可见预览和回执，无法验证时返回unknown | NOT_RUN |

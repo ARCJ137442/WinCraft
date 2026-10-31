@@ -1,6 +1,6 @@
 # 决定账本
 
-日期：2026-10-30。本文区分用户已经决定、AI 本轮实施取舍和尚未实现，不把讨论过视为验证通过。
+日期：2026-10-31。本文区分用户已经决定、AI 本轮实施取舍和尚未实现，不把讨论过视为验证通过。
 
 2026-10-26 的下一世代取舍、追踪账本与未验收项见 [平台演进交接包](../strategy/2026-10-26/START_HERE.md)。该包中的新契约仍是提案；决定账本的状态标签不会替代本仓库实现与验收证据。
 
@@ -30,6 +30,7 @@
 | 健康连接状态降噪 | provider 世界正常 `online` 时不显示“已连接”状态行/徽标；启动、断开、过期、错误等异常状态仍显示 |
 | Windows 虚拟桌面范围 | 每个窗口默认只出现在当前 Windows 虚拟桌面；provider 可请求“显示在所有桌面”，TrafficMonitor/外心悬浮工作台是开启示例。该决定已记录，但 Windows 公共 Tauri API 尚不能实现该 pinning，不能先提供假成功开关 |
 | 悬浮工作面默认半透明 | 默认 `surface_opacity=0.8`，窗口保持原生透明背景；provider 可读取快照并用 `window.configure` 调整该值 |
+| 模型额度悬浮窗 | 以图形化窗口并列呈现 Codex、MiniMax、DeepSeek 等额度；来源、币种、模型窗口与更新时间分开显示，不能把未知值当作零或混合不同周期 |
 | 阻塞式提问窗可更不透明 | Popup-Ask 属于需要阅读和填写的临时窗口，可以采用高于被动 HUD 的不透明度；不改变其他窗口的 0.8 默认 |
 | 窗口文本默认可选 | `text_selectable=true`；provider 可读写窗口级默认，组件样式可覆盖，标题栏始终不可选 |
 | 国际化从早期进入 | host 自有静态文案提供 `zh-CN` 与 `en-US` key catalog；机器 ID 不翻译；provider 原始文本不自动翻译；内部管理器提供语言切换 |
@@ -54,6 +55,7 @@
 - 管理器为进程内可信提供者，与外部同用 Engine/Scene/事件语义；它有明确的本地操作员权限，不要求绕本机 WebSocket 自发 HTTP。
 - Agent Activity 总览最多预览两条 Codex CLI、两条 Codex App、三条 Claude Code 会话；Codex CLI 只读取最近四个线程的 `agentMessage`。Codex App 从本机只读 state DB 的 `Codex Desktop` originator 读取标题/项目，并只解析经过 session meta 匹配的有限 rollout 尾部；Claude Code 从项目 JSONL 与固定子 Agent 路径读取本机历史。两者用 OS 进程映像状态区分在线/离线，进程离线仍可浏览历史；没有权威逐会话状态时显示 unknown。来源不给出或不能唯一匹配输出时明确显示不可用，不从用户提示或工具结果推断。
 - Popup-Ask provider 按上述可读性要求把自身窗口默认不透明度设为 `0.92`；这是本轮实施值，其他窗口仍按全局默认 `0.8` 或各自 provider 配置。
+- Codex 额度暂用本机显式启用的实验适配器：有界解析 `auth.json` 到本机进程内存，但只使用必要字段并忽略其余内容；请求固定的 HTTPS GET。该后端路由不是稳定公开 API，默认不启用，不刷新/写回凭据，不记录令牌或账户 ID。TeamSense 仍只用受 `data:read` 保护的缓存 GET；两者身份与新鲜度分别呈现。
 - 协议接受表示权威模型已更新，不保证 OS 已应用；native report 单独说明成功/失败。
 
 ## 未决定或未完成

@@ -1322,7 +1322,7 @@
     {
       "id": "B05-02",
       "batch": "B05",
-      "title": "TeamSense只读在线服务投影",
+      "title": "TeamSense 与 Codex 本机只读额度投影",
       "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B05-01"
@@ -1335,11 +1335,12 @@
         "examples/integrations/model_quota/",
         "proposed: contracts/usage-observation.schema.json"
       ],
-      "inputs": "TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。WinCraft 只读 Provider 与合成回归已实现；未连接真实账号。",
+      "inputs": "TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。用户要求同一 HUD 也呈现 Codex。TeamSense 源码 e63bbe5 存在单独的 Codex quota 读取实现，但使用的 chatgpt.com backend route 不是公开稳定 API；WinCraft 将其做为默认关闭、明确 opt-in 的本机凭据适配器。自动化回归用合成 auth/HTTP，不读取真实凭据或访问实时账户。",
       "implementation_steps": [
         "核对 TeamSense 真实只读 API、身份/账号/窗口口径与授权；本地文档/路由已确认 data:read GET，账户标识及真实授权仍待验证；不读取密钥、不调用写 API",
         "将 quota 单独建字段并保留 provider、currency/model/window、单位与缓存更新时间；本机 UI 将 status/freshness/API 连接分别呈现，不合并单位或周期",
-        "未提供官方总额度时标 unknown；Codex 不在此 API，账户 ID 缺失，均不推导伪余额或归属"
+        "Codex 与 TeamSense 保持独立来源；仅在显式 opt-in 后有界解析本机 auth.json，并只使用必要的 access_token/account_id 字段到内存请求固定 HTTPS GET；不使用其他字段或会话历史，不显示或记录账户 ID/令牌",
+        "Codex 响应按主/次窗口和剩余比例分别投影；缺字段、无效周期、登录切换或无法确认本机账号时失败关闭，不输出零值冒充未知"
       ],
       "acceptance": [
         {
@@ -1352,20 +1353,26 @@
         },
         {
           "id": "B05-02-A3",
-          "criterion": "真实接口未定位时只有合成演示，不改TeamSense"
+          "criterion": "TeamSense 仅请求已授权的缓存 GET；Codex 仅请求默认关闭的固定实验性只读 GET；不调用 TeamSense 写接口或使用宽泛 dashboard API"
+        },
+        {
+          "id": "B05-02-A4",
+          "criterion": "Codex 额度需显式 opt-in；有界解析本机 auth.json 后只使用必要 access_token/account_id 字段到本机内存，账号切换/身份无法确认时清除旧读数，令牌和账户 ID 不进入投影/日志；主次窗口、剩余比例与读取时间分开展示"
         }
       ],
       "verification_level": "L0-L5",
       "verification_commands": [
         "python -m unittest discover -s tests -p test_team_sense_quota.py -v",
+        "python -m unittest discover -s tests -p test_codex_quota.py -v",
         "npm run check:python",
         "python scripts/check_contracts.py",
         "cargo test --workspace"
       ],
       "verification_workdir": "current WinCraft checkout",
       "verification_instructions": [
-        "合成回归检查 provider/window/currency 隔离、unknown/zero、新鲜度/断线、脱敏和固定 GET；合成数据不替代真实账号接口",
-        "真实服务没有 token 时保持 NOT_RUN；原生窗口像素须另行 Computer Use 或人工验收"
+        "合成回归检查 provider/window/currency 隔离、unknown/zero、新鲜度/断线、脱敏、固定 GET/禁止重定向、auth 文件上限及账号切换栅栏；合成数据不替代真实账号接口",
+        "Codex backend route 未形成公开稳定契约，实时读取保持显式 opt-in；未明确启动时不读取 auth.json、不联网。真实 TeamSense 未有 data:read token 时保持 NOT_RUN",
+        "原生窗口像素须另行 Computer Use 或人工验收"
       ],
       "priority": "P1",
       "evidence_required": [
