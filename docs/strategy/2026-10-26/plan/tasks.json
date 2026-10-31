@@ -2247,7 +2247,7 @@
       "id": "B08-04",
       "batch": "B08",
       "title": "决策卡与官方批准回传",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B08-02",
         "B03-04"

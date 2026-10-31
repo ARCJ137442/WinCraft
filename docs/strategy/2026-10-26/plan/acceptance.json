@@ -1583,7 +1583,7 @@
       ],
       "level": "L2-L5",
       "criterion": "显示任务不自动具备批准权限",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B08-04-A2",
@@ -1595,7 +1595,7 @@
       ],
       "level": "L2-L5",
       "criterion": "批准前显示具体操作与来源，token不在卡片中",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B08-04-A3",
@@ -1607,7 +1607,7 @@
       ],
       "level": "L2-L5",
       "criterion": "网络超时只读回结果，不盲重放副作用",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B09-01-A1",

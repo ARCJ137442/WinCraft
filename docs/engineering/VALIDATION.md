@@ -1333,3 +1333,17 @@ Audit evidence is in ignored `evidence/local/`; it contains no runtime descripto
 | 捕获排除与保密承诺 | NOT_RUN | 本轮未实现任何屏幕捕获或捕获排除功能，因此不存在"仅用户启用"与"不承诺保密"的实际行为可验收；该约束已写入 [`docs/poc/presentation-extensions.md`](../poc/presentation-extensions.md) 作为后续实现的硬性前提。|
 
 窗口组不产生新权限：每个成员仍持有自己的写租约、revision 与 fencing epoch，组只是宿主侧编排投影。角色只是展示标签，没有业务语义、情绪引擎或独立权限。AppBar/DWM、区域输入与屏幕捕获在本轮全部未实现，保持未开工状态而不是半开放。
+
+## 2026-11-01 B08-04 决策卡与批准回传
+
+**Given** 一个 Harness 会话正在等待人类批准一个具体操作；**When** 该操作被呈现为一张决策卡，用户作出一次选择，结果回到发出请求的权威端；**Then** 显示本身不携带批准权限，卡片绑定来源/会话/请求/操作摘要指纹与到期时间，已撤销、已过期或已在别处处理过的请求无法被二次批准，网络超时只记录"结果未知"并供只读回查而不重放副作用。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_decision_cards` | PASS | 14 项：显示不授予批准权限（`control_capabilities` 为空且 pending 卡片无 outcome）；卡片给出具体操作、来源、会话与 64 位摘要指纹；卡片与场景均不含 token；同一请求不能重复打开；同一卡片不能重复作答；撤销后拒绝；过期后拒绝且从 pending 列表移除；拒绝与批准同等记录；超时记录为 `delivery_unknown` 且不重放；只有已作答卡片才能记录投递失败；操作改变则摘要改变；非法请求被拒。|
+| B08-04-A1 显示任务不自动具备批准权限 | PASS（代码层） | 决策卡只渲染待确认操作，`control_capabilities` 恒为空，pending 卡片的 `outcome` 恒为 `null`；批准权只来自一次显式 `decide`。|
+| B08-04-A2 批准前显示具体操作与来源，token 不在卡片中 | PASS（代码层） | 卡片携带 `operation`、`operation_summary`、`source_id`、`session_id`、`request_id` 与操作摘要指纹；`render_without_secrets` 采用白名单而非掩码，直接丢弃 `details` 等可能承载凭据的字段。|
+| B08-04-A3 网络超时只读回结果，不盲重放副作用 | PASS（代码层） | `record_delivery_failure` 把已作答卡片标记为 `delivery_unknown` 并保留用户答案，不自动重试、也不再次允许作答；`decide` 对该卡片返回 `ALREADY_RESOLVED`。|
+| 与权威端的真实回传 | NOT_RUN | 本轮只实现决策卡的状态机与渲染，尚未接入任一真实 Harness 的批准端点。按 B08-04 的实施约束，只对已确认支持的 Harness 建立 approval adapter；在没有权威端契约与明确授权前不猜测端点、不调用批准 API。|
+
+该模块位于 `examples/integrations/agent-board/decisions/`，是纯逻辑与投影层，不新增宿主方法、不打开网络监听、不调用任何外部批准接口。它与 B08-02 的只读总览共用来源身份语义：观察到"等待批准"永远不等于已经获得批准权。
