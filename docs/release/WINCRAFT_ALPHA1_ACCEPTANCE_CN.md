@@ -19,7 +19,7 @@ audience: maintainer, Windows tester
 | SHA-256 | `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691` |
 | 产品文件版本 | `0.1.0-alpha.1` |
 
-这是单个 Windows 可执行文件，不是安装器，也不是 GitHub Release。`npm run desktop:build` 从提交 `9073b3b` 构建，退出码 0；该产品二进制之后未因本机验收探针或文档提交而改变。最新源码门禁 `npm run check:local` 通过 28 项 UI、149 项 Rust workspace、225 项 Python（1 项 Windows symlink 能力跳过）及严格 Clippy。源代码提交 `f39de58` 的 Windows Actions run [41170007833](https://github.com/exomind-team/WinCraft/actions/runs/41170007833) 通过（12m19s）；性能文档提交 `8746400` 的 run [41173578234](https://github.com/exomind-team/WinCraft/actions/runs/41173578234) 通过（12m05s）。CI 不替代原生 GUI 验收。
+这是单个 Windows 可执行文件，不是安装器，也不是 GitHub Release。`npm run desktop:build` 从提交 `9073b3b` 构建，退出码 0；该产品二进制之后未因本机验收探针、测试脚本或文档提交而改变。最新完成的源码门禁 `npm run check:local` 通过 28 项 UI、149 项 Rust workspace、225 项 Python（1 项 Windows symlink 能力跳过）及严格 Clippy。Windows Actions run [41179930393](https://github.com/exomind-team/WinCraft/actions/runs/41179930393) 对文档提交 `10a3df9` 通过（source job 9m12s）；该提交没有改动产品运行时代码。CI 不替代原生 GUI 验收。
 
 首次 release 曾因在同步 Tauri setup 回调直接调用 `tokio::spawn` 而以 101 退出；现已改为通过 `tauri::async_runtime::spawn` 调度。`9073b3b` release 已以 tray-only 默认模式独立启动，并通过真实 Tauri Host 的 41 项 Python 协议探针。用户此前报告过托盘菜单/窗口打开、窗口拖动和一次折叠行为正常；这些历史反馈未绑定本指南所列 EXE 哈希，且另一次打开管理器曾报告无响应，因此本指南不将其记为当前构建 PASS。B06-03 的预览、授权重规划、应用、回执和回退点击仍需针对当前构建实测。Computer Use native pipe 在重试与 JS kernel reset 后仍无法连接，因此本轮没有新增窗口截图或点击证据。
 

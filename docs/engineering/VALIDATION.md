@@ -949,10 +949,12 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `live_provider.py --sources codex codex-app claude-code --duration-seconds 11 --refresh-seconds 5` | PASS（L2 source-to-Host protocol） | 退出码 0；当前标准 Tauri Host SHA-256 `0E5ECCAD24E04653C3E8F878CF96C370E3A74F68AC4EFE742C70EA10284422C7` 接收 3 次快照并确认自身世界清理。汇总状态三轮一致：Codex CLI online/0 个可列状态；Codex App online/128 条状态未知；Claude Code offline/128 条历史状态未知。没有启动任何 Harness 进程；会话名称、项目、ID、输出与原始记录未写入终端摘要或证据。|
-| B08-02-A5 判定 | PARTIAL | 本机来源确实更新并能区分来源在线状态与 `unknown` 会话历史，但 freshness 标签的窗口像素/时效提示仍未通过原生 UI 观察。|
+| `python scripts/local_harness_source_smoke.py` | PASS（L2 本机文件来源） | 退出码 0；Codex App 进程在线、Claude Code 进程离线；两来源的磁盘读取均标为 partial，读取年龄为 0 秒；没有逐会话权威状态时保留 `unknown`。脚本只打印来源健康、读取年龄和聚合计数；没有启动 Harness，也没有打印或持久化会话值。|
+| 当前 release headless Host + `live_provider.py --sources codex-app claude-code --duration-seconds 12 --refresh-seconds 5` | PASS（L2 source-to-Host） | Provider 接收 3 次真实本机来源快照、退出码 0，并确认 `world.destroy` 成功。Codex App 在线、Claude Code 离线，逐会话状态维持 `unknown`；Host 在测试后由 runner 终止，未把这次运行计作 Host graceful shutdown 或原生 UI 验收。忽略的本机汇总只保留来源健康与状态计数。|
+| B08-02-A5 判定 | PARTIAL | 本机来源确实更新，来源在线状态、磁盘可读性与逐会话 `unknown` 分开；刷新时间也在数据投影中。freshness 标签的窗口像素/时效提示仍未通过原生 UI 观察。|
 | Codex App 深链与 UI | STALLED / NOT_RUN | Computer Use 原生管道重试仍不可用；本次没有触发 Codex thread 导航，也没有用其他自动化代替 UI 验收。|
 
-忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-02-a5-live-source-snapshot.json`。其不含 descriptor/token、会话内容或用户业务数据。
+忽略的本机汇总证据：`evidence/local/nextgen-2026-10-31/b08-02-a5-live-source-snapshot.json`、`evidence/local/nextgen-2026-10-31/b08-02-live-local-source-smoke-20261031/summary.json` 与 `source-only-summary.json`。其中不含 descriptor/token、会话身份或正文。
 
 ## 2026-10-31 B08-03-A4/A5 验收状态复核
 
@@ -1040,8 +1042,12 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | Windows Actions run [41105044150](https://github.com/exomind-team/WinCraft/actions/runs/41105044150) | PASS | `gh run watch --exit-status` 退出码 0；Windows `source` job `completed/success`，用时 8m08s。Workflow 只验证源码门禁，不替代原生 A4 撤销/按钮验收。|
 | Commit [`69c3ec6`](https://github.com/exomind-team/WinCraft/commit/69c3ec668edb847153110bff352f4e508089ceab) / `origin/dev` | PASS | Provider 五课新增可选有界时长；默认交互模式不变，5 秒真实 Host synthetic smoke 已确认启动和自建世界清理。|
 | Windows Actions run [41109395539](https://github.com/exomind-team/WinCraft/actions/runs/41109395539) | PASS | `gh run watch --exit-status` 退出码 0；run 与 check suite `completed/success`。Workflow 不替代五课交互、管理器清理或人工原生验收。|
+| Commit `87964ce` / `origin/dev` | PASS | B05-02 合成 Tauri smoke 与状态记录已推送；`gh` 核对远端 `dev` 为该提交。|
+| Windows Actions run [41178832248](https://github.com/exomind-team/WinCraft/actions/runs/41178832248) | PASS | `npm run check:local` 成功；source job 用时 12m18s。CI 不替代原生 UI 验收。|
+| Commit `10a3df9` / `origin/dev` | PASS | B02-03 headless smoke 结果与 phase checkpoint 文档已推送；EXE/guide 本地 bundle 不作为 GitHub Release。|
+| Windows Actions run [41179930393](https://github.com/exomind-team/WinCraft/actions/runs/41179930393) | PASS | `npm run check:local` 成功；source job 用时 9m12s。该提交只含文档与证据状态，不含产品运行时代码。|
 
-阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/WinCraft-alpha1-acceptance-delivery.zip`，包含 EXE、中文验收指南与 build/hash/待验收说明；不是仓库发布附件。
+阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/delivery-continuation-10a3df9/WinCraft-0.1.0-alpha.1-local-acceptance-20261031.zip`，含与 `9073b3b` 产品代码一致的 EXE、中文验收指南及当前 build/CI hash；不是 GitHub Release。
 
 ## 2026-10-31 B11-03 Linux capability/build check
 
