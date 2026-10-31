@@ -92,7 +92,7 @@ audience: maintainer, Windows tester
 |---|---|---|
 | 1. 预览 | 在管理器“配置包路径”中填入上述 `.wcp` 路径，点“预览配置包”。 | 显示来源与权限需求；`activity.read` 未批准时计划受阻。已有世界不变。 |
 | 2. 撤销预览 | 点“取消”，再刷新或重新打开管理器检查。 | 提示“预览已取消；现有世界未更改。”没有新增窗口。 |
-| 3. 授权并重规划 | 再预览，选择 `Synthetic pack provider`，只批准本样例请求的 `activity.read`；按提示重新预览。 | 授权会改变清单 generation，旧预览失效；新预览显示可选 `metrics` 来源缺失及 fallback，状态为“可选来源缺失”。 |
+| 3. 授权并重规划 | 在 `Synthetic pack provider` 的候选行点“授权所需权限”，只批准本样例请求的 `activity.read`。等待管理器自动重新预览。 | 授权会改变清单 generation 并让旧预览失效；新预览显示该 provider 已授权，`metrics` 可选来源仍缺失并按 fallback 降级。已授权候选不再显示空的授权按钮。 |
 | 4. 明确应用 | 点“确认并创建窗口”。 | 只创建 blueprint 声明的新窗口；原有世界不替换。合成 Provider 收到定向 `world.import.joined`，窗口从静态内容更新到合成进度条，然后 Provider 正常离开并保留窗口。 |
 | 5. 回退确认 | 在导入记录中点“查看回退选项”，检查说明，再点“确认回退”。 | Provider 已更新并加入的 Agent 窗口应保留；未被后续改变的可选指标 fallback 窗口可清理，结果应说明部分回退。不得删除其他/已编辑世界。 |
 | 6. 新鲜度栅栏（可选） | Provider 运行期间先预览，等待它下一轮 inventory generation 更新，再尝试应用旧预览。 | 旧预览被拒绝并要求重新预览；不会创建窗口。 |

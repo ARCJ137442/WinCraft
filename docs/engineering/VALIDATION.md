@@ -1060,8 +1060,41 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `python scripts/check_contracts.py` / handoff validator | PASS | 离线协议/fixture 检查通过；handoff 一致性检查报告 43 文档、143 相对链接、74 条需求、48 个任务、155 个验收项且无错误。|
 | `cargo build --locked --release -p wincraft-server --bin wincraft-headless` | PASS | 退出码 0；新建 `target/release/wincraft-headless.exe`，3,240,960 bytes，SHA-256 `87DAA64BA9F973AB84996FFD9811C3B54CD052F3C8ACD0894DDF8BF086DF373B`。|
 | 新建 release headless Rust Host + Provider `--demo --duration-seconds 3` | PASS（L2 WebSocket/场景） | 退出码 0；真实 Rust Host 接受含 Codex 双窗口、MiniMax 周期条与 DeepSeek 独立币种的合成场景，Provider 清理了自己的临时世界。runtime descriptor 在专用临时目录中短暂存在，未写入证据，测试后进程与文件均已清理。Demo 无凭据读取、无外部网络请求。|
+| Commit f03be18 / GitHub Actions run 41149432751 | PASS | 私有 `origin/dev` 已推送；Windows source job 的 `npm run check:local` 完成成功，用时 12m45s。该 CI 验证配额 HUD 提交，不替代当前后续 B06 本地改动的 CI 或原生像素验收。|
 | `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 索引 current：100 个文件、2,856 个节点、9,470 条边。|
 | Codex/TeamSense 实时账户数据、当前桌面像素 | NOT_RUN | 未读取用户 Codex auth 文件、未发送 Codex/TeamSense 请求，也没有运行当前桌面 UI 截图。Codex route 是未公开稳定契约，故保持默认关闭与实验性说明；真实账号新鲜度与视觉验收不宣称通过。|
 | B05-02-A1/A2/A3/A4 | PARTIAL / PARTIAL / PARTIAL / PARTIAL | 合成模型、账户切换和来源隔离规则已测；TeamSense 账户归属、真实服务 freshness 与当前窗口像素仍待验收。B05-02 维持 `IMPLEMENTED_UNVERIFIED`。|
 
 本机脱敏证据 [`b05-02-codex-quota-optin.json`](../../evidence/local/nextgen-2026-10-31/b05-02-codex-quota-optin.json) 被 `.gitignore` 忽略，仅记命令与汇总结果，不含令牌、账户 ID、runtime descriptor 或业务数据。
+
+## 2026-10-31 B06-03 Manager permission-action re-preview regression
+
+**Given** 一个经 inventory 声明 `metrics.read` 的合成 Provider 和要求该 permission 的配置包；**When** 用户在内部 Manager 的通用组件场景中点击 grant action；**Then** Host 只授予该来源已声明的权限，generation 增加并立即重新预览，旧 preview 不能提交，已授权候选不再显示空 grant 按钮，只有新 preview 显示 apply 并创建世界给该 Provider。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| 首次 `cargo test --locked -p wincraft-server manager_permission_button_grants_then_repreviews_before_apply -- --nocapture` | FAIL（已修复） | 退出码 1；授权并重预览后，选中的已授权 candidate 仍渲染成空权限 `pack.grant` 按钮，点击将返回 `NO_PERMISSION_REQUIRED`。|
+| 修复后同一 ManagerProvider 流程回归 | PASS | 退出码 0；从 `Scene` 读取真实渲染的 grant action，验证授权、generation 增长、旧计划 `PLAN_NOT_FOUND`、grant 控件消失、apply 控件出现，并确认新世界 writer 是选定的 provider session。|
+| `cargo fmt --all -- --check` / `cargo check --locked -p wincraft-server` | PASS | 退出码均为 0。|
+| `cargo test --locked -p wincraft-server --no-fail-fast` | PASS | 54 项 server 测试通过，0 失败；包括上述 ManagerProvider action-flow 回归。|
+| `cargo clippy --locked -p wincraft-server --all-targets -- -D warnings` | PASS | 退出码 0，无 warning。|
+| `npm run desktop:build` | PASS | 退出码 0；当前 `target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `1D9541317F971A311BA0B11E76DB117B83B5CB126935D292A92E3EC9EFBABF9B`。 |
+| 当前 release 的 Manager UI | NOT_RUN | 原生 Computer Use/UIA 本轮不可用；没有把 Rust handler 测试或 release build 写成屏幕点击验收。B06-03-A1/A2/A3 仍为 `PARTIAL`。|
+
+本机脱敏回归摘要 `evidence/local/nextgen-2026-10-31/b06-03-manager-permission-repreview.json` 默认被 `.gitignore` 忽略，不含 runtime descriptor 或真实 Provider 数据。
+
+## 2026-10-31 B06-03 Manager permission action re-preview regression
+
+**Given** 一个需要 `metrics.read`、inventory 中存在已声明但尚未授权的合成 Provider；**When** 内部 Manager 通过通用组件场景触发 `pack.grant`；**Then** 旧 preview 被撤销、generation 变化后立即生成新 preview，授权完的候选不再显示空权限 grant 按钮，旧 preview 不能提交，只有新 `Ready` preview 可以创建 world 并将单窗写租约交给该 Provider。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| 首次 `cargo test --locked -p wincraft-server manager_permission_button_grants_then_repreviews_before_apply -- --nocapture` | FAIL（已修复） | 退出码 1；发现已授权且已选中的候选仍被渲染为 `pack.grant` 按钮，显示空权限并会收到 `NO_PERMISSION_REQUIRED`。这是真实 Manager scene 逻辑缺陷，不是测试夹具问题。|
+| 修复后的定向管理器流程测试 | PASS | 相同命令退出码 0；测试从 Manager 场景读取实际 `pack-grant` 静态动作，授权后检查新的 preview ID 与 inventory generation、旧 preview `PLAN_NOT_FOUND`、grant 按钮消失、apply 按钮出现，最终导入 Provider 获得该 world 的 writer。|
+| `cargo fmt --all -- --check` / `cargo check --locked -p wincraft-server` | PASS | 分别退出码 0；格式检查与 server 编译通过。|
+| `cargo test --locked -p wincraft-server --no-fail-fast` | PASS | 54 项 server 单测通过，0 失败；包含完整 `ManagerProvider` 权限授权/重新预览/应用流程测试。|
+| `cargo clippy --locked -p wincraft-server --all-targets -- -D warnings` | PASS | 退出码 0，无 warning。|
+| `npm run desktop:build` | PASS | 退出码 0；当前 Tauri release `target/release/wincraft-desktop.exe` 为 13,595,648 bytes，SHA-256 `1D9541317F971A311BA0B11E76DB117B83B5CB126935D292A92E3EC9EFBABF9B`。本轮未启动该 EXE做像素/鼠标验收。|
+| B06-03-A1/A2/A3 | PARTIAL / PARTIAL / PARTIAL | Host 与 Manager action 路由增加了更强的 L1-L2 证据；Computer Use/UIA 不可用，Windows release 的人工预览、授权、应用、回执、取消和回退路径仍未验收。|
+
+本机脱敏回归摘要 [`b06-03-manager-permission-repreview.json`](../../evidence/local/nextgen-2026-10-31/b06-03-manager-permission-repreview.json) 位于默认忽略的 `evidence/local/`；不含 runtime descriptor、Provider source 内容或业务数据。

@@ -586,19 +586,21 @@ impl ManagerProvider {
                             .provider_instance_id
                             .as_deref()
                             .is_some_and(|selected| selected != candidate.instance_id);
-                    if candidate.missing_permissions.is_empty() && can_select {
-                        let action = format!(
-                            "pack.select:{}:{}:{}",
-                            preview.preview_id,
-                            encode_action_segment(&binding.binding_id),
-                            encode_action_segment(&candidate.instance_id)
-                        );
-                        controls.push(node(
-                            format!("pack-select-{binding_index}-{candidate_index}"),
-                            Kind::Button,
-                            json!({"label":format!("{}: {}",manager_text(locale,"manager.import.select_provider"),candidate_label),"action":action}),
-                            vec![],
-                        ));
+                    if candidate.missing_permissions.is_empty() {
+                        if can_select {
+                            let action = format!(
+                                "pack.select:{}:{}:{}",
+                                preview.preview_id,
+                                encode_action_segment(&binding.binding_id),
+                                encode_action_segment(&candidate.instance_id)
+                            );
+                            controls.push(node(
+                                format!("pack-select-{binding_index}-{candidate_index}"),
+                                Kind::Button,
+                                json!({"label":format!("{}: {}",manager_text(locale,"manager.import.select_provider"),candidate_label),"action":action}),
+                                vec![],
+                            ));
+                        }
                     } else {
                         let action = format!(
                             "pack.grant:{}:{}:{}",
@@ -1101,14 +1103,14 @@ mod tests {
         }
     }
 
-    fn write_import_fixture() -> PathBuf {
+    fn write_import_fixture(permissions: &[&str]) -> PathBuf {
         let path = std::env::temp_dir().join(format!("wincraft-pack-{}.wcp", Uuid::new_v4()));
         let pack = json!({
             "kind":"wincraft.pack.draft","schema_version":"draft-2026-10-26",
             "id":"fixture.manager-import","version":"1.0.0",
             "title":{"zh-CN":"管理器导入测试","en-US":"Manager import test"},
-            "bindings":[{"id":"optional-metrics","required":false,"provider_types":["metrics"],
-                "capabilities":["metrics.read","world.import.accept"],"permissions":[],"min_adapter_contract":1}],
+            "bindings":[{"id":"optional-metrics","required":!permissions.is_empty(),"provider_types":["metrics"],
+                "capabilities":["metrics.read","world.import.accept"],"permissions":permissions,"min_adapter_contract":1}],
             "blueprint":"blueprints/fixture.json","fallback_policy":"explain_missing","adapter":null
         });
         let blueprint = json!({
@@ -1487,7 +1489,7 @@ mod tests {
     fn manager_import_preview_apply_and_confirmed_rollback_use_the_generic_world_ui() {
         let hub = Hub::new(false);
         let manager = ManagerProvider::install(&hub).expect("manager installs");
-        let pack_path = write_import_fixture();
+        let pack_path = write_import_fixture(&[]);
         let mut settings = Settings {
             pack_path: pack_path.to_string_lossy().into_owned(),
             ..Settings::default()
@@ -1572,6 +1574,139 @@ mod tests {
             )
             .expect("confirmed rollback removes only its unchanged world");
         assert_eq!(hub.lock().worlds.len(), 1);
+
+        std::fs::remove_file(pack_path).unwrap();
+    }
+
+    #[test]
+    fn manager_permission_button_grants_then_repreviews_before_apply() {
+        let hub = Hub::new(false);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let provider_session = hub
+            .lock()
+            .register_with_protocol(
+                "metrics-provider".into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .expect("preview provider registers");
+        let observed_at = time::OffsetDateTime::now_utc()
+            .format(&time::format_description::well_known::Rfc3339)
+            .expect("inventory timestamp formats");
+        hub.dispatch(
+            provider_session,
+            "provider.inventory.register",
+            json!({
+                "kind":"wincraft.inventory.registration",
+                "schema_version":"draft-2026-10-29",
+                "generation":1,
+                "observed_at":observed_at.clone(),
+                "valid_for_seconds":300,
+                "providers":[{
+                    "source_id":"source.metrics",
+                    "source_instance_id":"instance-a",
+                    "provider_type":"metrics",
+                    "display_name":"Metrics provider",
+                    "adapter_contract":1,
+                    "state":"online",
+                    "capabilities":["metrics.read","world.import.accept"],
+                    "source_updated_at":observed_at,
+                    "fresh_for_seconds":300
+                }]
+            }),
+        )
+        .expect("provider inventory registers without grants");
+
+        let pack_path = write_import_fixture(&["metrics.read"]);
+        let mut settings = Settings {
+            pack_path: pack_path.to_string_lossy().into_owned(),
+            ..Settings::default()
+        };
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, "pack.preview".into(), Value::Null),
+            )
+            .expect("manager prepares permission-blocked preview");
+        let blocked_preview = settings
+            .pack_preview
+            .clone()
+            .expect("blocked preview stays in manager state");
+        assert_eq!(blocked_preview.status, PlanStatus::Blocked);
+        assert_eq!(hub.lock().worlds.len(), 1);
+
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let preview_scene = hub.renderer_snapshot(manager.world_id).unwrap().scene;
+        let grant_action = preview_scene
+            .root
+            .find("pack-grant-0-0")
+            .and_then(|node| node.props.get("action"))
+            .and_then(Value::as_str)
+            .expect("blocked candidate has a visible static grant action")
+            .to_owned();
+        assert!(grant_action.starts_with(&format!("pack.grant:{}:", blocked_preview.preview_id)));
+
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(&manager, grant_action, Value::Null),
+            )
+            .expect("local operator approval grants only the declared permission");
+        let authorized_preview = settings
+            .pack_preview
+            .clone()
+            .expect("permission approval creates a fresh preview");
+        assert_ne!(authorized_preview.preview_id, blocked_preview.preview_id);
+        assert!(authorized_preview.inventory_generation > blocked_preview.inventory_generation);
+        assert_eq!(authorized_preview.status, PlanStatus::Ready);
+        assert_eq!(
+            authorized_preview.bindings[0]
+                .provider_instance_id
+                .as_deref(),
+            Some("instance-a")
+        );
+        assert!(authorized_preview.bindings[0].candidates[0]
+            .missing_permissions
+            .is_empty());
+        assert_eq!(hub.lock().worlds.len(), 1);
+        assert_eq!(
+            hub.apply_pack_preview(manager.session, blocked_preview.preview_id, true)
+                .unwrap_err()
+                .code,
+            "PLAN_NOT_FOUND"
+        );
+
+        manager.refresh(&hub, &settings, "<descriptor>").unwrap();
+        let authorized_scene = hub.renderer_snapshot(manager.world_id).unwrap().scene;
+        assert!(authorized_scene.root.find("pack-grant-0-0").is_none());
+        assert!(authorized_scene.root.find("pack-apply-action").is_some());
+        manager
+            .handle(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    format!("pack.apply:{}", authorized_preview.preview_id),
+                    Value::Null,
+                ),
+            )
+            .expect("fresh preview applies after the separate local grant");
+        let receipt = hub
+            .recent_pack_imports(manager.session)
+            .unwrap()
+            .into_iter()
+            .next()
+            .expect("apply receipt is visible to the manager");
+        assert_eq!(receipt.status, "applied");
+        assert_eq!(receipt.worlds.len(), 1);
+        assert_eq!(
+            hub.renderer_snapshot(receipt.worlds[0].world_id)
+                .unwrap()
+                .writer,
+            Some(provider_session)
+        );
 
         std::fs::remove_file(pack_path).unwrap();
     }
