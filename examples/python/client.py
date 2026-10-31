@@ -9,7 +9,7 @@ import contextlib
 import json
 import os
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -230,6 +230,7 @@ class Client:
                              state_slot_schema_types: tuple[str, ...] = (),
                              provider_inventory_version: int | None = None,
                              provider_import_version: int | None = None,
+                             presentation_groups_version: int | None = None,
                              scope_status_version: int | None = None) -> None:
         """Fail closed when a provider needs an optional renderer feature."""
         capabilities = self.ready.get("capabilities")
@@ -251,6 +252,7 @@ class Client:
             if isinstance(component_leases, dict) else None
         provider_inventory = capabilities.get("provider_inventory")
         provider_import = capabilities.get("provider_import")
+        presentation_groups = capabilities.get("presentation_groups")
         component_set = {value for value in advertised_components if isinstance(value, str)} \
             if isinstance(advertised_components, list) else set()
         shortcut_set = {value for value in advertised_shortcuts if isinstance(value, str)} \
@@ -373,6 +375,25 @@ class Client:
                 missing.append("provider_import_writer_scope:exclusive_world_lease")
             if provider_import.get("requires_local_confirmation") is not True:
                 missing.append("provider_import_confirmation:local_operator")
+        if presentation_groups_version is not None and (
+            self.protocol_version != COMPONENT_LEASES_PREVIEW_PROTOCOL
+            or not isinstance(presentation_groups, dict)
+            or presentation_groups.get("status") != "preview"
+            or presentation_groups.get("version") != presentation_groups_version
+        ):
+            missing.append(f"presentation_groups:preview-v{presentation_groups_version}")
+        if presentation_groups_version is not None and isinstance(presentation_groups, dict):
+            # A group operation is never atomic and never grants authority
+            # through discovery. A Host that claims the capability but not
+            # these semantics is rejected instead of silently trusted.
+            if presentation_groups.get("atomic") is not False:
+                missing.append("presentation_groups_atomic:false")
+            if presentation_groups.get("apply_semantics") != "per_member_independent":
+                missing.append("presentation_groups_apply:per_member_independent")
+            if presentation_groups.get("lease_required_per_member") is not True:
+                missing.append("presentation_groups_lease:per_member")
+            if presentation_groups.get("discovery_grants_operation_right") is not False:
+                missing.append("presentation_groups_discovery:no_operation_right")
         if missing:
             raise RuntimeError("Host does not advertise required optional capabilities: " + ", ".join(missing))
 
@@ -411,6 +432,13 @@ class Client:
         self.require_capabilities(
             provider_inventory_version=1,
             provider_import_version=version,
+        )
+
+    def require_presentation_groups(self, version: int = 1) -> None:
+        """Fail closed unless this Host advertises the preview presentation group capability."""
+        self.require_capabilities(
+            component_leases_version=1,
+            presentation_groups_version=version,
         )
 
     def validate_provider_import_event(self, message: Any) -> dict[str, Any]:
@@ -502,6 +530,57 @@ class Client:
         self.require_provider_inventory()
         result = await self.call("provider.inventory.list", {})
         return self._validate_provider_inventory_endpoint(result)
+
+    async def create_presentation_group(
+        self,
+        name: str,
+        members: Sequence[Mapping[str, Any]] = (),
+        roles: Sequence[Mapping[str, Any]] = (),
+    ) -> dict[str, Any]:
+        """Register an ordered presentation group over worlds this provider owns."""
+        self.require_presentation_groups()
+        return dict(await self.call("presentation.group.create", {
+            "name": name,
+            "members": [dict(member) for member in members],
+            "roles": [dict(role) for role in roles],
+        }))
+
+    async def list_presentation_groups(self) -> dict[str, Any]:
+        """List the groups registered by this session."""
+        self.require_presentation_groups()
+        result = await self.call("presentation.group.list", {})
+        if not isinstance(result, list):
+            raise RuntimeError("Host returned a malformed presentation group list")
+        return {"groups": result}
+
+    async def apply_presentation_group(
+        self,
+        group_id: str,
+        leases: Mapping[str, Mapping[str, Any]],
+        expected_revisions: Mapping[str, int] | None = None,
+        **patch: Any,
+    ) -> dict[str, Any]:
+        """Apply one window patch to every member, independently.
+
+        The Host reports a per-member outcome. A member whose lease is missing
+        or stale is refused while the remaining members still run, so the
+        caller can see exactly which part of the group moved.
+        """
+        self.require_presentation_groups()
+        result = await self.call("presentation.group.apply", {
+            "group_id": group_id,
+            "leases": {str(key): dict(value) for key, value in leases.items()},
+            "expected_revisions": {
+                str(key): int(value)
+                for key, value in (expected_revisions or {}).items()
+            },
+            "patch": dict(patch),
+        })
+        if not isinstance(result, Mapping):
+            raise RuntimeError("Host returned a malformed presentation group result")
+        if result.get("atomic") is not False:
+            raise RuntimeError("Host reported an atomic group operation; this Host must not")
+        return dict(result)
 
     async def subscribe_events(self, world_id: str, types: tuple[str, ...]) -> dict[str, Any]:
         """Subscribe to connection-scoped window state events for an already joined world."""

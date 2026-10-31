@@ -165,3 +165,15 @@ inventory 是 Host 内存中的可重建元数据：列表仅包含经现有 bea
 预览按 endpoint-local inventory 的能力、权限、状态、新鲜度、generation 和到期时间给出 `ready`/`degraded`/`blocked` 结果。必需绑定缺失或未授权时阻止应用；可选绑定缺失时解释 fallback。来源选择或本机批准一个已声明权限会改变 generation，旧计划必须作废并重新预览。只有 Ready/Degraded 计划可在本机用户明确确认后应用；Host 重新校验 expiry、generation、来源与选择，再逐窗口创建新的 invite-only world。既有 world 不被覆盖；每个被选 Provider 只获得其新 world 的独占写租约，Host 定向发送 `world.import.joined`。多原生窗口不是 OS 事务，逐个应用并分别回报失败。
 
 提交使用预览 ID 做进程内幂等；Host 内存 ledger 记录创建的 world/revision/epoch/scene/window/membership。回退需本机二次确认，只销毁仍与 ledger 完全一致、没有被编辑或后续 Provider 加入的 world，并报告移除/保留；Host 重启后 ledger 不持久。完整操作示例见 [`tools/pack/README.md`](../tools/pack/README.md)，正反事件契约见 [`provider-import-event.schema.json`](strategy/2026-10-26/contracts/provider-import-event.schema.json)。
+
+## 0.4-preview.1 窗口组（可选草案）
+
+`presentation_groups` capability 标明当前 Host 是否支持窗口组：声明 `status: preview`、`version: 1`、`schema_version: draft-2026-10-31`、成员上限 32，以及 `apply_semantics: per_member_independent`、`atomic: false`、`lease_required_per_member: true`、`discovery_grants_operation_right: false`。SDK 使用前必须调用 `client.require_presentation_groups()`；缺少 capability、版本不符，或 Host 声称原子语义、声称发现即授权，都必须失败关闭。
+
+窗口组是宿主侧对一组世界的编排投影，不是跨进程共享内存，也不放松任何世界所有权。组内每个成员保留自己的写租约、revision 与 fencing epoch；组不产生新的写权，成员租约仍按世界逐一校验。
+
+方法是 `presentation.group.create`、`presentation.group.list`、`presentation.group.patch`、`presentation.group.delete` 和 `presentation.group.apply`。组是**有序**成员集合：成员按 `order` 排序，同序按加入顺序；单个组最多 32 个成员，角色标签最多 16 个，角色名最长 64 字节。角色只是展示用标签，没有业务语义、情绪引擎或独立权限；角色不能授予写权、绕过租约，也不能让组操作它不拥有的世界。
+
+`presentation.group.apply` 对每个成员独立执行同一个窗口 patch：每个成员都必须提供自己的 lease 与 `expected_revision`。缺少 lease 的成员、租约过期、epoch 不匹配、revision 冲突或命中 `HUMAN_GEOMETRY` 的成员各自记录自己的拒绝原因（保留机器可读 `code`），其余成员继续执行。返回的 `atomic` 恒为 `false`，`result.results` 逐成员给出 `applied` 或 `refused`，`changed` 只列出真正接受操作的成员。宿主**不得**把部分失败包装成整组成功。
+
+组只对注册它的会话可见。发现不授予操作权：另一个会话既不能在 `presentation.group.list` 中看到它，也不能对它执行 `presentation.group.apply`。原生窗口层面的失败通过每个世界自己的 `native` 报告回到协议，因此单个成员的系统级失败同样可观察。完整实验说明与验收边界见 [`docs/poc/presentation-extensions.md`](poc/presentation-extensions.md)。

@@ -50,6 +50,49 @@ class CapabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "did not return a capability table"):
             client.require_capabilities(components=("textarea",))
 
+    def presentation_client(self, groups):
+        client = self.client_with({
+            "components": [], "keyboard_shortcuts": [], "button_features": [], "scene_features": [],
+            "component_leases": {"status": "preview", "version": 1},
+            "presentation_groups": groups,
+        })
+        client.protocol_version = COMPONENT_LEASES_PREVIEW_PROTOCOL
+        return client
+
+    def test_presentation_groups_require_the_preview_capability(self):
+        client = self.presentation_client({
+            "status": "preview", "version": 1, "atomic": False,
+            "apply_semantics": "per_member_independent",
+            "lease_required_per_member": True,
+            "discovery_grants_operation_right": False,
+        })
+        client.require_presentation_groups()
+
+    def test_presentation_groups_fail_closed_without_the_capability(self):
+        client = self.presentation_client(None)
+        with self.assertRaisesRegex(RuntimeError, "presentation_groups:preview-v1"):
+            client.require_presentation_groups()
+
+    def test_presentation_groups_reject_an_atomic_host(self):
+        client = self.presentation_client({
+            "status": "preview", "version": 1, "atomic": True,
+            "apply_semantics": "per_member_independent",
+            "lease_required_per_member": True,
+            "discovery_grants_operation_right": False,
+        })
+        with self.assertRaisesRegex(RuntimeError, "presentation_groups_atomic:false"):
+            client.require_presentation_groups()
+
+    def test_presentation_groups_reject_a_host_that_grants_rights_through_discovery(self):
+        client = self.presentation_client({
+            "status": "preview", "version": 1, "atomic": False,
+            "apply_semantics": "per_member_independent",
+            "lease_required_per_member": True,
+            "discovery_grants_operation_right": True,
+        })
+        with self.assertRaisesRegex(RuntimeError, "presentation_groups_discovery:no_operation_right"):
+            client.require_presentation_groups()
+
     def test_background_drag_property_fails_closed_when_host_does_not_advertise_it(self):
         client = self.client_with({"components": [], "keyboard_shortcuts": [], "button_features": [], "scene_features": []})
         with self.assertRaisesRegex(RuntimeError, "window_property:background_drag_enabled"):

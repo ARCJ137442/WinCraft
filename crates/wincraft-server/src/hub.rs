@@ -4,6 +4,7 @@ use crate::pack_import::{
     build_preview, load_pack_file, materialize_world, ImportBatch, ImportReceipt, ImportedWorld,
     ImportedWorldSummary, PackImportRegistry, PackPreview, PlanStatus, RollbackReceipt,
 };
+use crate::presentation_groups::PresentationGroupRegistry;
 use crate::provider_inventory::{ProviderInventoryRegistration, ProviderInventoryRegistry};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -177,6 +178,7 @@ mod capability_tests {
         let stable_capabilities = hub.capabilities_for(ProtocolVersion::Stable03);
         assert!(stable_capabilities.get("provider_inventory").is_none());
         assert!(stable_capabilities.get("provider_import").is_none());
+        assert!(stable_capabilities.get("presentation_groups").is_none());
         let preview_capabilities = hub.capabilities_for(ProtocolVersion::ComponentLeasesPreview01);
         assert_eq!(
             preview_capabilities["provider_inventory"]["status"],
@@ -204,6 +206,24 @@ mod capability_tests {
         assert_eq!(
             preview_capabilities["provider_import"]["requires_local_confirmation"],
             true
+        );
+        assert_eq!(
+            preview_capabilities["presentation_groups"]["status"],
+            "preview"
+        );
+        assert_eq!(preview_capabilities["presentation_groups"]["version"], 1);
+        assert_eq!(preview_capabilities["presentation_groups"]["atomic"], false);
+        assert_eq!(
+            preview_capabilities["presentation_groups"]["apply_semantics"],
+            "per_member_independent"
+        );
+        assert_eq!(
+            preview_capabilities["presentation_groups"]["lease_required_per_member"],
+            true
+        );
+        assert_eq!(
+            preview_capabilities["presentation_groups"]["discovery_grants_operation_right"],
+            false
         );
 
         let invitation = {
@@ -954,6 +974,152 @@ mod capability_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod presentation_group_tests {
+    use super::Hub;
+    use serde_json::json;
+    use uuid::Uuid;
+    use wincraft_core::ProtocolVersion;
+
+    fn preview_session(hub: &Hub, name: &str) -> Uuid {
+        hub.lock()
+            .register_with_protocol(
+                name.into(),
+                false,
+                ProtocolVersion::ComponentLeasesPreview01,
+            )
+            .unwrap()
+    }
+
+    fn create_world(hub: &Hub, session: Uuid, title: &str) -> (Uuid, wincraft_core::LeaseKey, u64) {
+        let created = hub
+            .dispatch(
+                session,
+                "world.create",
+                json!({"window":{"title":title,"width":300.0,"height":200.0},"claim":true}),
+            )
+            .unwrap();
+        let world_id = Uuid::parse_str(created["world"]["id"].as_str().unwrap()).unwrap();
+        let revision = created["world"]["revision"].as_u64().unwrap();
+        let lease = created["lease"].clone();
+        (
+            world_id,
+            serde_json::from_value(lease).expect("lease payload"),
+            revision,
+        )
+    }
+
+    #[test]
+    fn group_apply_reports_each_member_separately() {
+        let hub = Hub::new(false);
+        let session = preview_session(&hub, "group.owner");
+        let (first, first_lease, first_revision) = create_world(&hub, session, "first");
+        let (second, _second_lease, second_revision) = create_world(&hub, session, "second");
+
+        let group = hub
+            .dispatch(
+                session,
+                "presentation.group.create",
+                json!({
+                    "name":"hud",
+                    "members":[
+                        {"world_id":first,"order":0},
+                        {"world_id":second,"order":1}
+                    ],
+                    "roles":[{"name":"primary","member":null}]
+                }),
+            )
+            .unwrap();
+        let group_id = Uuid::parse_str(group["id"].as_str().unwrap()).unwrap();
+
+        // The second member's lease is deliberately wrong, so only the first
+        // member may accept the patch.
+        let response = hub
+            .dispatch(
+                session,
+                "presentation.group.apply",
+                json!({
+                    "group_id":group_id,
+                    "leases":{
+                        first.to_string():first_lease,
+                        second.to_string():{
+                            "id":Uuid::new_v4().to_string(),
+                            "epoch":999
+                        }
+                    },
+                    "expected_revisions":{
+                        first.to_string():first_revision,
+                        second.to_string():second_revision
+                    },
+                    "patch":{"visible":false}
+                }),
+            )
+            .unwrap();
+
+        assert_eq!(response["atomic"], json!(false));
+        assert_eq!(response["result"]["applied"], json!(1));
+        assert_eq!(response["result"]["refused"], json!(1));
+        assert_eq!(response["result"]["results"].as_array().unwrap().len(), 2);
+        let results = response["result"]["results"].as_array().unwrap();
+        assert_eq!(results[0]["outcome"]["status"], json!("applied"));
+        assert_eq!(results[1]["outcome"]["status"], json!("refused"));
+        // The refusal keeps the machine-readable fault code, so a caller can
+        // tell "not writable" apart from "missing".
+        assert_eq!(results[1]["outcome"]["code"], json!("STALE_LEASE"));
+        // Only the member that accepted the operation is reported as changed.
+        assert_eq!(response["changed"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_group_cannot_be_used_by_another_session() {
+        let hub = Hub::new(false);
+        let owner = preview_session(&hub, "group.owner");
+        let other = preview_session(&hub, "group.other");
+        let (world, lease, revision) = create_world(&hub, owner, "owned");
+        let group = hub
+            .dispatch(
+                owner,
+                "presentation.group.create",
+                json!({"name":"hud","members":[{"world_id":world,"order":0}]}),
+            )
+            .unwrap();
+        let group_id = Uuid::parse_str(group["id"].as_str().unwrap()).unwrap();
+
+        // Discovery grants no operation right: another session cannot even
+        // see the group, let alone apply to it.
+        let listed = hub
+            .dispatch(other, "presentation.group.list", json!({}))
+            .unwrap();
+        assert_eq!(listed.as_array().unwrap().len(), 0);
+        let apply = hub
+            .dispatch(
+                other,
+                "presentation.group.apply",
+                json!({
+                    "group_id":group_id,
+                    "leases":{world.to_string():lease},
+                    "expected_revisions":{world.to_string():revision},
+                    "patch":{"visible":false}
+                }),
+            )
+            .unwrap_err();
+        assert_eq!(apply.code, "NOT_FOUND");
+    }
+
+    #[test]
+    fn stable_protocol_sessions_cannot_use_presentation_groups() {
+        let hub = Hub::new(false);
+        let session = hub
+            .lock()
+            .register("stable.provider".into(), false)
+            .unwrap();
+        let error = hub
+            .dispatch(session, "presentation.group.create", json!({"name":"hud"}))
+            .unwrap_err();
+        assert_eq!(error.code, "UNSUPPORTED_CAPABILITY");
+    }
+}
 #[derive(Clone)]
 pub struct Hub {
     core: Arc<Mutex<Engine>>,
@@ -967,6 +1133,7 @@ pub struct Hub {
     shortcuts: Arc<Mutex<ShortcutRegistry>>,
     provider_inventory: Arc<Mutex<ProviderInventoryRegistry>>,
     pack_imports: Arc<Mutex<PackImportRegistry>>,
+    presentation_groups: Arc<Mutex<PresentationGroupRegistry>>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1133,6 +1300,50 @@ struct WindowParams {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct GroupCreateParams {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    members: Vec<GroupMember>,
+    #[serde(default)]
+    roles: Vec<GroupRole>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GroupIdParams {
+    group_id: Uuid,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GroupMemberParams {
+    world_id: Uuid,
+    #[serde(default)]
+    order: i64,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GroupPatchParams {
+    group_id: Uuid,
+    #[serde(default)]
+    add_members: Vec<GroupMemberParams>,
+    #[serde(default)]
+    remove_members: Vec<Uuid>,
+    #[serde(default)]
+    add_roles: Vec<GroupRole>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GroupApplyParams {
+    group_id: Uuid,
+    /// One lease per member world. A member without a lease is refused.
+    #[serde(default)]
+    leases: BTreeMap<Uuid, LeaseKey>,
+    #[serde(default)]
+    expected_revisions: BTreeMap<Uuid, u64>,
+    patch: WindowPatch,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct AckParams {
     world_id: Uuid,
     lease: LeaseKey,
@@ -1168,6 +1379,7 @@ impl Hub {
             shortcuts: Arc::new(Mutex::new(ShortcutRegistry::default())),
             provider_inventory: Arc::new(Mutex::new(ProviderInventoryRegistry::default())),
             pack_imports: Arc::new(Mutex::new(PackImportRegistry::default())),
+            presentation_groups: Arc::new(Mutex::new(PresentationGroupRegistry::default())),
         }
     }
     pub fn lock(&self) -> MutexGuard<'_, Engine> {
@@ -1960,6 +2172,24 @@ impl Hub {
                 "requires_local_confirmation":true
             });
         }
+        if protocol.supports_component_leases() {
+            capabilities["presentation_groups"] = json!({
+                "status":"preview",
+                "version":1,
+                "schema_version":"draft-2026-10-31",
+                "methods":["presentation.group.create","presentation.group.list",
+                           "presentation.group.patch","presentation.group.delete",
+                           "presentation.group.apply"],
+                "membership":"ordered_set_of_worlds",
+                "member_limit":MAX_GROUP_MEMBERS,
+                "roles":"descriptive_labels_without_authority",
+                "apply_semantics":"per_member_independent",
+                "atomic":false,
+                "partial_failure":"per_member_outcome_reported",
+                "lease_required_per_member":true,
+                "discovery_grants_operation_right":false
+            });
+        }
         capabilities
     }
     pub fn reply(&self, sid: Uuid, req: Request) -> Value {
@@ -1992,6 +2222,7 @@ impl Hub {
             EventSource::Provider
         };
         let mut changed = None;
+        let mut changed_many: Vec<Uuid> = Vec::new();
         let mut deleted = None;
         let mut directed = Vec::new();
         let value = match method {
@@ -2032,6 +2263,123 @@ impl Hub {
             }
             "host.capabilities" => self.capabilities_for(e.sessions[&sid].protocol),
             "world.list" => encode(e.list(sid)?)?,
+            "presentation.group.create" => {
+                if !e.sessions[&sid].protocol.supports_component_leases() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "presentation groups require the 0.4-preview.1 capability",
+                    ));
+                }
+                let p: GroupCreateParams = decode(params)?;
+                let mut group = PresentationGroup::new(Uuid::new_v4(), p.name);
+                for member in p.members {
+                    group.add_member(member.world_id, member.order)?;
+                }
+                for role in p.roles {
+                    group.add_role(role)?;
+                }
+                self.presentation_groups
+                    .lock()
+                    .expect("presentation group mutex poisoned")
+                    .insert(sid, group.clone())?;
+                encode(group)?
+            }
+            "presentation.group.list" => {
+                if !e.sessions[&sid].protocol.supports_component_leases() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "presentation groups require the 0.4-preview.1 capability",
+                    ));
+                }
+                let groups = self
+                    .presentation_groups
+                    .lock()
+                    .expect("presentation group mutex poisoned")
+                    .list(sid);
+                encode(groups)?
+            }
+            "presentation.group.patch" => {
+                if !e.sessions[&sid].protocol.supports_component_leases() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "presentation groups require the 0.4-preview.1 capability",
+                    ));
+                }
+                let p: GroupPatchParams = decode(params)?;
+                let mut registry = self
+                    .presentation_groups
+                    .lock()
+                    .expect("presentation group mutex poisoned");
+                let group = registry.update(sid, p.group_id, |group| {
+                    for member in p.add_members {
+                        group.add_member(member.world_id, member.order)?;
+                    }
+                    for world_id in p.remove_members {
+                        group.remove_member(world_id);
+                    }
+                    for role in p.add_roles {
+                        group.add_role(role)?;
+                    }
+                    Ok(())
+                })?;
+                encode(group)?
+            }
+            "presentation.group.delete" => {
+                if !e.sessions[&sid].protocol.supports_component_leases() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "presentation groups require the 0.4-preview.1 capability",
+                    ));
+                }
+                let p: GroupIdParams = decode(params)?;
+                self.presentation_groups
+                    .lock()
+                    .expect("presentation group mutex poisoned")
+                    .remove(sid, p.group_id)?;
+                json!({})
+            }
+            "presentation.group.apply" => {
+                if !e.sessions[&sid].protocol.supports_component_leases() {
+                    return Err(Fault::new(
+                        "UNSUPPORTED_CAPABILITY",
+                        "presentation groups require the 0.4-preview.1 capability",
+                    ));
+                }
+                let p: GroupApplyParams = decode(params)?;
+                let group = self
+                    .presentation_groups
+                    .lock()
+                    .expect("presentation group mutex poisoned")
+                    .get(sid, p.group_id)?;
+                // Each member is operated on independently. A member whose
+                // lease is missing, stale or mismatched refuses; the rest
+                // still run, and the caller sees exactly which ones applied.
+                let mut snapshots = BTreeMap::new();
+                let result = group.apply_to_members(group.id, |world_id| {
+                    let lease = p.leases.get(&world_id).ok_or_else(|| {
+                        Fault::new("STALE_LEASE", "member lease was not supplied")
+                    })?;
+                    let expected = p.expected_revisions.get(&world_id).copied().unwrap_or(0);
+                    // Each member is configured independently, so a refusal on
+                    // one member does not abort the others.
+                    let snapshot = e.configure(sid, world_id, lease, expected, &p.patch, now)?;
+                    snapshots.insert(world_id, snapshot);
+                    Ok(())
+                });
+                let mut changed_members = Vec::new();
+                for member in &result.results {
+                    if member.outcome.is_applied() {
+                        changed_members.push(member.world_id);
+                    }
+                }
+                changed_many = changed_members.clone();
+                encode(json!({
+                    "result": result,
+                    "changed": changed_members,
+                    "snapshots": snapshots,
+                    "atomic": false,
+                }))?
+            }
             "provider.inventory.register" => {
                 if !e.sessions[&sid].protocol.supports_provider_inventory() {
                     return Err(Fault::new(
@@ -2308,9 +2656,16 @@ impl Hub {
             _ => return Err(Fault::new("METHOD_NOT_FOUND", method)),
         };
         let changed = changed.and_then(|id| e.worlds.get(&id).map(|world| (id, world.sequence)));
+        let changed_many: Vec<(Uuid, u64)> = changed_many
+            .iter()
+            .filter_map(|id| e.worlds.get(id).map(|world| (*id, world.sequence)))
+            .collect();
         drop(e);
         if let Some((id, sequence)) = changed {
-            self.changed_at(id, sequence, source, cause_id);
+            self.changed_at(id, sequence, source, cause_id.clone());
+        }
+        for (id, sequence) in changed_many {
+            self.changed_at(id, sequence, source, cause_id.clone());
         }
         for (target, event) in directed {
             let _ = self.events.send(Notice::Directed(target, event));

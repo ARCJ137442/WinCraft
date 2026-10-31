@@ -1,8 +1,10 @@
 mod hub;
 mod pack_import;
+mod presentation_groups;
 mod provider_inventory;
 pub mod provider_package;
 pub mod self_provider;
 mod transport;
 pub use hub::*;
+pub use presentation_groups::*;
 pub use transport::*;
