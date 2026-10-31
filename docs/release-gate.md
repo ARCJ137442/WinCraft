@@ -16,6 +16,7 @@ This is a pre-release audit for WinCraft `0.1.0-alpha.1`. It is not release appr
 - Source validation on commit `f39de58` passed `npm run check:local`: 28 UI tests, 149 Rust workspace tests, 225 Python tests (one Windows symlink-capability skip), Clippy, contracts and 33 Provider Skill references. Windows Actions run [41170007833](https://github.com/exomind-team/WinCraft/actions/runs/41170007833) passed in 12m19s. The documentation-only follow-up `8746400` passed Windows Actions run [41173578234](https://github.com/exomind-team/WinCraft/actions/runs/41173578234) in 12m05s. CI validates source; it does not replace native UI acceptance.
 - Commit `d95e396` was pushed to private `exomind-team/WinCraft/dev`; GitHub Actions run [41189190278](https://github.com/exomind-team/WinCraft/actions/runs/41189190278) passed. Local verification also passed 28 UI, 149 Rust and 239 Python tests (one Windows symlink-capability skip), 41 Provider Skill references, and the synthetic `scripts/model_quota_headless_smoke.py` against the release headless Rust Host. CI validates source, not native Tauri pixels or real account freshness.
 - `target/release/wincraft-desktop.exe` is a local, unsigned, single-file Tauri build from product-source commit `9073b3b`: 13,600,256 bytes, SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`. It launches tray-only by default and has passed real Tauri-hosted `lease_probe.py` checks. The build is not an installer and is not a GitHub Release.
+- Latest local candidate built by `npm run desktop:build`: `target/release/wincraft-desktop.exe`, 14,209,536 bytes, SHA-256 `E8F949E73C0A4BD0182B26D327162599F133658A244B4B498E1DF9978C447B76`. It was independently launched with `--open-manager`; Manager screenshots, drag/drop and clipboard action still require manual verification. The binary is local, unsigned and not an installer.
 - Synthetic performance evidence includes 5-, 15- and 30-minute visible refresh runs (60/180/360 updates), provider-crash reacquisition, headless Host disconnect and one forced Tauri Host shutdown. In the Tauri crash sample, six WebView descendants exited within three seconds. The 30-minute sample's private-byte median declined while working set increased about 20 MB; this is not a long-term leak guarantee or a cross-machine performance claim. Full context and boundaries are in [`docs/performance.md`](performance.md).
 - A pre-refactor Tauri release accepted a three-second synthetic Codex/MiniMax/DeepSeek scene and cleaned its world. After the current B05-02 source refactor, the reproducible synthetic smoke runs the Provider against the release headless Rust Host; no real rollout/auth file, provider key, TeamSense service or external quota endpoint is read. Current quota HUD pixels and live Codex/DeepSeek/MiniMax source freshness remain NOT_RUN.
 - `B06-03` stale-grant logic and `B06-04` export hygiene have automated checks. Manager preview/grant/apply/rollback pixels and two-user import remain NOT_RUN/PARTIAL; detailed steps are in the [Chinese acceptance guide](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md).
@@ -25,10 +26,13 @@ This is a pre-release audit for WinCraft `0.1.0-alpha.1`. It is not release appr
 ## Claims forbidden until manual gates pass
 
 - current-build manager preview/grant/re-preview/apply/cancel/rollback and tray reopen behavior;
+- current-build provider-bundle drag/drop, unpack-only install, two-step launch confirmation, and descriptor clipboard copy;
+- live Obsidian Workspace plugin snapshot, multi-instance switch, timer action receipt, and native window activation;
+- the quota source chooser/key prompt in a real Host window; synthetic state and ACK tests are not pixel acceptance;
 - screenshot-level fit, collapse, hidden-window restoration, click-through rescue and z-order;
 - multi-monitor/DPI, monitor detach, Windows virtual desktop and native hotkey behavior;
 - real Popup user success/cancel/position reuse, WebView2 UIA/IME and screen-reader operation;
-- Obsidian Workspace activation of an existing Obsidian window, TrafficMonitor actions and UUID-only Codex App navigation;
+- generic Obsidian Workspace activation of an existing window, TrafficMonitor actions and UUID-only Codex App navigation;
 - live Codex/DeepSeek/MiniMax quota sources, browser bridge, voice, TouchAI, SysTorch, ExoMind or Android sources;
 - long-term leak freedom, sleep/wake, resource thresholds, signed installer, ACL isolation or production security certification.
 

@@ -24,8 +24,8 @@ Attach a static selector to a button. The current application IDs are `obsidian`
     "id": "open-source-window",
     "kind": "button",
     "props": {
-        "label": "回到Obsidian Workspace",
-        "action": "dashboard.focus",
+        "label": "回到 Obsidian Workspace",
+        "action": "obsidian.activate",
         "native_window_action": {
             "application": "obsidian",
             "operation": "activate",

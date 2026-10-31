@@ -225,8 +225,8 @@ def __collector_read_state(
         state_label, tone = "本机额度来源已启用", "success"
         detail = "来源分别读取 · 不调用 TeamSense API"
     else:
-        state_label, tone = "没有启用额度来源", "muted"
-        detail = "启用来源后才读取本机 rollout 或固定的供应商只读 HTTPS 接口"
+        state_label, tone = "准备添加额度来源", "muted"
+        detail = "选择要显示的来源；未选择的来源不会读取或显示"
     return {
         "state_label": state_label,
         "state_tone": tone,
@@ -273,11 +273,13 @@ def normalize_quota_snapshot(
         "deepseek": {
             **deepseek_meta,
             "state_label": deepseek_state,
+            "requires_configuration": deepseek_error == "NOT_CONFIGURED",
             "balances": balances,
         },
         "minimax": {
             **minimax_meta,
             "state_label": minimax_state,
+            "requires_configuration": minimax_error == "NOT_CONFIGURED",
             "windows": windows,
             "omitted_model_count": omitted_models,
             "omitted_models_label": f"另有 {omitted_models} 个模型未显示" if omitted_models else "",
@@ -293,6 +295,7 @@ def normalize_quota_snapshot(
             "windows": [],
         },
         "sources": safe_sources,
+        "demo": demo,
     }
 
 
@@ -310,304 +313,203 @@ def __bound(path: str) -> dict[str, str]:
 
 
 def build_quota_scene(projection: Mapping[str, Any]) -> dict[str, Any]:
-    """Build a compact dashboard; model and quota-window identity stay visible."""
+    """Show configured sources only and expose explicit add/remove/key CTAs."""
     data = dict(projection)
     deepseek = __mapping(data.get("deepseek"))
     minimax = __mapping(data.get("minimax"))
     codex = __mapping(data.get("codex"))
-    deepseek_balances = (
-        deepseek.get("balances") if isinstance(deepseek.get("balances"), list) else []
-    )
-    deepseek_children = [
-        __node(
-            f"quota-deepseek-balance-{index}",
-            "metric",
-            {
-                "label": f"DeepSeek · {item['currency']} 余额",
-                "value": __bound(f"/deepseek/balances/{index}/display"),
-                "caption": "余额，不代表订阅总额度",
-            },
-        )
-        for index, item in enumerate(deepseek_balances)
-        if isinstance(item, Mapping)
-    ]
-    if not deepseek_children:
-        deepseek_children.append(
-            __node(
-                "quota-deepseek-empty",
-                "text",
-                {"text": __bound("/deepseek/state_label"), "size": "small"},
-            )
+    demo = data.get("demo") is True
+    enabled = set(data.get("sources", [])) if isinstance(data.get("sources"), list) else set()
+    if demo:
+        enabled = {"deepseek_balance", "minimax_quota", "codex_rollout"}
+
+    heading_children = [__node("quota-panel-title", "text", {"text": "模型额度", "size": "title"})]
+    if enabled or demo:
+        heading_children.append(__node("quota-collector-state", "badge", {
+            "text": __bound("/collector/state_label"),
+            "tone": __bound("/collector/state_tone"),
+        }))
+    if enabled and not demo:
+        heading_children.append(__node("quota-sources-manage", "button", {
+            "label": "添加 / 管理来源",
+            "action": "quota.sources.configure",
+        }))
+    children: list[dict[str, Any]] = [__node("quota-panel-heading", "row", {"gap": 10}, heading_children)]
+    if isinstance(data.get("source_config_error"), str) and data["source_config_error"]:
+        children.append(__node("quota-source-config-error", "text", {
+            "text": data["source_config_error"], "tone": "danger", "size": "small",
+        }))
+    if enabled or demo:
+        children.extend([
+            __node("quota-collector-observed-at", "text", {
+                "text": __bound("/collector/observed_at"), "size": "small",
+            }),
+            __node("quota-identity-scope", "text", {
+                "text": __bound("/identity_scope"), "size": "small",
+            }),
+        ])
+    else:
+        children.append(__node("quota-no-sources", "text", {
+            "text": "尚未添加额度来源。你可以选择本机 Codex 快照，或配置服务商 API Key。",
+            "size": "small",
+        }))
+        children.append(__node("quota-no-sources-add", "button", {
+            "label": "添加额度来源",
+            "action": "quota.sources.configure",
+            "tone": "accent",
+        }))
+
+    def source_heading(source_id: str, title: str, remove_action: str) -> dict[str, Any]:
+        return __node(
+            f"quota-{source_id}-heading",
+            "row",
+            {"gap": 8},
+            [
+                __node(f"quota-{source_id}-title", "text", {"text": title, "size": "heading"}),
+                *([] if demo else [__node(f"quota-{source_id}-remove", "button", {
+                    "label": "移除",
+                    "action": remove_action,
+                })]),
+            ],
         )
 
-    minimax_windows = (
-        minimax.get("windows") if isinstance(minimax.get("windows"), list) else []
-    )
-    minimax_children: list[dict[str, Any]] = []
-    for index, item in enumerate(minimax_windows):
-        if not isinstance(item, Mapping):
-            continue
-        if (
-            isinstance(item.get("value"), (int, float))
-            and isinstance(item.get("maximum"), (int, float))
-        ):
-            minimax_children.append(
-                __node(
-                    f"quota-minimax-window-{index}",
-                    "progress",
-                    {
+    if "deepseek_balance" in enabled:
+        children.append(__node("quota-source-divider-deepseek", "divider"))
+        section = [source_heading("deepseek", "DeepSeek", "quota.source.remove:deepseek_balance")]
+        if deepseek.get("requires_configuration") is True:
+            section.append(__node("quota-deepseek-configure", "button", {
+                "label": "配置 DeepSeek API Key",
+                "action": "quota.source.configure:deepseek_balance",
+                "tone": "accent",
+            }))
+        else:
+            section.extend([
+                __node("quota-deepseek-freshness", "badge", {
+                    "text": __bound("/deepseek/freshness_label"),
+                    "tone": __bound("/deepseek/freshness_tone"),
+                }),
+                __node("quota-deepseek-source-state", "text", {
+                    "text": __bound("/deepseek/upstream_label"), "size": "small",
+                }),
+            ])
+            balances = deepseek.get("balances") if isinstance(deepseek.get("balances"), list) else []
+            if balances:
+                section.append(__node("quota-deepseek-balances", "row", {"gap": 10}, [
+                    __node(f"quota-deepseek-balance-{index}", "metric", {
+                        "label": f"DeepSeek · {item.get('currency', '')} 余额",
+                        "value": __bound(f"/deepseek/balances/{index}/display"),
+                        "caption": "余额，不代表订阅总额度",
+                    })
+                    for index, item in enumerate(balances)
+                    if isinstance(item, Mapping)
+                ]))
+            else:
+                section.append(__node("quota-deepseek-empty", "text", {
+                    "text": __bound("/deepseek/state_label"), "size": "small",
+                }))
+            section.append(__node("quota-deepseek-updated", "text", {
+                "text": __bound("/deepseek/updated_at"), "size": "small",
+            }))
+        children.append(__node("quota-deepseek", "stack", {"gap": 6}, section))
+
+    if "minimax_quota" in enabled:
+        children.append(__node("quota-source-divider-minimax", "divider"))
+        section = [source_heading("minimax", "MiniMax", "quota.source.remove:minimax_quota")]
+        if minimax.get("requires_configuration") is True:
+            section.append(__node("quota-minimax-configure", "button", {
+                "label": "配置 MiniMax API Key",
+                "action": "quota.source.configure:minimax_quota",
+                "tone": "accent",
+            }))
+        else:
+            section.extend([
+                __node("quota-minimax-freshness", "badge", {
+                    "text": __bound("/minimax/freshness_label"),
+                    "tone": __bound("/minimax/freshness_tone"),
+                }),
+                __node("quota-minimax-source-state", "text", {
+                    "text": __bound("/minimax/upstream_label"), "size": "small",
+                }),
+            ])
+            windows = minimax.get("windows") if isinstance(minimax.get("windows"), list) else []
+            window_nodes: list[dict[str, Any]] = []
+            for index, item in enumerate(windows):
+                if not isinstance(item, Mapping):
+                    continue
+                if isinstance(item.get("value"), (int, float)) and isinstance(item.get("maximum"), (int, float)):
+                    window_nodes.append(__node(f"quota-minimax-window-{index}", "progress", {
                         "label": __bound(f"/minimax/windows/{index}/label"),
                         "value": __bound(f"/minimax/windows/{index}/value"),
                         "max": __bound(f"/minimax/windows/{index}/maximum"),
-                    },
-                )
-            )
-            minimax_children.append(
-                __node(
-                    f"quota-minimax-detail-{index}",
-                    "text",
-                    {"text": __bound(f"/minimax/windows/{index}/detail"), "size": "small"},
-                )
-            )
-        else:
-            minimax_children.append(
-                __node(
-                    f"quota-minimax-window-{index}",
-                    "text",
-                    {"text": __bound(f"/minimax/windows/{index}/detail"), "size": "small"},
-                )
-            )
-    if not minimax_children:
-        minimax_children.append(
-            __node(
-                "quota-minimax-empty",
-                "text",
-                {"text": __bound("/minimax/state_label"), "size": "small"},
-            )
-        )
-    if minimax.get("omitted_model_count", 0) > 0:
-        minimax_children.append(
-            __node(
-                "quota-minimax-omitted-models",
-                "text",
-                {"text": __bound("/minimax/omitted_models_label"), "size": "small"},
-            )
-        )
+                    }))
+                    window_nodes.append(__node(f"quota-minimax-detail-{index}", "text", {
+                        "text": __bound(f"/minimax/windows/{index}/detail"), "size": "small",
+                    }))
+                else:
+                    window_nodes.append(__node(f"quota-minimax-window-{index}", "text", {
+                        "text": __bound(f"/minimax/windows/{index}/detail"), "size": "small",
+                    }))
+            if not window_nodes:
+                window_nodes.append(__node("quota-minimax-empty", "text", {
+                    "text": __bound("/minimax/state_label"), "size": "small",
+                }))
+            if minimax.get("omitted_model_count", 0) > 0:
+                window_nodes.append(__node("quota-minimax-omitted-models", "text", {
+                    "text": __bound("/minimax/omitted_models_label"), "size": "small",
+                }))
+            section.append(__node("quota-minimax-windows", "stack", {"gap": 5}, window_nodes))
+            section.append(__node("quota-minimax-updated", "text", {
+                "text": __bound("/minimax/updated_at"), "size": "small",
+            }))
+        children.append(__node("quota-minimax", "stack", {"gap": 6}, section))
 
-    codex_windows = codex.get("windows") if isinstance(codex.get("windows"), list) else []
-    codex_children: list[dict[str, Any]] = []
-    for index, item in enumerate(codex_windows[:2]):
-        if not isinstance(item, Mapping):
-            continue
-        if (
-            isinstance(item.get("value"), (int, float))
-            and isinstance(item.get("maximum"), (int, float))
-        ):
-            codex_children.append(
-                __node(
-                    f"quota-codex-window-{index}",
-                    "progress",
-                    {
-                        "label": __bound(f"/codex/windows/{index}/label"),
-                        "value": __bound(f"/codex/windows/{index}/value"),
-                        "max": __bound(f"/codex/windows/{index}/maximum"),
-                    },
-                )
-            )
-            codex_children.append(
-                __node(
-                    f"quota-codex-detail-{index}",
-                    "text",
-                    {"text": __bound(f"/codex/windows/{index}/detail"), "size": "small"},
-                )
-            )
-    if not codex_children:
-        codex_children.append(
-            __node(
-                "quota-codex-empty",
-                "text",
-                {"text": __bound("/codex/detail"), "size": "small"},
-            )
+    codex_sources = enabled.intersection({"codex_rollout", "codex_live"})
+    if codex_sources:
+        children.append(__node("quota-source-divider-codex", "divider"))
+        codex_remove_action = (
+            "quota.source.remove:codex_live"
+            if "codex_live" in codex_sources
+            else "quota.source.remove:codex_rollout"
         )
+        codex_heading = source_heading("codex", "Codex", codex_remove_action)
+        codex_children: list[dict[str, Any]] = [
+            codex_heading,
+            __node("quota-codex-state", "badge", {
+                "text": __bound("/codex/state_label"),
+                "tone": __bound("/codex/state_tone"),
+            }),
+            __node("quota-codex-freshness", "text", {
+                "text": __bound("/codex/observed_label"), "size": "small",
+            }),
+        ]
+        windows = codex.get("windows") if isinstance(codex.get("windows"), list) else []
+        for index, item in enumerate(windows[:2]):
+            if not isinstance(item, Mapping):
+                continue
+            if isinstance(item.get("value"), (int, float)) and isinstance(item.get("maximum"), (int, float)):
+                codex_children.append(__node(f"quota-codex-window-{index}", "progress", {
+                    "label": __bound(f"/codex/windows/{index}/label"),
+                    "value": __bound(f"/codex/windows/{index}/value"),
+                    "max": __bound(f"/codex/windows/{index}/maximum"),
+                }))
+                codex_children.append(__node(f"quota-codex-detail-{index}", "text", {
+                    "text": __bound(f"/codex/windows/{index}/detail"), "size": "small",
+                }))
+            else:
+                codex_children.append(__node(f"quota-codex-window-{index}", "text", {
+                    "text": __bound(f"/codex/windows/{index}/detail"), "size": "small",
+                }))
+        codex_children.append(__node("quota-codex-source-note", "text", {
+            "text": __bound("/codex/detail"), "size": "small",
+        }))
+        children.append(__node("quota-codex", "stack", {"gap": 5}, codex_children))
 
-    root = __node(
-        "quota-panel-root",
-        "stack",
-        {"gap": 10},
-        [
-            __node(
-                "quota-panel-heading",
-                "row",
-                {"gap": 10},
-                [
-                    __node("quota-panel-title", "text", {"text": "模型额度", "size": "title"}),
-                    __node(
-                        "quota-collector-state",
-                        "badge",
-                        {
-                            "text": __bound("/collector/state_label"),
-                            "tone": __bound("/collector/state_tone"),
-                        },
-                    ),
-                ],
-            ),
-            __node(
-                "quota-collector-observed-at",
-                "text",
-                {"text": __bound("/collector/observed_at"), "size": "small"},
-            ),
-            __node(
-                "quota-collector-detail",
-                "text",
-                {"text": __bound("/collector/detail"), "size": "small"},
-            ),
-            __node(
-                "quota-identity-scope",
-                "text",
-                {"text": __bound("/identity_scope"), "size": "small"},
-            ),
-            __node("quota-divider-primary", "divider"),
-            __node(
-                "quota-deepseek",
-                "stack",
-                {"gap": 6},
-                [
-                    __node(
-                        "quota-deepseek-heading",
-                        "row",
-                        {"gap": 8},
-                        [
-                            __node(
-                                "quota-deepseek-title",
-                                "text",
-                                {"text": "DeepSeek", "size": "heading"},
-                            ),
-                            __node(
-                                "quota-deepseek-freshness",
-                                "badge",
-                                {
-                                    "text": __bound("/deepseek/freshness_label"),
-                                    "tone": __bound("/deepseek/freshness_tone"),
-                                },
-                            ),
-                        ],
-                    ),
-                    __node(
-                        "quota-deepseek-source-state",
-                        "text",
-                        {
-                            "text": __bound("/deepseek/upstream_label"),
-                            "size": "small",
-                        },
-                    ),
-                    __node(
-                        "quota-deepseek-balances",
-                        "row",
-                        {"gap": 10},
-                        deepseek_children,
-                    ),
-                    __node(
-                        "quota-deepseek-updated",
-                        "text",
-                        {"text": __bound("/deepseek/updated_at"), "size": "small"},
-                    ),
-                ],
-            ),
-            __node("quota-divider-secondary", "divider"),
-            __node(
-                "quota-minimax",
-                "stack",
-                {"gap": 6},
-                [
-                    __node(
-                        "quota-minimax-heading",
-                        "row",
-                        {"gap": 8},
-                        [
-                            __node(
-                                "quota-minimax-title",
-                                "text",
-                                {"text": "MiniMax", "size": "heading"},
-                            ),
-                            __node(
-                                "quota-minimax-freshness",
-                                "badge",
-                                {
-                                    "text": __bound("/minimax/freshness_label"),
-                                    "tone": __bound("/minimax/freshness_tone"),
-                                },
-                            ),
-                        ],
-                    ),
-                    __node(
-                        "quota-minimax-source-state",
-                        "text",
-                        {"text": __bound("/minimax/upstream_label"), "size": "small"},
-                    ),
-                    __node(
-                        "quota-minimax-windows",
-                        "stack",
-                        {"gap": 5},
-                        minimax_children,
-                    ),
-                    __node(
-                        "quota-minimax-updated",
-                        "text",
-                        {"text": __bound("/minimax/updated_at"), "size": "small"},
-                    ),
-                ],
-            ),
-            __node("quota-divider-tertiary", "divider"),
-            __node(
-                "quota-codex",
-                "stack",
-                {"gap": 5},
-                [
-                    __node(
-                        "quota-codex-heading",
-                        "row",
-                        {"gap": 8},
-                        [
-                            __node(
-                                "quota-codex-title",
-                                "text",
-                                {"text": "Codex", "size": "heading"},
-                            ),
-                            __node(
-                                "quota-codex-state",
-                                "badge",
-                                {
-                                    "text": __bound("/codex/state_label"),
-                                    "tone": __bound("/codex/state_tone"),
-                                },
-                            ),
-                        ],
-                    ),
-                    __node(
-                        "quota-codex-freshness",
-                        "text",
-                        {"text": __bound("/codex/observed_label"), "size": "small"},
-                    ),
-                    *codex_children,
-                    __node(
-                        "quota-codex-source-note",
-                        "text",
-                        {"text": __bound("/codex/detail"), "size": "small"},
-                    ),
-                ],
-            ),
-            __node(
-                "quota-panel-footer",
-                "text",
-                {
-                    "text": (
-                        "各来源、币种与额度周期独立显示；Codex 使用本机只读来源。"
-                    ),
-                    "size": "small",
-                },
-            ),
-        ],
-    )
+    if enabled or demo:
+        children.append(__node("quota-panel-footer", "text", {
+            "text": "各来源、币种与额度周期独立显示；未添加的来源不会读取。",
+            "size": "small",
+        }))
+    root = __node("quota-panel-root", "stack", {"gap": 10}, children)
     return {
         "root": root,
         "data": data,

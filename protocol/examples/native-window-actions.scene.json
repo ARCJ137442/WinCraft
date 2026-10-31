@@ -8,7 +8,7 @@
         "id": "activate-obsidian",
         "kind": "button",
         "props": {
-          "label": "回到 Obsidian 仪表盘",
+          "label": "回到 Obsidian Workspace",
           "action": "dashboard.focus",
           "native_window_action": {
             "application": "obsidian",

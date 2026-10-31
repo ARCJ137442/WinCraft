@@ -479,12 +479,12 @@ mod native_window_action_tests {
 
     #[test]
     fn title_filter_is_case_insensitive_and_empty_filter_matches_any_title() {
-        let filter = normalized_title_filter(Some("  Obsidian Workspace  "));
-        assert!(title_matches_filter("Obsidian Workspace · Personal vault", &filter));
-        assert!(!title_matches_filter(
-            "Daily note · Personal vault",
+        let filter = normalized_title_filter(Some("  obsidian workspace  "));
+        assert!(title_matches_filter(
+            "Obsidian Workspace · Example",
             &filter
         ));
+        assert!(!title_matches_filter("Daily note · Example", &filter));
         assert!(title_matches_filter(
             "Any existing title",
             &normalized_title_filter(None)

@@ -1,0 +1,9 @@
+{
+  "id": "wincraft-workspace-dashboard",
+  "name": "WinCraft Workspace Dashboard",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "A local, metadata-only workspace and focus timer bridge for WinCraft.",
+  "author": "WinCraft contributors",
+  "isDesktopOnly": true
+}

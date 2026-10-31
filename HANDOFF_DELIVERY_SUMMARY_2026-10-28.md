@@ -69,7 +69,7 @@ The freshly built Tauri release host passed 40 real-WebSocket `lease_probe.py` c
 - Visual topmost ordering against ordinary and other topmost windows; only the provider/native setter round-trip is automated so far.
 - Latest W23 titlebar drag, pixel-level icon alignment, hidden-titlebar background drag and width restoration. Collapse/expand dimensions were verified on the immediately preceding build; current UI automation could not produce a measurable drag or inspect the newest manager window.
 - Popup real release success/cancel, position reuse, keyboard/IME/UIA and concurrent-window acceptance.
-- Obsidian Workspace/TrafficMonitor real external-window clicks and Windows foreground-denial path.
+- Obsidian/TrafficMonitor real external-window clicks and Windows foreground-denial path.
 - Multi-monitor/DPI pixels, monitor detach migration, click-through rescue and virtual desktop behavior.
 - Native RegisterHotKey/IME, Windows voice APIs, browser bridge, TeamSense, TouchAI and SysTorch integrations.
 - The ExoMind workbench provider has a fixture-tested read-only projection and three local display modes; one live GET/projection smoke passed. No profile identifier, current block state, returned content, or RT connection details are included here. Native mode interactions and steady-state dimensions remain NOT_RUN.

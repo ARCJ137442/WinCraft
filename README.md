@@ -3,7 +3,7 @@
 **版本：0.1.0-alpha.1 / 原型源码交接，非已验收发行版。**
 **文档更新时间：2026-10-31。**
 
-本机 lifecycle release 已与真实 TrafficMonitor x64 provider、Obsidian Obsidian Workspace 只读 provider 联调；可提交的验证摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，逐项本机记录位于默认不提交的 `evidence/local/`。TrafficMonitor 桥接已从当前源码重编并实测报告 1.8.6.0；这仍是本地原型验证，不代表对外发行或安全认证。
+本机 lifecycle release 已与真实 TrafficMonitor x64 Provider 联调；可提交的验证摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，逐项本机记录位于默认不提交的 `evidence/local/`。通用 Obsidian Workspace 插件、Provider 与代码包导入是当前示例实现，尚未完成真实 Obsidian/原生 UI 验收。TrafficMonitor 桥接已从当前源码重编并实测报告 1.8.6.0；这仍是本地原型验证，不代表对外发行或安全认证。
 
 让已有应用、自动化脚本与 Agent 通过声明式协议，获得可搭建、可交互、可操控的桌面窗口。世界就是窗口；宿主是托盘进程；提供者是加入世界的参与者；组件是可以持续增删重组的方块。
 
@@ -28,6 +28,7 @@
 | 交互 | 组件动作回到当前写入者；等待/确认/失败/超时；拒绝过时界面的动作 |
 | 自用管理器 | 宿主内部提供者生成的管理与设置世界；共享同一组件树和渲染器；明确的本地接管/解除接管/关闭 |
 | 配置包（draft） | `0.4-preview.1` 本机管理器可预览、授权并应用配置型 `.wcp`；只创建新世界，不携带 Provider 二进制或业务状态，不下载/执行 adapter；当前原生导入 UI 仍需人工验收 |
+| 提供者代码包 | 独立 `wincraft.provider-bundle` `.wcp` 类型；拖入只预览，安装只解包，最终启动每次都需用户确认；不自动安装依赖，也不与配置包混淆 |
 | 网络 | 统一健康检查与鉴权发现、协议握手、双向 WebSocket；非本机提供者可通过 SSH 隧道接入 |
 | 开发支撑 | 可独立运行的 headless Rust 宿主；Python 示例、真实协议验收探针、只读外心桥接；Windows 自动化验证 CI |
 
@@ -71,12 +72,15 @@ python examples/python/lease_probe.py --runtime "<终端输出的实际 .runtime
 
 不要猜默认端口；宿主默认随机选择空闲端口。连接描述文件包含令牌，不应发到聊天、提交 Git 或公开分享。
 
+面向不使用命令行的本机试用者，可以双击 `examples/launchers/start-model-quota.cmd`，粘贴管理器复制的连接路径后点选额度来源；Obsidian 示例可通过 `python scripts/package_obsidian_plugin.py` 生成插件 ZIP，再双击 `examples/launchers/start-obsidian-workspace.cmd` 选择连接路径。提供者代码包流程见[用户指南](docs/provider-bundles.zh-CN.md)，配置包与代码包是不同类型。
+
 ## Agent 提供者教程
 
 为 WinCraft 接入自动化程序或 Agent，从 [`skills/wincraft-provider/SKILL.md`](skills/wincraft-provider/SKILL.md) 开始。教程按“加入世界 → 搭建声明式场景 → 动态更新 → 回执动作 → 租约恢复”逐步讲解，并链接到真实 Python 示例。
 配置包 `.wcp` 是可分享的蓝图/需求声明，不封存提供者；导出与本机管理器导入边界见 [`tools/pack/README.md`](tools/pack/README.md)。
+本地可执行 Provider 的独立 `.wcp` 流程与风险说明见[提供者代码包指南](docs/provider-bundles.zh-CN.md)。
 TrafficMonitor 的本机插件桥接、隔离 staging 与运行步骤见 [提供者参考](skills/wincraft-provider/references/trafficmonitor.md)。
-Obsidian Obsidian Workspace 仪表盘只读投影见 [Obsidian 集成指南](docs/integration-obsidian.md)。
+Obsidian 通用工作区与专注计时示例见[中文集成指南](docs/integration-obsidian.zh-CN.md)和[English guide](docs/integration-obsidian.en-US.md)。
 模型额度 HUD 从本机 Codex rollout 事件读取 quota 快照，并为 DeepSeek/MiniMax 提供显式启用的固定只读适配器；TeamSense collector 只作实现参考，WinCraft 不调用 TeamSense API。默认不读取来源文件、不读取 key、不发起网络请求。Codex 实验性 live GET 是独立 opt-in。详见[集成说明](examples/integrations/model_quota/README.md)。
 
 只读 Agent Activity 总览示例见 [`examples/integrations/agent-board/README.md`](examples/integrations/agent-board/README.md)。它把 Claude Code、Codex CLI 本机状态库和 Codex App 本机状态文件分成独立来源；Codex App 从 Desktop-originator state DB 与 UUID 匹配的有限 rollout 尾部读取标题、项目和最近 Agent 输出，Claude Code 从本地项目 JSONL/固定子 Agent 目录读取历史。Codex App 与 Claude Code 的在线状态来自只读进程元数据，进程离线时仍可显示历史，不会因读取磁盘而假报在线。采集不启动 App/Claude、不使用 App connector/MCP 或 `agents --json`；源文本有界、脱敏，不读取完整会话、thinking、用户提示或工具输出。会话状态没有权威文件证据时显示未知；Codex App 标题导航只在用户点击后走 Host 限制的 UUID-only `codex://threads/<UUID>`。

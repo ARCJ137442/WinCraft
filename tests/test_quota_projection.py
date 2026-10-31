@@ -182,6 +182,58 @@ class QuotaProjectionTests(unittest.TestCase):
         self.assertEqual(projection['deepseek']['balances'], [])
         self.assertEqual(projection['minimax']['windows'], [])
 
+    def test_given_unselected_sources_when_rendered_then_dashboard_shows_only_add_cta(self) -> None:
+        projection = normalize_quota_snapshot({}, enabled_sources=[])
+        scene = build_quota_scene(projection)
+        ids: list[str] = []
+        text_values: list[str] = []
+        actions: list[str] = []
+
+        def visit(node: dict[str, object]) -> None:
+            ids.append(node['id'])
+            props = node.get('props', {})
+            if isinstance(props, dict):
+                if isinstance(props.get('text'), str):
+                    text_values.append(props['text'])
+                if isinstance(props.get('action'), str):
+                    actions.append(props['action'])
+            for child in node.get('children', []):
+                visit(child)
+
+        visit(scene['root'])
+        self.assertIn('quota-no-sources-add', ids)
+        self.assertNotIn('quota-sources-manage', ids)
+        self.assertNotIn('quota-deepseek', ids)
+        self.assertNotIn('quota-minimax', ids)
+        self.assertNotIn('quota-codex', ids)
+        self.assertIn('quota.sources.configure', actions)
+        self.assertNotIn('来源未启用', '\n'.join(text_values))
+        self.assertNotIn('密钥未配置', '\n'.join(text_values))
+
+    def test_given_selected_vendor_without_key_when_rendered_then_show_configuration_cta(self) -> None:
+        projection = normalize_quota_snapshot(
+            {'deepseek': {'balance': None, 'meta': {'errorCode': 'NOT_CONFIGURED'}}},
+            enabled_sources=['deepseek_balance'],
+        )
+        scene = build_quota_scene(projection)
+        ids: list[str] = []
+        actions: list[str] = []
+
+        def visit(node: dict[str, object]) -> None:
+            ids.append(node['id'])
+            props = node.get('props', {})
+            if isinstance(props, dict) and isinstance(props.get('action'), str):
+                actions.append(props['action'])
+            for child in node.get('children', []):
+                visit(child)
+
+        visit(scene['root'])
+        self.assertIn('quota-deepseek-configure', ids)
+        self.assertNotIn('quota-deepseek-source-state', ids)
+        self.assertNotIn('quota-deepseek-updated', ids)
+        self.assertIn('quota.source.configure:deepseek_balance', actions)
+        self.assertNotIn('quota-minimax', ids)
+
     def test_given_account_and_management_fields_when_projected_then_private_values_are_removed(
         self,
     ) -> None:

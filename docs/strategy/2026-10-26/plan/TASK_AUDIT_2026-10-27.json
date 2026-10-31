@@ -40,7 +40,7 @@
   "manual_gates": [
     "Tauri release tray manager open/focus",
     "global hide/show",
-    "Obsidian Workspace title activation",
+    "Obsidian Workspace native activation",
     "Popup success/cancel/position reuse/keyboard/IME/UIA",
     "multi-monitor and DPI pixel behavior",
     "monitor detach migration",

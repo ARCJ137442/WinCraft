@@ -61,6 +61,7 @@ audience: maintainer, Windows tester
 | 点击穿透救援（W09） | 启用穿透后仍能从托盘/管理器救援；窗口恢复可点击、可见、在屏幕内；旧写者失权。 | ____ |
 | 多屏与缩放（W11/W28） | 在不同 DPI、负坐标副屏和显示器拔插后检查位置/尺寸，窗口仍可找回。 | ____ |
 | Windows 虚拟桌面 | “显示在所有桌面”当前尚未实现；记录为 `NOT_IMPLEMENTED`，不能把无效果的开关算作通过。 | NOT_IMPLEMENTED |
+| 提供者代码包 W28 | 拖入仅预览；安装仅解包；必须再次确认才启动；依赖不自动安装；同版本不会被覆盖；宿主退出回收本 Host 启动的进程。 | ____ |
 
 完整分层用例见 [`docs/engineering/ACCEPTANCE.md`](../engineering/ACCEPTANCE.md)。当前本地真实 Rust Host lifecycle smoke（`scoped_live_sources.py --duration-seconds 5`）退出码 0：两个独立 Provider scope 从 `online → stale`，父 authority 删除 Codex scope 后 Codex 为 `revoked`、Claude Code sibling 仍为 `stale`；临时世界清理成功。该 smoke 使用 headless Rust Host，验证协议与来源进程隔离，不证明 Tauri 像素、托盘点击、真实 z-order、穿透救援或多显示器行为。会话记录丢失仍显示撤销未知；scope 撤销状态不能替代来源会话状态。
 
@@ -113,3 +114,15 @@ audience: maintainer, Windows tester
 4. 检查分享文件只含 `pack.json` 与声明的 blueprint，不含原机绝对路径、token、runtime descriptor 或私有标题。将两个环境各自的结果记录在 B06-04-A1/A2/A3；单机 fixture 和 exporter 测试不能替代此验收。
 
 截至本指南更新时间，跨两个用户环境的导入与重新授权尚未执行，B06-04 仍为 `IMPLEMENTED_UNVERIFIED`/`PARTIAL`。
+
+## 提供者代码包人工验收
+
+从仓库根目录执行 `python scripts/build_provider_bundle.py`，生成 ignored 的 `target/provider-bundles/wincraft-sample-provider.wcp`。如 Python 尚无 `websockets`，先按 `examples/provider-bundle-sample/README.md` 安装明确列出的示例依赖。
+
+1. 在 WinCraft 世界管理器拖入此 `.wcp`；确认显示 manifest 名称/版本、`main.py` 入口、展开大小和 SHA-256。此时不应出现提供者窗口或子进程。
+2. 选择“安装代码（仅解包）”；确认没有自动启动、下载或安装依赖，且同一版本再次安装会拒绝覆盖。
+3. 选择“运行此提供者”；检查任意代码与 runtime descriptor 警告。先取消一次，确认没有启动；再次选择并在最终确认页点击运行。
+4. 确认合成计数窗口由真实 Host 创建，点击“Add one”后显示实际动作回执；关闭世界并确认该 provider 清理自己的 world。
+5. 手动修改已安装入口文件后再运行，应被 SHA-256 校验拒绝。恢复或重新导入新的 package version 后再继续。
+
+此流程不提供 sandbox；用户确认后，代码以当前 Windows 用户权限运行，并能读取传入 descriptor 的 Host bearer token。验收中不得使用含凭据或业务数据的 Provider package，也不要把 descriptor、其内容或实际运行数据写入日志/截图。

@@ -631,7 +631,7 @@ python examples/python/lease_probe.py --runtime <actual headless descriptor>
 
 **输入：** 当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。
 
-**定位：** `apps/desktop/src-tauri/src/windows.rs`；`apps/desktop/src-tauri/src/main.rs`；`crates/wincraft-core/src/scene.rs`；`crates/wincraft-core/src/engine.rs`；`crates/wincraft-server/src/hub.rs`；`protocol/scene.schema.json`；`protocol/request.schema.json`；`protocol/methods.json`；`examples/python/obsidian-workspace.py`；`skills/wincraft-provider/`
+**定位：** `apps/desktop/src-tauri/src/windows.rs`；`apps/desktop/src-tauri/src/main.rs`；`crates/wincraft-core/src/scene.rs`；`crates/wincraft-core/src/engine.rs`；`crates/wincraft-server/src/hub.rs`；`protocol/scene.schema.json`；`protocol/request.schema.json`；`protocol/methods.json`；`examples/python/obsidian_workspace.py`；`skills/wincraft-provider/`
 
 ### 实施
 1. 以工作区锚定/边距和有限运动为首个行为

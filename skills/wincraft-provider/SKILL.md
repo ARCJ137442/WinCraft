@@ -290,10 +290,11 @@ JSON references. Call `client.require_state_slots(version=1)` before using slot 
 Follow the [scope preview guide](references/component-scopes-preview.md) exactly; use
 the capability-aware SDK helpers and never treat preview methods as stable 0.3.
 For real-source scope isolation, `examples/python/composition_probe.py` requires an
-explicit runtime descriptor, TrafficMonitor bridge path, and currently open Obsidian
-vault. It runs a fixed read-only Obsidian Workspace query, creates/destroys only its own test
-world, and waits for the runner to stop the staged TrafficMonitor copy; never point it
-at the original installation's configuration or put source values in evidence.
+explicit runtime descriptor, TrafficMonitor bridge path, and the local Obsidian
+Workspace Dashboard plugin. It reads only the plugin's bounded metadata snapshot,
+creates/destroys only its own test world, and waits for the runner to stop the staged
+TrafficMonitor copy; never point it at the original installation's configuration or
+put source values in evidence.
 
 ## Provider invariants
 
@@ -345,9 +346,9 @@ at the original installation's configuration or put source values in evidence.
   TrafficMonitor bridge, when its companion plugin is loaded.
 - For the plugin-backed Windows setup, staging boundary, and local run steps, follow
   the [TrafficMonitor provider reference](references/trafficmonitor.md).
-- `examples/python/obsidian-workspace.py` — read-only Obsidian Workspace dashboard projection;
-  it requires an explicitly named open Obsidian vault and never edits notes; its title
-  activates an existing Obsidian window through the native host action.
+- `examples/python/obsidian_workspace.py` — metadata-only Obsidian workspace projection
+  with a local focus timer bridge and fixed native activation action. It reads the
+  snapshots written by `examples/obsidian-plugin/` and never reads note bodies.
 - `examples/python/lease_probe.py` — protocol acceptance against the actual Rust host.
 - `examples/python/scope_probe.py` — opt-in 0.4 preview probe against the actual Rust host;
   uses synthetic scopes and cleans up only its temporary world.

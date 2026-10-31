@@ -2,20 +2,25 @@
 mod windows;
 use serde_json::Value;
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     net::SocketAddr,
     path::{Path, PathBuf},
+    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
 };
 use tauri::{Emitter, LogicalSize, Manager, PhysicalPosition, WebviewWindow};
+use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use uuid::Uuid;
 use wincraft_core::{
     EventSource, Fault, GeometryControl, InteractionSource, ShortcutSpec, Snapshot,
 };
 use wincraft_server::{
-    self_provider::{ManagerProvider, ShortcutHost},
+    provider_package::{
+        verify_installed_provider_entrypoint, InstalledProviderBundle, ProviderRuntime,
+    },
+    self_provider::{ManagerProvider, ProviderBundleLauncher, ShortcutHost},
     Hub, RunningServer,
 };
 
@@ -24,6 +29,7 @@ pub struct DesktopState {
     pub manager: ManagerProvider,
     pub tray_visibility: windows::TrayVisibilityState,
     locale_path: PathBuf,
+    provider_launcher: Arc<TauriProviderBundleLauncher>,
     // Keeps the descriptor guard alive. It removes only this host's credential file on normal exit.
     pub server: Mutex<Option<RunningServer>>,
 }
@@ -33,6 +39,176 @@ const EXTERNAL_WINDOW_ACTIONS_AVAILABLE: bool = cfg!(target_os = "windows");
 struct TauriShortcutHost {
     app: tauri::AppHandle,
     registered: Mutex<BTreeSet<String>>,
+}
+
+struct TauriProviderBundleLauncher {
+    provider_store: PathBuf,
+    processes: Mutex<BTreeMap<String, Child>>,
+}
+
+impl TauriProviderBundleLauncher {
+    fn new(provider_store: PathBuf) -> Self {
+        Self {
+            provider_store,
+            processes: Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    fn shutdown(&self) {
+        let mut processes = self
+            .processes
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        for (_, mut child) in std::mem::take(&mut *processes) {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+impl ProviderBundleLauncher for TauriProviderBundleLauncher {
+    fn launch(
+        &self,
+        bundle: &InstalledProviderBundle,
+        runtime_descriptor: &Path,
+    ) -> std::result::Result<(), String> {
+        let descriptor_metadata = fs::symlink_metadata(runtime_descriptor)
+            .map_err(|error| format!("runtime descriptor is unavailable: {error}"))?;
+        if descriptor_metadata.file_type().is_symlink() || !descriptor_metadata.is_file() {
+            return Err("runtime descriptor is not a regular local file".into());
+        }
+        let descriptor = runtime_descriptor
+            .canonicalize()
+            .map_err(|error| format!("runtime descriptor could not be resolved: {error}"))?;
+        let store = self
+            .provider_store
+            .canonicalize()
+            .map_err(|error| format!("Provider store is unavailable: {error}"))?;
+        let package_id_dir = store.join(&bundle.id);
+        let id_metadata = fs::symlink_metadata(&package_id_dir)
+            .map_err(|error| format!("Provider package folder is unavailable: {error}"))?;
+        if id_metadata.file_type().is_symlink() || !id_metadata.is_dir() {
+            return Err("Provider package folder is not a regular directory".into());
+        }
+        let version_dir = package_id_dir.join(&bundle.version);
+        let version_metadata = fs::symlink_metadata(&version_dir)
+            .map_err(|error| format!("installed Provider version is unavailable: {error}"))?;
+        if version_metadata.file_type().is_symlink() || !version_metadata.is_dir() {
+            return Err("installed Provider version is not a regular directory".into());
+        }
+        let package_root = bundle
+            .install_dir
+            .canonicalize()
+            .map_err(|error| format!("installed Provider folder is unavailable: {error}"))?;
+        if package_root
+            != version_dir
+                .canonicalize()
+                .map_err(|error| error.to_string())?
+        {
+            return Err(
+                "installed Provider folder does not match its validated package identity".into(),
+            );
+        }
+        let relative = Path::new(&bundle.entrypoint);
+        if relative.as_os_str().is_empty()
+            || relative
+                .components()
+                .any(|component| !matches!(component, std::path::Component::Normal(_)))
+        {
+            return Err("Provider entrypoint path is invalid".into());
+        }
+        let entrypoint = package_root.join(relative);
+        let entry_metadata = fs::symlink_metadata(&entrypoint)
+            .map_err(|error| format!("Provider entrypoint is unavailable: {error}"))?;
+        if entry_metadata.file_type().is_symlink() || !entry_metadata.is_file() {
+            return Err("Provider entrypoint is not a regular file".into());
+        }
+        let entrypoint = entrypoint
+            .canonicalize()
+            .map_err(|error| format!("Provider entrypoint could not be resolved: {error}"))?;
+        if !entrypoint.starts_with(&package_root) {
+            return Err("Provider entrypoint is outside its installed folder".into());
+        }
+        verify_installed_provider_entrypoint(bundle).map_err(|error| error.message)?;
+
+        let program = match &bundle.runtime {
+            ProviderRuntime::Python => resolve_runtime_executable("python.exe")?,
+            ProviderRuntime::Node => resolve_runtime_executable("node.exe")?,
+            ProviderRuntime::Native => entrypoint.clone(),
+        };
+        let key = format!("{}@{}", bundle.id, bundle.version);
+        let mut processes = self
+            .processes
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if let Some(child) = processes.get_mut(&key) {
+            if child
+                .try_wait()
+                .map_err(|error| error.to_string())?
+                .is_none()
+            {
+                return Err("this Provider version is already running".into());
+            }
+            processes.remove(&key);
+        }
+
+        let mut command = Command::new(program);
+        if bundle.runtime != ProviderRuntime::Native {
+            command.arg(&entrypoint);
+        }
+        command
+            .arg("--runtime")
+            .arg(&descriptor)
+            .current_dir(&package_root)
+            .env_clear()
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        for name in [
+            "PATH",
+            "SYSTEMROOT",
+            "WINDIR",
+            "USERPROFILE",
+            "APPDATA",
+            "LOCALAPPDATA",
+            "TEMP",
+            "TMP",
+        ] {
+            if let Some(value) = std::env::var_os(name) {
+                command.env(name, value);
+            }
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
+        let child = command
+            .spawn()
+            .map_err(|error| format!("Provider runtime could not start: {error}"))?;
+        processes.insert(key, child);
+        Ok(())
+    }
+}
+
+impl Drop for TauriProviderBundleLauncher {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
+}
+
+fn resolve_runtime_executable(name: &str) -> std::result::Result<PathBuf, String> {
+    let path =
+        std::env::var_os("PATH").ok_or_else(|| "runtime PATH is not configured".to_owned())?;
+    for directory in std::env::split_paths(&path) {
+        let candidate = directory.join(name);
+        if candidate.is_file() {
+            return candidate
+                .canonicalize()
+                .map_err(|error| format!("runtime executable could not be resolved: {error}"));
+        }
+    }
+    Err(format!("{name} is not installed or is not on PATH"))
 }
 
 impl ShortcutHost for TauriShortcutHost {
@@ -146,6 +322,62 @@ fn surface_locale_set(
     app.emit("host/locale", locale)
         .map_err(|error| Fault::new("NATIVE_ERROR", error.to_string()))?;
     Ok(())
+}
+
+#[tauri::command]
+fn surface_copy_descriptor(
+    window: WebviewWindow,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, DesktopState>,
+) -> Result<(), Fault> {
+    let world_id = caller_world(&window)?;
+    if !manager_descriptor_copy_allowed(
+        world_id,
+        state.manager.world_id,
+        state.hub.renderer_snapshot(world_id)?.system,
+    ) {
+        return Err(Fault::new(
+            "FORBIDDEN",
+            "only the local World Manager can copy the runtime descriptor path",
+        ));
+    }
+    let descriptor_path = state
+        .server
+        .lock()
+        .map_err(|_| {
+            Fault::new(
+                "HOST_UNAVAILABLE",
+                "runtime descriptor state is unavailable",
+            )
+        })?
+        .as_ref()
+        .map(|server| server.file.to_string_lossy().into_owned())
+        .ok_or_else(|| Fault::new("HOST_UNAVAILABLE", "runtime descriptor is unavailable"))?;
+    app.clipboard()
+        .write_text(descriptor_path)
+        .map_err(|error| Fault::new("CLIPBOARD_FAILED", error.to_string()))
+}
+
+fn manager_descriptor_copy_allowed(world_id: Uuid, manager_world_id: Uuid, system: bool) -> bool {
+    system && world_id == manager_world_id
+}
+
+#[cfg(test)]
+mod descriptor_copy_tests {
+    use super::manager_descriptor_copy_allowed;
+    use uuid::Uuid;
+
+    #[test]
+    fn only_the_internal_manager_world_can_request_descriptor_copy() {
+        let manager = Uuid::new_v4();
+        assert!(manager_descriptor_copy_allowed(manager, manager, true));
+        assert!(!manager_descriptor_copy_allowed(
+            Uuid::new_v4(),
+            manager,
+            true
+        ));
+        assert!(!manager_descriptor_copy_allowed(manager, manager, false));
+    }
 }
 
 #[cfg(test)]
@@ -481,10 +713,12 @@ fn main() {
     // manager without needing to synthesize a notification-area click.
     let open_manager_on_start = std::env::args().any(|argument| argument == "--open-manager");
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             surface_snapshot,
             surface_locale_get,
             surface_locale_set,
+            surface_copy_descriptor,
             surface_interact,
             surface_drag,
             surface_close,
@@ -495,6 +729,7 @@ fn main() {
         .setup(move |app| {
             let app_local_data = app.path().app_local_data_dir()?;
             let runtime_dir = app_local_data.join("runtime");
+            let provider_store = app_local_data.join("providers");
             let locale_path = app_local_data.join("ui-locale.txt");
             let bind: SocketAddr = std::env::var("WINCRAFT_BIND")
                 .unwrap_or_else(|_| "127.0.0.1:0".into())
@@ -508,26 +743,33 @@ fn main() {
                 Ok::<_, std::io::Error>((server, manager))
             })?;
             let descriptor_path = server.file.to_string_lossy().into_owned();
+            let provider_launcher =
+                Arc::new(TauriProviderBundleLauncher::new(provider_store.clone()));
             app.manage(DesktopState {
                 hub: hub.clone(),
                 manager: manager.clone(),
                 tray_visibility: windows::TrayVisibilityState::default(),
                 locale_path,
+                provider_launcher: provider_launcher.clone(),
                 server: Mutex::new(Some(server)),
             });
             app.handle()
                 .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
             let shortcut_manager = manager.clone();
             let shortcut_hub = hub.clone();
+            let manager_provider_launcher: Arc<dyn ProviderBundleLauncher> =
+                provider_launcher.clone();
             let shortcut_host = Arc::new(TauriShortcutHost {
                 app: app.handle().clone(),
                 registered: Mutex::new(BTreeSet::new()),
             });
             tauri::async_runtime::spawn(async move {
-                shortcut_manager.spawn_with_shortcut_host(
+                shortcut_manager.spawn_with_desktop_hosts(
                     shortcut_hub,
                     descriptor_path,
                     shortcut_host,
+                    manager_provider_launcher,
+                    provider_store,
                 );
             });
             let content_fit = windows::ContentFitState::default();
@@ -553,6 +795,7 @@ fn main() {
         match event {
             tauri::RunEvent::Exit => {
                 let _ = handle.global_shortcut().unregister_all();
+                handle.state::<DesktopState>().provider_launcher.shutdown();
             }
             tauri::RunEvent::ExitRequested { api, code, .. } if code.is_none() => {
                 // Last world closing must not terminate the tray host. Explicit tray Exit has Some(code).

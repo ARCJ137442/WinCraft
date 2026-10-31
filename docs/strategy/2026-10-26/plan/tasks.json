@@ -1087,7 +1087,7 @@
         "protocol/scene.schema.json",
         "protocol/request.schema.json",
         "protocol/methods.json",
-        "examples/python/obsidian-workspace.py",
+        "examples/python/obsidian_workspace.py",
         "skills/wincraft-provider/"
       ],
       "inputs": "当前工作区、相关owner_doc、现有测试和对应source_ids；只使用合成或明确授权数据。",

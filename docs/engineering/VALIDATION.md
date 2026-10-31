@@ -90,7 +90,7 @@ TeamSense 的 Codex 本机 rollout collector 与账号额度 collector 是不同
 | `cargo fmt --all -- --check` / `npm run check:local` | PASS | 退出码 0；28 项 UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过），Clippy 与 27 个 Provider Skill 引用检查通过。|
 | `npm run desktop:build` | PASS | 退出码 0；`target/release/wincraft-desktop.exe`，13,279,232 bytes，SHA-256 `4EFE3DC6E5990E5A5BEE69116190C270CF7CD49527E2626207E60772F36ED806`。未运行新 release 的窗口点击验收。|
 | B04-02-A3 Windows 前台拒绝 | PARTIAL | Win32 结果到 Host 的失败栅栏有定向回归；本轮没有强制 Windows 拒绝真实 Obsidian 激活。当前 release 标题动作的原生点击仍未通过 Computer Use/人工观察。|
-| B04-02-A5 Host action / Provider ACK 顺序 | PARTIAL | Obsidian Workspace Provider 测试只在 Host focus 调用成功后 ACK；Host native failure 测试不广播、不 ACK。真实 release 点击既有 Obsidian 窗口且不启动新进程仍未实测。|
+| B04-02-A5 Host action / Provider ACK 顺序 | PARTIAL | Host native failure 测试不广播、不 ACK。当前通用 Obsidian Provider 尚未进行真实 release 点击验收。|
 
 ## 2026-10-30 B04-03 Manager 本机快捷键首个闭环
 
@@ -188,7 +188,7 @@ B07-01 代码提交 `be7a50c` 的 Windows hosted run `40707844155` 随后完整�
 | B01-04 公共 SDK 与诊断 | PASS（L1-L2） | Schema/SDK/shared fixtures 与真实 Rust headless 一致；renderer 保留节点身份和草稿；Popup action-ack 断线时的合成敏感正文 sentinel 不回显 |
 | 教程 provider | PASS（启动/清理），原生交互 PARTIAL | `provider_tutorial.py` 在真实 headless 与先前 B02 Tauri host 创建 ordinary invited world 并接受首个 scene；UIA 树显示五课首页。Ctrl+C 清理确认，随后 `world.list` 匹配数为 0；动态课/主题/隐藏恢复的 UIA 输入未完成 |
 | TrafficMonitor | PASS（此前本机 smoke） | 临时 x64 provider 与本地桥接曾报告来源在线且采样更新；本公开记录不含本机进程标识或遥测数据 |
-| Obsidian Obsidian Workspace | PASS（此前本机 smoke） | 用户明确选择的只读仪表盘投影曾成功更新并应用到窗口；不在公共仓库记录 vault 标识、投影数量、任务标题或笔记内容 |
+| Obsidian Workspace 示例 | NOT_RUN | 通用插件、Provider 和人工启动入口已纳入源码；真实 Obsidian 插件加载、实例快照更新与原生窗口激活尚未验收。|
 | Python focus demo | PASS（连接），动作回执 NOT_RUN | `focus_demo.py` 已连到当前 Rust host 并创建合成世界；窗口可用于人工测试动态组件替换与动作回执。没有代替用户点击按钮 |
 | GitHub | PASS | `ARCJ137442/WinCraft`、默认分支 `dev`、`origin` 已建立；按用户最新决定仓库公开。源码首个提交 `c70ba44`、路线图 `3661dce`、文本选择功能 `73c3e20` 均已在远端 |
 | 用户观察 | PASS（此前版本） | 用户确认托盘图标/菜单可用、悬浮窗可见且可拖动；最新替换后的 release 尚未要求用户重复做这些手工观察 |
@@ -343,11 +343,11 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 - `lease_probe.py` 通过进程内读取当前运行时 descriptor 认证连接；不在公开文档记录 descriptor 内容、路径或业务数值。
 - 同一宿主的短连接只输出 `native_windows=true`。探针通过 native adapter 修订状态检查了 provider 隐藏/恢复、透明度、标题栏/点击穿透设置；这验证原生适配状态已应用，不证明像素布局正确，也不证明真实鼠标穿透或救援操作。
 - 旧 manager 与临时 provider 曾按项目范围清理；一个本机策略拒绝的过期 descriptor 删除操作没有读取文件内容。手动托盘退出、键盘/IME/读屏、多 DPI、多屏、教程完整交互与 Popup 键盘流仍待验收。
-- TrafficMonitor、Obsidian Workspace 和 focus demo 的本机 provider smoke 曾观察到来源在线与窗口更新；公共记录省略 vault/source 标识、进程号、投影数量、真实标题与遥测值。
+- TrafficMonitor 与 focus demo 的本机 provider smoke 曾观察到来源在线与窗口更新；通用 Obsidian Workspace 集成另列为 NOT_RUN。
 - TrafficMonitor x64 bridge 曾以本机源码重编并在隔离 staging copy 中验证；具体本机路径与实时遥测值留在忽略的本地证据。
 - 本次环境：Windows 11 Pro 10.0.22000 x64、Python 3.11.4、Node v22.23.4、npm 11.19.0、Cargo 1.93.0、rustc 1.93.0。脱敏结果位于被忽略的 `evidence/local/nextgen-2026-10-26/lifecycle-tauri-lease-probe.json`。
 
-## 2026-10-27 原生窗口动作与 Obsidian Workspace 联调
+## 2026-10-27 原生窗口动作
 
 | 范围 | 状态 | 实际结果与边界 |
 |---|---|---|
@@ -359,10 +359,10 @@ shutdown 版在独立 Cargo target 中构建并以单实例运行。Computer Use
 | 当前 release 的真实 Tauri host | PASS（协议） | `lease_probe.py` 31 项通过；`native_windows=true` 时宣告 `external_window_actions`。完整协议探针仍使用合成数据，不证明人工鼠标路径。|
 | 当前代码的真实 headless Rust host | PASS（协议） | `lease_probe.py` 31 项通过；`native_windows=false` 时不宣告并拒绝外部窗口动作。临时 headless 进程已退出；临时目录尚有一个 descriptor 文件，内容未读取，也未复制进仓库或证据。|
 | TrafficMonitor provider | PASS（真实来源链路） | 新 x64 TrafficMonitor 副本仍运行；新 provider 连上本次 release，状态为空、age=0、generation/revision 持续增长并报告 1.8.6.0。日志没有记录指标读数。|
-| Obsidian Obsidian Workspace 数据链路 | PASS（只读） | 用户选择的仪表盘只读投影曾持续更新并获得 native applied 回执；公共记录不含 vault 标识、投影数量、笔记内容或 runtime 信息。|
+| Obsidian Workspace 数据链路 | NOT_RUN | 当前通用插件/Provider 代码还没有真实 Obsidian 插件与 release 宿主联合验收。|
 | Popup-Ask 并发配额子项 | PASS（unit/cross-process/current Tauri busy smoke） | Windows 本机会话命名互斥体限制一个 Popup-Ask provider；同进程、独立子进程竞争和 busy-before-client/create 均有回归。当前 Tauri release 上第一个合成 Popup 世界创建并由 Provider 清理，第二个独立 Provider 返回 busy/no-second-window。server unit 还确认 manager scene 会列出 invite Popup world 且不改变其 writer/epoch；管理器可见性、实际焦点是否被抢仍 NOT_RUN，因此 B03-02-A3 整体保持 PARTIAL。|
 | Popup provider 状态机与 headless wire | PASS（自动） | 22 项 Popup 专项测试覆盖成功 ACK 后单次销毁、重复 submit、取消/Escape/窗口关闭、超过 10 秒的整体等待、断线、ACK未知、busy 时错误退出与清理失败；Rust manager unit 确认 invite Popup world 出现在管理器 scene 且 writer/epoch 不变；真实 Rust headless host + 安装的 Popup-Ask skill 对合成请求验证 timeout/world.destroy 与并发 busy 拒绝，关闭后 descriptor count=0。首次 PowerShell 汇总器对空 stderr 调用 `.Contains` 而退出 1；后续 Python 结构化解析确认了所有结果字段，失败与复核均保存在本机证据。真实 Tauri Popup 的成功/取消、键盘/IME/读屏、管理器可见性及 native position reopen 仍 NOT_RUN。|
-| 原生窗口动作人工点击 | NOT_RUN | 当前 release 的 Obsidian Workspace 标题声明 `obsidian/activate`；等待用户点击标题确认确实激活现有 Obsidian 窗口。后台 Python 进程直接调用 `SetForegroundWindow` 的诊断失败，故已移除提供者直接操作路径，改由接收用户点击的 Tauri 宿主执行。|
+| 原生窗口动作人工点击 | NOT_RUN | 当前通用 Obsidian Workspace 标题声明受限的 `obsidian/activate`；真实 release 点击与 Windows 前台限制成功/失败路径仍待本机观察。|
 | 托盘管理器打开与全局隐藏/显示 | NOT_RUN | 早期版本中用户报告“显示世界管理器”无响应；新 release 尚待用户重新检查托盘菜单、管理器聚焦和全局隐藏/恢复。|
 | ExoMind | BLOCKED（用户暂缓） | 没有读取连接配置、猜测端口/profile 或调用 API。|
 
@@ -554,19 +554,19 @@ CI 回顾：GitHub Actions 在 2026-10-28 连续 9 次于 `npm run check:local` 
 
 ## 2026-10-29 B07-04 多来源组合与故障隔离
 
-**Given** 两个互不重叠的 provider scope，分别由 TrafficMonitor bridge 与只读 Obsidian Obsidian Workspace 提供投影；**When** TrafficMonitor 的临时 x64 stage 被停止、其桥接快照转为过期；**Then** 仅 TrafficMonitor scope 更新为 stale，Obsidian Workspace scope 的投影保持不变，父 authority 仍独占窗口几何。
+**Given** 两个互不重叠的 provider scope，分别由 TrafficMonitor bridge 与通用 Obsidian Workspace 元数据 Provider 提供投影；**When** TrafficMonitor 的临时 x64 stage 被停止、其桥接快照转为过期；**Then** 仅 TrafficMonitor scope 更新为 stale，Obsidian scope 的投影保持不变，父 authority 仍独占窗口几何。
 
 Core 新增可复现 seed 的 96 步 interleaving regression，交错执行两个 scope 的局部 props/data/CAS 写、越界 sibling 写与旧 revision 写。每步验证 owner scope generation、schema/value、reader grant generation、两边 namespace 与组件 props 独立；随后断开 scope A writer、用新会话/epoch 重加入、拒绝旧 lease，再删除 scope A 并验证其 owner slot 删除、scope B reader grant 清理。测试不依赖随机 crate，失败序列稳定可复现。
 
-真实来源窄验收使用当前已授权的两条本地只读来源：TrafficMonitor bridge 提供由 `OnMonitorInfo` 持续生成的 snapshot；Obsidian CLI 对用户当前活动 vault 执行仓库内固定的 Obsidian Workspace dashboard 查询。组合 probe 把两个来源投影到分离的 `traffic` 与 `life` data namespace，并各自连接一个 scope writer。验收通过后只停止临时 stage copy 进行故障注入；原安装与配置不变，Obsidian 笔记/插件设置没有写入，临时 WinCraft world 已销毁。为了避免环境中原始 stage 携带的 `TrafficMonitor.sys`，`stage_demo.ps1` 现在从临时副本中排除该系统驱动；fresh configuration 未复制。
+此处原来源联调不再作为当前通用 Obsidian Provider 的验收证据。新的公开组合探针读取本地插件生成的文件/工作区元数据快照，并用分离的 `traffic` 与 `obsidian` namespace 检查 sibling scope 隔离；本机插件实例与故障注入用例尚未重跑。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `cargo test -p wincraft-core --test invariants deterministic_multiscope_interleavings_preserve_owners_and_sibling_business_state -- --nocapture` | PASS | seed 0x0b070403 的 96 步 interleaving 通过；跨 scope / stale revision 写不提交，disconnect 后 sibling scope data 与 subtree 不变，新 lease 取得更高 epoch，父删除清理 owner slot 和 reader grant。|
-| `python -m unittest tests.test_multisource_composition tests.test_trafficmonitor_provider tests.test_trafficmonitor_staged_config -v` | PASS | 12 tests；组合 scene 只使用两组 namespaced bindings，Obsidian Workspace scope 使用 display-only title；来源错误 projection 仅在本 scope 变化并保留 last reading。|
+| `python -m unittest tests.test_multisource_composition tests.test_trafficmonitor_provider tests.test_trafficmonitor_staged_config -v` | NOT_RUN（旧结果撤回） | 先前该命令中的 Obsidian 来源实现已被通用插件样例替换；需要基于当前实现重跑组合 probe 后再登记 PASS。|
 | TrafficMonitor bridge x64 build + isolated stage | PASS | `build_bridge.ps1 -Architecture x64` 与 `stage_demo.ps1 -EnableBridgeItem` 成功；version 1.8.6.0，`ReuseConfiguration=false`，没有 optional driver 被复制。原先的 stale stage process 被停止，新临时 stage 在故障注入后重启并再次确认 snapshot fresh/advancing。|
-| Obsidian Obsidian Workspace fixed CLI query | PASS | Obsidian CLI 在已打开的活动 vault 找到 Obsidian Workspace dashboard，返回结构通过 provider 解析。vault 名、笔记标题、事项与提醒内容不写入日志或 evidence。|
-| `composition_probe.py` + real headless Rust WebSocket | PASS | 两个真实来源先写入分离 scope；停止 staged TrafficMonitor 后，仅 traffic scope 变 stale，Obsidian Workspace scope 数据完全相同；临时 world 销毁成功。未连接 Tauri renderer。|
+| Obsidian Workspace 本机插件快照 | NOT_RUN | 未在真实 Obsidian 窗口中加载当前插件样例。|
+| `composition_probe.py` + real headless Rust WebSocket | NOT_RUN | 当前组合探针已切换为通用插件快照，仍需真实来源验收；合成结构测试不算 headless 实源 PASS。|
 | `npm run check:local` | PASS | 28 Node UI tests、offline schema/contracts、Rust fmt/check/test/Clippy、90 Python tests 与 19 Provider Skill references 全部通过；Rust workspace 共 107 tests（core unit 10、core invariants 60、desktop 18、server 19）。|
 | GitHub Actions run `40814128343` | PASS | Windows hosted `npm run check:local` succeeded; source job completed in 6m03s. This verifies the committed source checks, not native GUI acceptance. |
 | B07-04 Tauri release/native UI | NOT_RUN | 此验收检查 scope 权限与业务数据隔离；窗口几何仍只由 root authority 控制。|
@@ -981,6 +981,26 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B06-04-A2 判定 | PARTIAL | 本次合成包静态卫生通过；第二个独立用户/设备导入相同包仍 NOT_RUN。A1 clean-install 不自动下载/执行 Provider 与 A3 缺失区域管理器可见解释也仍需独立环境/原生 UI 验收。|
 
 忽略的本机证据：`evidence/local/nextgen-2026-10-31/b06-04-synthetic-export-audit.json` 与归档 `workday-synthetic-20261031-2.wcp`。
+
+## 2026-10-31 本机试用入口、Obsidian Workspace 与 Provider bundle
+
+**Given** 用户使用管理器复制 runtime descriptor、拖入 WCP 并选择启用本机数据来源；**When** descriptor copy、WCP preview/install/launch、Obsidian 元数据和额度来源选择运行；**Then** 管理器只允许本机用户在最后确认后运行代码包；Obsidian 投影只含插件生成的本机元数据；未选额度来源不占位显示。
+
+| 检查 | 状态 | 实际结果与边界 |
+|---|---|---|
+| `npm run check:local` | PASS | UI 30 tests；Rust 155 tests passed、1 个依赖本地产物的定向 test ignored；Python 238 tests passed、1 个 Windows symlink 能力用例 skipped；离线契约、严格构建与 Clippy 通过。|
+| `scripts/browser_smoke.py` | PASS（浏览器 DOM，不是原生） | 使用本机 Chromium-compatible Edge 与当前构建 TypeScript 模块，28 项合成 DOM 检查通过，包含动态组件、折叠/展开、滚动条、文本溢出、主题和 Obsidian Workspace 动作。新结果在 ignored local evidence；`evidence/assistant-run/` 原始文件已恢复原样。|
+| Provider bundle parser | PASS | 拒绝路径穿越、Windows 保留路径、超大 manifest、runtime/extension 不匹配、预览后归档变化、已安装入口篡改和同版本覆盖。预览/解包本身不会执行入口。|
+| `python scripts/build_provider_bundle.py` + Host parser | PASS | 构建忽略目录中的合成 `.wcp`，Rust Host parser 成功预览 manifest、Python 入口、文件上限与摘要；包不含 runtime descriptor 或业务数据。|
+| Manager launch gate | PASS（unit） | 模拟 provider launcher 验证：未请求确认时启动次数为 0；第一次操作只打开确认；第二次明确确认才启动。真实 Manager 点击与 child 进程退出状态仍待原生 UI 验收。|
+| `scripts/model_quota_headless_smoke.py` | PASS | 真实 release headless Rust Host + 合成 Codex rollout；不读真实凭据、不联网；Provider exit 0 并确认自己的 world 已清理，随后按 smoke 策略强制停止 Host；临时文件删除。|
+| `npm run desktop:build` | PASS | exit 0；生成 `target/release/wincraft-desktop.exe`，14,209,536 bytes，SHA-256 `E8F949E73C0A4BD0182B26D327162599F133658A244B4B498E1DF9978C447B76`。当前 Host 用 `--open-manager` 独立启动，供用户手工验收。|
+| 合成 `.wcp` 用户拖放/安装/运行 | NOT_RUN | 代码包解析与安装单元测试通过；本轮未用 Computer Use 对 Manager 进行原生拖放/按钮点击。|
+| Obsidian Workspace 插件与原生数据流 | NOT_RUN | 通用插件 ZIP 和 Provider 已构建；没有将插件安装到用户 Vault，也没有把任何 Vault 数据读入验证。插件多窗口计数只覆盖启用本插件的实例。|
+| 管理器 descriptor copy | PARTIAL | Rust 命令仅允许 exact internal Manager world 并从 Host descriptor guard 读取路径；授权单测通过。系统剪贴板真实写入未通过原生 UI 点击验收。|
+| 本机图形化额度来源配置 | PARTIAL | 选择/增删、API Key 不落盘与长时间配置窗口 ACK 栅栏有 Python 回归；Tk 来源选择器未在真实桌面内操作，真实账户/网络读取均未执行。|
+
+本机 `target/` 中同时生成 `target/provider-bundles/wincraft-sample-provider.wcp` 与 `target/obsidian-plugin/wincraft-workspace-dashboard.zip`；这两个构建产物未纳入 Git。真实 Obsidian、深色主题/视觉体验、窗口拖放、系统剪贴板与 provider live launch 均应由用户手工验收后再标 PASS。原始 `evidence/assistant-run/` 未修改，逐机日志仍留在忽略的 `evidence/local/`。
 
 ## 2026-10-31 B06-03 Host 行为回归复跑
 

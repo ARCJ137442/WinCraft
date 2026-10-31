@@ -33,15 +33,15 @@
 
 ## 2026-10-26 本机实测摘要
 
-- `npm run desktop:build` 成功；E: 临时 target 下的独立 release EXE 使用 `--open-manager` 启动，真实 TrafficMonitor 与 Obsidian Workspace provider 均接入该实例。不带该参数仍保持托盘优先。
+- `npm run desktop:build` 成功；独立 release EXE 使用 `--open-manager` 启动，真实 TrafficMonitor provider 曾接入该实例。不带该参数仍保持托盘优先。
 - 当前 release 接入 TrafficMonitor V1.86 x64 Lite，实际 `OnMonitorInfo` 样本持续进入世界；从当前源码重编的桥接快照报告 1.8.6.0，generation/revision 前进，不记录读数。
 - 当前 lifecycle release 的 `lease_probe.py` 完成 28 项真实 Tauri-hosted Rust WebSocket 检查，包含严格 0.3 握手、拒绝旧版本、world.list 隔离、`text_selectable` 默认/读写、窗口属性、租约过期/断线 fencing、慢消费者和正向 `scene.patch`；不替代像素和人工鼠标验收。
-- 当前 release 的 Obsidian Obsidian Workspace provider 从明确打开的 dashboard 读取只读摘要，native report 为 applied；未写入笔记或插件设置。
+- 当前仓库包含通用 Obsidian Workspace 插件与 Provider 示例；本机 Obsidian 插件加载、数据更新和窗口激活尚未验收。
 - 用户报告最新手工检查中的内容高度/窗口滚动条、动态组件动作等项目通过；但托盘“显示世界管理器”点击无响应，此项需修复并复测。此前版本托盘图标/菜单可用、悬浮窗可见且可拖动。最新 release 的像素级标题栏拖动/折叠、托盘全局隐藏/恢复、无标题栏 HUD、文本选择鼠标手势、多 DPI/显示器、click-through 救援和虚拟桌面行为仍需逐项验收。
 
 ## 2026-10-27 原生动作实现状态
 
-Tauri 侧已添加 host-owned 的受限跨应用窗口动作。`surface_interact` 在同一核心锁内验证 accepted scene、revision、有效 writer lease 和 disabled 状态，随后按 allowlist 定位窗口并执行枚举操作，再把原静态动作派发给 provider。当前实际 Obsidian Workspace provider 声明 Obsidian `activate`；单一匹配直接执行，多匹配仅使用当前前台匹配窗口，否则要求更窄的标题筛选，不按枚举顺序盲选。原生动作支持 activate/maximize/restore/minimize；本轮 Rust/schema 检查和独立 release 构建通过，真实用户点击与 Windows 前台限制的成功路径仍待人工验收。
+Tauri 侧已添加 host-owned 的受限跨应用窗口动作。`surface_interact` 在同一核心锁内验证 accepted scene、revision、有效 writer lease 和 disabled 状态，随后按 allowlist 定位窗口并执行枚举操作，再把原静态动作派发给 provider。Obsidian 激活动作只筛选既有窗口；单一匹配直接执行，多匹配仅使用当前前台匹配窗口，否则要求更窄的标题筛选，不按枚举顺序盲选。原生动作支持 activate/maximize/restore/minimize；本轮 Rust/schema 检查和独立 release 构建通过，真实用户点击与 Windows 前台限制的成功路径仍待人工验收。
 
 原生资源状态与业务状态分离。收到一个版本化窗口意图后，监督循环尝试应用；失败保留错误，隔一定时间重试。窗口被操作员销毁后移除核心世界并关闭 native 资源。
 

@@ -2,7 +2,7 @@
 
 这是可以交给本地 Codex **检验、修订、编译并跑通**的初版源码，不是只包含方案的空仓库，也不是已验收的 Windows 应用。
 
-2026-10-26 本机已通过 Rust workspace 测试、lifecycle Tauri release 独立启动，以及 TrafficMonitor x64 与 Obsidian Obsidian Workspace 只读 provider 联调；这不等于全部人工原生验收完成。摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，机器专属的逐项记录在默认不提交的 `evidence/local/`。
+2026-10-31 本机已通过 Rust workspace 测试、lifecycle Tauri release 独立启动，以及 TrafficMonitor x64 Provider 联调；通用 Obsidian Workspace 示例仍需真实 Obsidian 插件与原生窗口验收。摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，机器专属的逐项记录在默认不提交的 `evidence/local/`。
 
 ## 给人的最短阅读路径
 

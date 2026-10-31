@@ -21,7 +21,8 @@ WinCraft 提供者只发送声明式组件、数据和静态动作回执。业�
 | 主题与窗口 | 使用有限主题 token 和窗口属性；尊重人类拖动与接管 | 教程第 4 课、`examples/python/theme_demo.py` | `theme_tokens`、`window_properties` |
 | 语义定位 | 在 provider 几何模式下使用工作区角落锚点；理解 DPI 换算和本地救援 | `docs/protocol.md`、`examples/python/lease_probe.py` | `window_property:anchor`、`geometry_control` |
 | 观察与原生能力 | 订阅窗口状态；在用户点击后请求已登记应用动作 | `references/window-events.md`、`references/native-window-actions.md` | `window_state_events`、`external_window_actions` |
-| 数据包式适配 | 将外部来源投影成可重建组件树，不复制来源业务状态 | `examples/python/trafficmonitor_provider.py`、`examples/python/obsidian-workspace.py` | 来源授权、数据新鲜度、只读边界 |
+| 数据包式适配 | 将外部来源投影成可重建组件树，不复制来源业务状态 | `examples/python/trafficmonitor_provider.py`、`examples/python/obsidian_workspace.py` | 来源授权、数据新鲜度、只读边界 |
+| 提供者代码包 | 用 `.wcp` 分发独立入口，预览、解包、最终确认后启动 | `examples/provider-bundle-sample/`、`scripts/build_provider_bundle.py` | 不自动安装依赖；运行代码可访问当前用户和被传入的 Host 连接权限 |
 | 配置包接入 | 用无代码 `.wcp` 蓝图声明依赖；由本机管理器预览、授权并创建新世界 | [`tools/pack/README.md`](../tools/pack/README.md)、`examples/python/pack_provider_demo.py` | `provider_import` capability、`world.import.accept`、本机确认与 generation 变更后重规划 |
 
 ## 每层的完成证据
@@ -34,6 +35,7 @@ WinCraft 提供者只发送声明式组件、数据和静态动作回执。业�
 6. **观察与原生能力**：订阅不授予读权或写权；原生动作只由用户点击触发，失败不伪造成功。
 7. **数据包式适配**：来源断开显示 stale/waiting，不把缺失值改成零；连接重建使用新 session/lease。
 8. **配置包接入**：导出物只含 manifest/blueprint；Provider 进程保持独立并显式声明 `world.import.accept`，本机用户选择来源、批准所需权限、重新预览，再确认创建。Host 不安装/运行 Provider；回退只移除 ledger 仍匹配的新增世界。
+9. **拖入可执行 Provider**：使用独立 `wincraft.provider-bundle` kind；预览不执行，安装只解包，最终运行逐次确认；依赖不会自动安装，连接 descriptor 只交给用户确认的子进程。
 
 ## 固定排错顺序
 

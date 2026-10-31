@@ -1,8 +1,9 @@
-import type {Snapshot} from './types.js';
+import type {Snapshot,TauriApi} from './types.js';
 import {displayActionFeedback,errorDetails,newer,type ActionFeedback} from './bindings.js';
 import {SceneRenderer} from './renderer.js';
 import {demoSnapshot,previewController} from './demo.js';
 import {initializeAccessibility} from './accessibility.js';
+import {acceptedProviderDrop,copyManagerDescriptor,previewDroppedProvider} from './manager_actions.js';
 import {getLocale,initializeLocale,setLocale,t} from './i18n.js';
 import {allowsBackgroundWindowDrag,normalizeNativeContentHeight,normalizeNativeContentWidth,shouldShowConnectionStatus,titlebarMovementExceedsDragThreshold} from './window_behavior.js';
 
@@ -54,6 +55,14 @@ const reportInteractionError=(error:unknown):void=>{
   renderActionStatus(current);
 };
 const sendInteraction=async(id:string,value:unknown,source:InteractionSource='click'):Promise<unknown>=>{
+  if(id==='descriptor-copy'){
+    try{
+      if(!window.__TAURI__)throw new Error('Tauri host unavailable');
+      const copied=await copyManagerDescriptor(current,()=>window.__TAURI__!.core.invoke('surface_copy_descriptor'));
+      if(!copied)throw new Error('World Manager only');
+    }
+    catch{throw new Error(t('manager.descriptor_missing'));}
+  }
   actionId=null;
   actionFeedback={state:'pending',message:t('interaction.submitting')};
   errors.textContent='';errors.hidden=true;
@@ -182,9 +191,28 @@ async function start():Promise<void>{
   void api.event.listen<string>('host/locale',event=>{setLocale(event.payload,false);syncContentCollapse();}).catch(report);
   void api.core.invoke<string>('surface_locale_get').then(locale=>setLocale(locale,false)).catch(report);
   interact=(nodeId,value,source)=>api.core.invoke('surface_interact',{nodeId,value,source,expectedRevision:current?.revision});
+  void api.webview.getCurrentWebview().onDragDropEvent(event=>{
+    if(event.payload.type!=='drop'||!current?.system)return;
+    const path=acceptedProviderDrop(event.payload.type,event.payload.paths??[]);
+    if(!path)return;
+    void previewDroppedProvider(path,(id,value)=>sendInteraction(id,value),waitForAction,api).catch(report);
+  }).catch(report);
   // Subscribe before initial fetch; sequence ordering fences the fetch/event race.
   await api.event.listen<Snapshot>('world/snapshot',event=>accept(event.payload));
   accept(await api.core.invoke<Snapshot>('surface_snapshot'));
+}
+async function waitForAction(eventId:string,api:TauriApi):Promise<void>{
+  const deadline=Date.now()+5000;
+  while(Date.now()<deadline){
+    const action=current?.actions.find(item=>item.id===eventId);
+    if(action&&action.status!=='pending'){
+      if(action.status==='error')throw new Error(action.message??t('error.action.failed'));
+      return;
+    }
+    accept(await api.core.invoke<Snapshot>('surface_snapshot'));
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  throw new Error(t('manager.package_timeout'));
 }
 const interactiveTargetSelector='button,input,textarea,select,a,[role="button"],[contenteditable="true"]';
 const textTargetSelector='#status-line,footer,#error,#action-status,.sr-only,.block-text,.block-badge,.metric-label,.metric-value,.metric-unit,.metric-caption,.progress-label,.chart-label,.chart-row-label,.chart-row-value,.kv-key-label,.kv-primary,.kv-secondary,.block-input label';

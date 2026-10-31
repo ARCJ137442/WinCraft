@@ -120,6 +120,13 @@ python examples/python/exomind_readonly.py --runtime "<WinCraft 实际描述文�
 
 详细边界见 `docs/integration-exomind.md`。已有源码支持 `GET /timeblocks/active?user_id=...`，但真实返回结构/鉴权/运行端口都需要当前现场核验。不得把 404 直接当成“用户没有时间块”；它也可能是端点不匹配。
 
+### F. 本机试用与 `.wcp` 提供者包
+
+- 世界管理器中可以复制 runtime descriptor 路径；双击 `examples/launchers/start-model-quota.cmd` 会让用户粘贴路径并点选已实现的额度来源。
+- Obsidian 通用插件、Provider 和双语说明见 `examples/obsidian-plugin/`、`examples/python/obsidian_workspace.py`、[中文指南](docs/integration-obsidian.zh-CN.md)与[English guide](docs/integration-obsidian.en-US.md)。它只呈现本机文件/工作区元数据和本地专注计时；不读笔记正文。
+- 配置型 `wincraft.pack.draft` 与 `wincraft.provider-bundle` 是不同 `.wcp` manifest kind。代码包拖入只预览，安装只解包，最终运行单独确认；不自动安装依赖，不使用 shell。运行包会得到 runtime descriptor，因此必须确认来源与代码。
+- 当前合成代码包由 `python scripts/build_provider_bundle.py` 生成；插件 ZIP 由 `python scripts/package_obsidian_plugin.py` 生成。两者输出在 ignored `target/`，不可把 `evidence/local` 或真实 descriptor 放入提交。
+
 ## 代码地图与优先审查点
 
 | 入口 | 最该看什么 |

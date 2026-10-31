@@ -43,7 +43,7 @@
       "kind": "repository-reported",
       "version_or_blob": "8da884b36796ccbbd5ff5db3792171b090faaa78",
       "visibility": "public",
-      "supported_claim": "仓库报告的 0.3 协议、Rust、Tauri、TrafficMonitor、Obsidian Workspace 验收；原生人工门仍有未执行项。",
+      "supported_claim": "仓库报告的 0.3 协议、Rust、Tauri 与 TrafficMonitor 验收；原生人工门仍有未执行项。",
       "limitation": "支持所列范围，不等于 WinCraft 已实现或本轮实机复测。"
     },
     {

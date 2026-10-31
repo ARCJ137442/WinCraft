@@ -22,5 +22,6 @@ export interface Snapshot {
 export interface TauriApi {
   core:{invoke<T>(command:string,args?:Record<string,unknown>):Promise<T>};
   event:{listen<T>(event:string,handler:(event:{payload:T})=>void):Promise<()=>void>};
+  webview:{getCurrentWebview():{onDragDropEvent(handler:(event:{payload:{type:string;paths?:string[]}})=>void):Promise<()=>void>}};
 }
 declare global { interface Window { __TAURI__?:TauriApi } }

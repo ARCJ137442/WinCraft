@@ -21,7 +21,8 @@
 | 当前 alpha release 的中文操作与验收指南 | [release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md) |
 | 风险与修订优先级 | [engineering/KNOWN_LIMITS.md](engineering/KNOWN_LIMITS.md) |
 | 外心迁移和桥接 | [integration-exomind.md](integration-exomind.md) |
-| Obsidian Obsidian Workspace 仪表盘只读投影 | [integration-obsidian.md](integration-obsidian.md) |
+| Obsidian 通用工作区悬浮窗（中文） | [integration-obsidian.zh-CN.md](integration-obsidian.zh-CN.md) |
+| Generic Obsidian Workspace HUD (English) | [integration-obsidian.en-US.md](integration-obsidian.en-US.md) |
 | 非本机提供者 | [remote.md](remote.md) |
 | 后续演进 | [roadmap.md](roadmap.md) |
 | 2026-10-26 平台演进交接包、需求追踪与状态 | [strategy/2026-10-26/START_HERE.md](strategy/2026-10-26/START_HERE.md) |
@@ -31,9 +32,12 @@
 | Host UI 中英文资源 | [apps/desktop/src/locales/zh-CN.json](../apps/desktop/src/locales/zh-CN.json)、[en-US.json](../apps/desktop/src/locales/en-US.json) |
 | Agent 提供者入门与 TrafficMonitor 接入 | [skills/wincraft-provider/SKILL.md](../skills/wincraft-provider/SKILL.md)、[references/trafficmonitor.md](../skills/wincraft-provider/references/trafficmonitor.md) |
 | 配置型 `.wcp` 导出与本机管理器导入 | [tools/pack/README.md](../tools/pack/README.md)、[合成包人工验收](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md#b06-03-配置包导入人工验收) |
+| `.wcp` 提供者代码包与明确启动确认（中文） | [provider-bundles.zh-CN.md](provider-bundles.zh-CN.md) |
+| `.wcp` Provider code bundles (English) | [provider-bundles.en-US.md](provider-bundles.en-US.md) |
 | 配置包新机器/来源状态边界 | [configuration-pack-status.md](integrations/configuration-pack-status.md)、[configuration-pack-new-machine.md](integrations/configuration-pack-new-machine.md) |
 | Agent Activity 三来源只读总览示例 | [examples/integrations/agent-board/README.md](../examples/integrations/agent-board/README.md) |
-| Codex rollout、DeepSeek 与 MiniMax 本机额度 HUD（TeamSense 仅作实现参考） | [examples/integrations/model_quota/README.md](../examples/integrations/model_quota/README.md) |
+| Codex rollout、DeepSeek 与 MiniMax 本机额度 HUD（中文） | [examples/integrations/model_quota/README.zh-CN.md](../examples/integrations/model_quota/README.zh-CN.md) |
+| Model quota HUD (English) | [examples/integrations/model_quota/README.md](../examples/integrations/model_quota/README.md) |
 | 宿主原生窗口动作 allowlist | [references/native-window-actions.md](../skills/wincraft-provider/references/native-window-actions.md) |
 | Popup-Ask 到临时 WinCraft 世界的可选传输 | [references/popup-ask.md](../skills/wincraft-provider/references/popup-ask.md) |
 | 可提交的本机验收摘要 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |

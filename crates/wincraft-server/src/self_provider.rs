@@ -1,12 +1,18 @@
 //! A local provider that builds the manager/settings world using the SAME scene
 //! vocabulary and exclusive-writer engine as external providers. Only explicit
 //! operator actions (rescue/destroy) have extra authority.
-use crate::pack_import::{ImportReceipt, PackPreview, PlanStatus, RollbackReceipt};
+use crate::{
+    pack_import::{ImportReceipt, PackPreview, PlanStatus, RollbackReceipt},
+    provider_package::{
+        install_provider_bundle_file, preview_provider_bundle_file, InstalledProviderBundle,
+        ProviderBundlePreview,
+    },
+};
 use crate::{Hub, Notice};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -27,6 +33,16 @@ pub trait ShortcutHost: Send + Sync {
     fn unregister(&self, chord: &str) -> std::result::Result<(), String>;
 }
 
+/// The desktop host is the only component allowed to launch installed Provider
+/// code. The manager calls this only after the user confirms the launch dialog.
+pub trait ProviderBundleLauncher: Send + Sync {
+    fn launch(
+        &self,
+        bundle: &InstalledProviderBundle,
+        runtime_descriptor: &Path,
+    ) -> std::result::Result<(), String>;
+}
+
 #[derive(Clone)]
 struct Settings {
     title: String,
@@ -41,6 +57,12 @@ struct Settings {
     pack_preview: Option<PackPreview>,
     pack_notice: Option<String>,
     pending_rollback: Option<Uuid>,
+    provider_bundle_preview: Option<ProviderBundlePreview>,
+    installed_provider_bundle: Option<InstalledProviderBundle>,
+    provider_bundle_notice: Option<String>,
+    pending_provider_launch: bool,
+    provider_store: PathBuf,
+    provider_launcher_available: bool,
 }
 
 impl Default for Settings {
@@ -58,6 +80,12 @@ impl Default for Settings {
             pack_preview: None,
             pack_notice: None,
             pending_rollback: None,
+            provider_bundle_preview: None,
+            installed_provider_bundle: None,
+            provider_bundle_notice: None,
+            pending_provider_launch: false,
+            provider_store: PathBuf::new(),
+            provider_launcher_available: false,
         }
     }
 }
@@ -135,7 +163,7 @@ impl ManagerProvider {
         )
     }
     pub fn spawn(&self, hub: Hub, descriptor_path: String) {
-        self.spawn_inner(hub, descriptor_path, None);
+        self.spawn_inner(hub, descriptor_path, None, None, PathBuf::new());
     }
     pub fn spawn_with_shortcut_host(
         &self,
@@ -143,19 +171,45 @@ impl ManagerProvider {
         descriptor_path: String,
         shortcut_host: Arc<dyn ShortcutHost>,
     ) {
-        self.spawn_inner(hub, descriptor_path, Some(shortcut_host));
+        self.spawn_inner(
+            hub,
+            descriptor_path,
+            Some(shortcut_host),
+            None,
+            PathBuf::new(),
+        );
+    }
+    pub fn spawn_with_desktop_hosts(
+        &self,
+        hub: Hub,
+        descriptor_path: String,
+        shortcut_host: Arc<dyn ShortcutHost>,
+        provider_launcher: Arc<dyn ProviderBundleLauncher>,
+        provider_store: PathBuf,
+    ) {
+        self.spawn_inner(
+            hub,
+            descriptor_path,
+            Some(shortcut_host),
+            Some(provider_launcher),
+            provider_store,
+        );
     }
     fn spawn_inner(
         &self,
         hub: Hub,
         descriptor_path: String,
         shortcut_host: Option<Arc<dyn ShortcutHost>>,
+        provider_launcher: Option<Arc<dyn ProviderBundleLauncher>>,
+        provider_store: PathBuf,
     ) {
         let manager = self.clone();
         tokio::spawn(async move {
             let mut settings = Settings {
                 title: manager_text(&hub.locale(), "manager.default_world"),
                 shortcut_available: shortcut_host.is_some(),
+                provider_launcher_available: provider_launcher.is_some(),
+                provider_store,
                 ..Settings::default()
             };
             let mut events = hub.subscribe();
@@ -183,7 +237,7 @@ impl ManagerProvider {
                             Ok(Notice::Directed(sid,value)) if sid==manager.session=>{
                                 if let Some(data)=value.get("data"){
                                     if let Ok(event)=serde_json::from_value::<UiEvent>(data.clone()){
-                                        let result=manager.handle_with_shortcut_host(&hub,&mut settings,&event,shortcut_host.as_deref());
+                                        let result=manager.handle_with_hosts(&hub,&mut settings,&event,shortcut_host.as_deref(),provider_launcher.as_deref(),Path::new(&descriptor_path));
                                         let (ok,message)=match result{Ok(())=>(true,None),Err(e)=>(false,Some(e.to_string()))};
                                         let _=hub.dispatch(manager.session,"action.result",json!({"world_id":manager.world_id,"lease":manager.lease,
                                             "event_id":event.id,"ok":ok,"message":message}));
@@ -213,6 +267,7 @@ impl ManagerProvider {
     fn handle(&self, hub: &Hub, s: &mut Settings, event: &UiEvent) -> Result<()> {
         self.handle_with_shortcut_host(hub, s, event, None)
     }
+    #[cfg(test)]
     fn handle_with_shortcut_host(
         &self,
         hub: &Hub,
@@ -220,11 +275,23 @@ impl ManagerProvider {
         event: &UiEvent,
         shortcut_host: Option<&dyn ShortcutHost>,
     ) -> Result<()> {
+        self.handle_with_hosts(hub, s, event, shortcut_host, None, Path::new(""))
+    }
+    fn handle_with_hosts(
+        &self,
+        hub: &Hub,
+        s: &mut Settings,
+        event: &UiEvent,
+        shortcut_host: Option<&dyn ShortcutHost>,
+        provider_launcher: Option<&dyn ProviderBundleLauncher>,
+        runtime_descriptor: &Path,
+    ) -> Result<()> {
         match event.action.as_str() {
             "new_world" => {
                 hub.dispatch(self.session,"world.create",json!({"window":{"title":s.title,"always_on_top":s.always_on_top},"join_policy":"open_authenticated","claim":false}))?;
             }
             "refresh" => {}
+            "manager.descriptor.copy" => {}
             "settings.title" => {
                 let value = event
                     .value
@@ -305,12 +372,35 @@ impl ManagerProvider {
                     .take(1024)
                     .collect();
                 s.pack_notice = None;
+                s.provider_bundle_preview = None;
+                s.installed_provider_bundle = None;
+                s.provider_bundle_notice = None;
+                s.pending_provider_launch = false;
             }
             "pack.preview" => {
                 let path = PathBuf::from(s.pack_path.trim());
-                let preview =
-                    hub.preview_pack_file(self.session, &path, s.pack_selections.clone())?;
-                s.pack_preview = Some(preview);
+                match preview_provider_bundle_file(&path) {
+                    Ok(preview) => {
+                        s.pack_preview = None;
+                        s.provider_bundle_preview = Some(preview);
+                        s.installed_provider_bundle = None;
+                        s.provider_bundle_notice = None;
+                        s.pending_provider_launch = false;
+                    }
+                    Err(provider_error) => {
+                        match hub.preview_pack_file(self.session, &path, s.pack_selections.clone())
+                        {
+                            Ok(preview) => {
+                                s.pack_preview = Some(preview);
+                                s.provider_bundle_preview = None;
+                                s.installed_provider_bundle = None;
+                                s.provider_bundle_notice = None;
+                                s.pending_provider_launch = false;
+                            }
+                            Err(_) => return Err(provider_error),
+                        }
+                    }
+                }
                 s.pack_notice = None;
                 s.pending_rollback = None;
             }
@@ -319,7 +409,76 @@ impl ManagerProvider {
                     hub.cancel_pack_preview(self.session, preview.preview_id)?;
                 }
                 s.pack_preview = None;
+                s.provider_bundle_preview = None;
+                s.installed_provider_bundle = None;
+                s.pending_provider_launch = false;
                 s.pack_notice = Some(manager_text(&hub.locale(), "manager.import.cancelled"));
+            }
+            "provider.bundle.install" => {
+                let preview = s.provider_bundle_preview.as_ref().ok_or_else(|| {
+                    Fault::new(
+                        "PROVIDER_PACKAGE_NOT_PREVIEWED",
+                        "preview the Provider package first",
+                    )
+                })?;
+                if s.provider_store.as_os_str().is_empty() {
+                    return Err(Fault::new(
+                        "PROVIDER_PACKAGE_STORE_UNAVAILABLE",
+                        "the local Provider package store is unavailable",
+                    ));
+                }
+                let installed = install_provider_bundle_file(
+                    Path::new(s.pack_path.trim()),
+                    &s.provider_store,
+                    &preview.sha256,
+                )?;
+                s.installed_provider_bundle = Some(installed);
+                s.pending_provider_launch = false;
+                s.provider_bundle_notice = Some(manager_text(
+                    &hub.locale(),
+                    "manager.provider_bundle.installed",
+                ));
+            }
+            "provider.bundle.launch.request" => {
+                if s.installed_provider_bundle.is_none() || !s.provider_launcher_available {
+                    return Err(Fault::new(
+                        "PROVIDER_LAUNCH_UNAVAILABLE",
+                        "install a reviewed Provider package in the desktop host first",
+                    ));
+                }
+                s.pending_provider_launch = true;
+                s.provider_bundle_notice = None;
+            }
+            "provider.bundle.launch.cancel" => {
+                s.pending_provider_launch = false;
+            }
+            "provider.bundle.launch.confirm" => {
+                if !s.pending_provider_launch {
+                    return Err(Fault::new(
+                        "PROVIDER_LAUNCH_CONFIRMATION_REQUIRED",
+                        "review and confirm Provider code execution first",
+                    ));
+                }
+                let bundle = s.installed_provider_bundle.as_ref().ok_or_else(|| {
+                    Fault::new(
+                        "PROVIDER_PACKAGE_NOT_INSTALLED",
+                        "install the Provider package first",
+                    )
+                })?;
+                let launcher = provider_launcher.ok_or_else(|| {
+                    Fault::new(
+                        "PROVIDER_LAUNCH_UNAVAILABLE",
+                        "desktop Provider launcher is unavailable",
+                    )
+                })?;
+                launcher
+                    .launch(bundle, runtime_descriptor)
+                    .map_err(|error| Fault::new("PROVIDER_LAUNCH_FAILED", error))?;
+                s.pending_provider_launch = false;
+                s.provider_bundle_notice = Some(manager_text(
+                    &hub.locale(),
+                    "manager.provider_bundle.started",
+                ));
             }
             a if a.starts_with("pack.select:") => {
                 let (preview_id, binding_id, instance_id) = parse_pack_choice(a, "pack.select:")?;
@@ -526,6 +685,76 @@ impl ManagerProvider {
                 vec![],
             ),
         ];
+
+        if let Some(preview) = &settings.provider_bundle_preview {
+            controls.push(node(
+                "provider-bundle-heading",
+                Kind::Text,
+                json!({"text":format!("{} · {} · {}",preview.title,preview.id,preview.version),"size":"heading"}),
+                vec![],
+            ));
+            controls.push(node(
+                "provider-bundle-warning",
+                Kind::Text,
+                json!({"text":manager_text(locale,"manager.provider_bundle.warning"),"tone":"danger"}),
+                vec![],
+            ));
+            controls.push(node(
+                "provider-bundle-details",
+                Kind::KeyValue,
+                json!({"items":[
+                    {"key":manager_text(locale,"manager.provider_bundle.runtime"),"value":format!("{:?}",preview.runtime)},
+                    {"key":manager_text(locale,"manager.provider_bundle.entrypoint"),"value":preview.entrypoint},
+                    {"key":manager_text(locale,"manager.provider_bundle.files"),"value":preview.file_count},
+                    {"key":manager_text(locale,"manager.provider_bundle.size"),"value":format!("{} KiB",preview.expanded_bytes.div_ceil(1024))},
+                    {"key":"Package SHA-256","value":preview.sha256},
+                    {"key":"Entrypoint SHA-256","value":preview.entrypoint_sha256}
+                ]}),
+                vec![],
+            ));
+            match &settings.installed_provider_bundle {
+                None => controls.push(node(
+                    "provider-bundle-install",
+                    Kind::Button,
+                    json!({"label":manager_text(locale,"manager.provider_bundle.install"),"action":"provider.bundle.install","tone":"accent"}),
+                    vec![],
+                )),
+                Some(installed) if settings.pending_provider_launch => {
+                    controls.push(node(
+                        "provider-bundle-confirm-warning",
+                        Kind::Text,
+                        json!({"text":format!("{} · {}",manager_text(locale,"manager.provider_bundle.confirm_warning"),installed.entrypoint),"tone":"danger"}),
+                        vec![],
+                    ));
+                    controls.push(node(
+                        "provider-bundle-confirm-launch",
+                        Kind::Button,
+                        json!({"label":manager_text(locale,"manager.provider_bundle.confirm_launch"),"action":"provider.bundle.launch.confirm","tone":"danger","disabled":!settings.provider_launcher_available}),
+                        vec![],
+                    ));
+                    controls.push(node(
+                        "provider-bundle-cancel-launch",
+                        Kind::Button,
+                        json!({"label":manager_text(locale,"manager.provider_bundle.cancel_launch"),"action":"provider.bundle.launch.cancel"}),
+                        vec![],
+                    ));
+                }
+                Some(_) => controls.push(node(
+                    "provider-bundle-launch-request",
+                    Kind::Button,
+                    json!({"label":manager_text(locale,"manager.provider_bundle.launch_request"),"action":"provider.bundle.launch.request","disabled":!settings.provider_launcher_available}),
+                    vec![],
+                )),
+            }
+            if let Some(message) = &settings.provider_bundle_notice {
+                controls.push(node(
+                    "provider-bundle-notice",
+                    Kind::Text,
+                    json!({"text":message,"tone":"success"}),
+                    vec![],
+                ));
+            }
+        }
 
         if let Some(preview) = &settings.pack_preview {
             controls.push(node(
@@ -869,10 +1098,23 @@ impl ManagerProvider {
                 vec![],
             ),
             node(
-                "descriptor",
-                Kind::KeyValue,
-                json!({"items":[{"key":manager_text(&locale,"manager.descriptor"),"value":descriptor},{"key":manager_text(&locale,"manager.save_policy_key"),"value":manager_text(&locale,"manager.save_policy")}]}),
-                vec![],
+                "descriptor-controls",
+                Kind::Row,
+                json!({"gap":8,"align":"center"}),
+                vec![
+                    node(
+                        "descriptor",
+                        Kind::KeyValue,
+                        json!({"items":[{"key":manager_text(&locale,"manager.descriptor"),"value":descriptor},{"key":manager_text(&locale,"manager.save_policy_key"),"value":manager_text(&locale,"manager.save_policy")}]}),
+                        vec![],
+                    ),
+                    node(
+                        "descriptor-copy",
+                        Kind::Button,
+                        json!({"label":manager_text(&locale,"manager.descriptor_copy"),"action":"manager.descriptor.copy"}),
+                        vec![],
+                    ),
+                ],
             ),
             node("worlds-line", Kind::Divider, json!({}), vec![]),
         ];
@@ -1077,7 +1319,14 @@ fn rollback_receipt_text(hub: &Hub, receipt: &RollbackReceipt) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{collections::BTreeSet, io::Write, sync::Mutex};
+    use std::{
+        collections::BTreeSet,
+        io::Write,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Mutex,
+        },
+    };
     use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     #[derive(Default)]
@@ -1109,6 +1358,97 @@ mod tests {
                 .remove(chord);
             Ok(())
         }
+    }
+
+    #[derive(Default)]
+    struct FakeProviderBundleLauncher {
+        launches: AtomicUsize,
+    }
+
+    impl ProviderBundleLauncher for FakeProviderBundleLauncher {
+        fn launch(
+            &self,
+            _bundle: &InstalledProviderBundle,
+            _runtime_descriptor: &Path,
+        ) -> std::result::Result<(), String> {
+            self.launches.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn provider_bundle_launch_requires_an_explicit_second_confirmation() {
+        let hub = Hub::new(true);
+        let manager = ManagerProvider::install(&hub).expect("manager installs");
+        let launcher = FakeProviderBundleLauncher::default();
+        let installed = InstalledProviderBundle {
+            id: "sample-provider".into(),
+            version: "1.0.0".into(),
+            title: "Synthetic Provider".into(),
+            runtime: crate::provider_package::ProviderRuntime::Python,
+            entrypoint: "main.py".into(),
+            install_dir: PathBuf::from("C:/synthetic/providers/sample-provider/1.0.0"),
+            sha256: "a".repeat(64),
+            entrypoint_sha256: "b".repeat(64),
+        };
+        let mut settings = Settings {
+            installed_provider_bundle: Some(installed),
+            provider_launcher_available: true,
+            ..Settings::default()
+        };
+        let descriptor = Path::new("C:/synthetic/runtime.json");
+
+        let early = manager.handle_with_hosts(
+            &hub,
+            &mut settings,
+            &action(
+                &manager,
+                "provider.bundle.launch.confirm".into(),
+                Value::Null,
+            ),
+            None,
+            Some(&launcher),
+            descriptor,
+        );
+        assert_eq!(
+            early.unwrap_err().code,
+            "PROVIDER_LAUNCH_CONFIRMATION_REQUIRED"
+        );
+        assert_eq!(launcher.launches.load(Ordering::SeqCst), 0);
+
+        manager
+            .handle_with_hosts(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    "provider.bundle.launch.request".into(),
+                    Value::Null,
+                ),
+                None,
+                Some(&launcher),
+                descriptor,
+            )
+            .expect("first action only opens the confirmation state");
+        assert!(settings.pending_provider_launch);
+        assert_eq!(launcher.launches.load(Ordering::SeqCst), 0);
+
+        manager
+            .handle_with_hosts(
+                &hub,
+                &mut settings,
+                &action(
+                    &manager,
+                    "provider.bundle.launch.confirm".into(),
+                    Value::Null,
+                ),
+                None,
+                Some(&launcher),
+                descriptor,
+            )
+            .expect("the final explicit action launches the installed package");
+        assert!(!settings.pending_provider_launch);
+        assert_eq!(launcher.launches.load(Ordering::SeqCst), 1);
     }
 
     fn write_import_fixture(permissions: &[&str]) -> PathBuf {

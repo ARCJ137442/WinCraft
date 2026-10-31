@@ -3,14 +3,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+MODEL_QUOTA_DIR = Path(__file__).resolve().parent
 PYTHON_EXAMPLES = Path(__file__).resolve().parents[2] / "python"
-if str(PYTHON_EXAMPLES) not in sys.path:
-    sys.path.insert(0, str(PYTHON_EXAMPLES))
+for import_path in (str(PYTHON_EXAMPLES), str(MODEL_QUOTA_DIR)):
+    if import_path not in sys.path:
+        sys.path.insert(0, import_path)
 
 from client import (  # noqa: E402
     Client,
@@ -19,26 +22,139 @@ from client import (  # noqa: E402
     event_world_id,
     require_runtime,
 )
-from codex_quota import (  # noqa: E402
-    refresh_codex_source,
-    synthetic_codex_quota,
-)
-from codex_rollout_quota import refresh_codex_rollout_source  # noqa: E402
-from provider_sources import (  # noqa: E402
-    DEEPSEEK_API_KEY_ENV,
-    MINIMAX_API_KEY_ENV,
-    refresh_local_sources,
-)
-from quota_projection import (  # noqa: E402
-    build_quota_scene,
-    normalize_quota_snapshot,
-    quota_window_spec,
-    synthetic_demo_snapshot,
-)
+if __package__:
+    from .codex_quota import refresh_codex_source, synthetic_codex_quota  # noqa: E402
+    from .codex_rollout_quota import refresh_codex_rollout_source  # noqa: E402
+    from .provider_sources import (  # noqa: E402
+        DEEPSEEK_API_KEY_ENV,
+        MINIMAX_API_KEY_ENV,
+        refresh_local_sources,
+    )
+    from .quota_projection import (  # noqa: E402
+        build_quota_scene,
+        normalize_quota_snapshot,
+        quota_window_spec,
+        synthetic_demo_snapshot,
+    )
+else:
+    from codex_quota import refresh_codex_source, synthetic_codex_quota  # noqa: E402
+    from codex_rollout_quota import refresh_codex_rollout_source  # noqa: E402
+    from provider_sources import (  # noqa: E402
+        DEEPSEEK_API_KEY_ENV,
+        MINIMAX_API_KEY_ENV,
+        refresh_local_sources,
+    )
+    from quota_projection import (  # noqa: E402
+        build_quota_scene,
+        normalize_quota_snapshot,
+        quota_window_spec,
+        synthetic_demo_snapshot,
+    )
 
 
 def __now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def show_source_configuration_dialog(
+    current: dict[str, bool], *, focus: str | None = None
+) -> dict[str, Any] | None:
+    """Show a local add/remove form; credentials remain in memory only."""
+    try:
+        import tkinter as tk
+        from tkinter import ttk
+    except Exception:
+        return None
+
+    root = tk.Tk()
+    root.title("模型额度来源")
+    root.resizable(False, False)
+    root.geometry("430x430")
+    root.minsize(430, 360)
+    root.grab_set()
+    root.focus_force()
+    result: dict[str, Any] | None = None
+    frame = ttk.Frame(root, padding=18)
+    frame.pack(fill="both", expand=True)
+    ttk.Label(frame, text="添加或移除额度来源", font=("Segoe UI", 14, "bold")).pack(anchor="w")
+    ttk.Label(
+        frame,
+        text="只勾选要显示的来源。API Key 仅在当前进程内存中使用，不会保存到文件。",
+        wraplength=390,
+    ).pack(anchor="w", pady=(6, 12))
+
+    flags = {
+        key: tk.BooleanVar(value=bool(current.get(key, False)))
+        for key in ("codex_rollout", "codex_live", "deepseek", "minimax")
+    }
+    if focus in flags:
+        flags[focus].set(True)
+    key_vars = {
+        "deepseek": tk.StringVar(value=os.environ.get(DEEPSEEK_API_KEY_ENV, "")),
+        "minimax": tk.StringVar(value=os.environ.get(MINIMAX_API_KEY_ENV, "")),
+    }
+
+    def select_codex_local() -> None:
+        if flags["codex_rollout"].get():
+            flags["codex_live"].set(False)
+
+    def select_codex_live() -> None:
+        if flags["codex_live"].get():
+            flags["codex_rollout"].set(False)
+
+    ttk.Checkbutton(
+        frame,
+        text="Codex 本机额度快照（不联网）",
+        variable=flags["codex_rollout"],
+        command=select_codex_local,
+    ).pack(anchor="w", pady=3)
+    ttk.Checkbutton(
+        frame,
+        text="Codex 在线额度（实验性只读）",
+        variable=flags["codex_live"],
+        command=select_codex_live,
+    ).pack(anchor="w", pady=3)
+
+    for source, label in (("deepseek", "DeepSeek API Key"), ("minimax", "MiniMax API Key")):
+        ttk.Checkbutton(frame, text=label, variable=flags[source]).pack(anchor="w", pady=(8, 2))
+        ttk.Entry(frame, textvariable=key_vars[source], show="•", width=50).pack(anchor="w")
+
+    status = ttk.Label(frame, text="取消会关闭此对话框且不改变当前来源。", wraplength=390)
+    status.pack(anchor="w", pady=(12, 8))
+    buttons = ttk.Frame(frame)
+    buttons.pack(fill="x", side="bottom")
+
+    def apply() -> None:
+        nonlocal result
+        if flags["codex_rollout"].get() and flags["codex_live"].get():
+            status.configure(text="Codex 请选择一个来源。")
+            return
+        result = {key: value.get() for key, value in flags.items()}
+        result["deepseek_key"] = key_vars["deepseek"].get().strip()
+        result["minimax_key"] = key_vars["minimax"].get().strip()
+        root.destroy()
+
+    ttk.Button(buttons, text="取消", command=root.destroy).pack(side="right")
+    ttk.Button(buttons, text="应用", command=apply).pack(side="right", padx=(0, 8))
+    root.protocol("WM_DELETE_WINDOW", root.destroy)
+    root.mainloop()
+    return result
+
+
+def apply_source_configuration(args: argparse.Namespace, configuration: dict[str, Any]) -> None:
+    args.codex_rollout_quota = configuration.get("codex_rollout") is True
+    args.codex_quota = configuration.get("codex_live") is True
+    args.deepseek_quota = configuration.get("deepseek") is True
+    args.minimax_quota = configuration.get("minimax") is True
+    for enabled, key_name, env_name in (
+        (args.deepseek_quota, "deepseek_key", DEEPSEEK_API_KEY_ENV),
+        (args.minimax_quota, "minimax_key", MINIMAX_API_KEY_ENV),
+    ):
+        key = configuration.get(key_name, "") if enabled else ""
+        if isinstance(key, str) and key.strip():
+            os.environ[env_name] = key.strip()
+        else:
+            os.environ.pop(env_name, None)
 
 
 async def __refresh_sources(
@@ -115,6 +231,10 @@ async def __refresh_sources(
 
 
 async def run(args: argparse.Namespace) -> None:
+    args.source_config_changed = asyncio.Event()
+    args.source_config_open = False
+    args.source_config_error = None
+    args.source_config_task = None
     last_projection: dict[str, Any]
     source_snapshots: dict[str, Any]
     if args.demo:
@@ -142,7 +262,7 @@ async def run(args: argparse.Namespace) -> None:
     world_deleted = False
     async with Client(args.runtime, "python.integration.model-quota", args.ws_url) as client:
         client.require_capabilities(
-            components=("stack", "row", "text", "badge", "metric", "progress", "divider"),
+            components=("stack", "row", "text", "badge", "metric", "progress", "divider", "button"),
             scene_features=("theme_tokens",),
             window_properties=("text_selectable", "surface_opacity"),
         )
@@ -167,7 +287,10 @@ async def run(args: argparse.Namespace) -> None:
             announced = False
             while True:
                 assert last_projection is not None
-                scene = build_quota_scene(last_projection)
+                scene_projection = dict(last_projection)
+                if args.source_config_error:
+                    scene_projection["source_config_error"] = args.source_config_error
+                scene = build_quota_scene(scene_projection)
                 await client.mutate("scene.replace", world_id, lease, scene=scene)
                 if not announced:
                     print(
@@ -176,19 +299,15 @@ async def run(args: argparse.Namespace) -> None:
                         flush=True,
                     )
                     announced = True
-                if args.demo:
-                    if await __wait_for_world_or_timeout(client, world_id, args.duration_seconds):
-                        world_deleted = True
-                        return
-                    break
-                if args.duration_seconds is not None:
-                    if await __wait_for_world_or_timeout(client, world_id, args.duration_seconds):
-                        world_deleted = True
-                        return
-                    break
-                if await __wait_for_world_or_timeout(client, world_id, args.refresh_seconds):
+                wait_seconds = args.duration_seconds or args.refresh_seconds
+                wait_result = await wait_for_world_or_timeout(
+                    client, world_id, wait_seconds, args, lease
+                )
+                if wait_result == "deleted":
                     world_deleted = True
                     return
+                if wait_result == "timeout" and (args.demo or args.duration_seconds is not None):
+                    break
                 last_projection, source_snapshots = await __refresh_sources(
                     codex_enabled=args.codex_quota,
                     codex_rollout_enabled=args.codex_rollout_quota,
@@ -199,6 +318,9 @@ async def run(args: argparse.Namespace) -> None:
                     previous_source_snapshots=source_snapshots,
                 )
         finally:
+            task = args.source_config_task
+            if task is not None and not task.done():
+                task.cancel()
             if world_id is not None and lease is not None and not world_deleted:
                 await destroy_world_safely(
                     client,
@@ -208,20 +330,140 @@ async def run(args: argparse.Namespace) -> None:
                 )
 
 
-async def __wait_for_world_or_timeout(client: Client, world_id: str, duration: float) -> bool:
+async def __configure_sources_in_background(
+    args: argparse.Namespace, focus: str | None
+) -> None:
+    current = {
+        "codex_rollout": args.codex_rollout_quota,
+        "codex_live": args.codex_quota,
+        "deepseek": args.deepseek_quota,
+        "minimax": args.minimax_quota,
+    }
+    try:
+        configuration = await asyncio.to_thread(
+            show_source_configuration_dialog,
+            current,
+            focus=focus,
+        )
+        if configuration is not None:
+            apply_source_configuration(args, configuration)
+            args.source_config_error = None
+            args.source_config_changed.set()
+        elif not tkinter_available():
+            args.source_config_error = "此 Python 安装没有 Tkinter，无法打开来源设置。"
+            args.source_config_changed.set()
+    except Exception:
+        args.source_config_error = "来源设置无法打开；没有保存任何 API Key。"
+        args.source_config_changed.set()
+    finally:
+        args.source_config_open = False
+
+
+async def wait_for_world_or_timeout(
+    client: Client,
+    world_id: str,
+    duration: float,
+    args: argparse.Namespace,
+    lease: dict[str, Any],
+) -> str:
     deadline = asyncio.get_running_loop().time() + duration
     while True:
+        if args.source_config_changed.is_set():
+            args.source_config_changed.clear()
+            return "changed"
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
-            return False
+            return "timeout"
         try:
-            message = await asyncio.wait_for(client.events.get(), timeout=remaining)
+            message = await asyncio.wait_for(client.events.get(), timeout=min(remaining, 0.5))
         except TimeoutError:
-            return False
+            continue
         if message.get("event") == "world.deleted" and event_world_id(message) == world_id:
-            return True
+            return "deleted"
         if message.get("event") in {"connection.error", "connection.closed", "provider.error"}:
             raise ConnectionError("WinCraft host connection ended")
+        if message.get("event") != "interaction":
+            continue
+        interaction = message.get("data")
+        if not isinstance(interaction, dict) or interaction.get("world_id") != world_id:
+            continue
+        action = interaction.get("action")
+        if not isinstance(action, str):
+            continue
+
+        if action == "quota.sources.configure" or action.startswith("quota.source.configure:"):
+            if args.source_config_open:
+                await client.call("action.result", {
+                    "world_id": world_id,
+                    "lease": lease,
+                    "event_id": interaction.get("id"),
+                    "ok": False,
+                    "message": "The source settings dialog is already open.",
+                })
+                continue
+            args.source_config_open = True
+            focus_key = action.partition(":")[2] if ":" in action else ""
+            focus = {
+                "deepseek_balance": "deepseek",
+                "minimax_quota": "minimax",
+                "codex_rollout": "codex_rollout",
+                "codex_live": "codex_live",
+            }.get(focus_key)
+            task = asyncio.create_task(__configure_sources_in_background(args, focus))
+            args.source_config_task = task
+
+            def clear_config_task(completed: asyncio.Task[Any]) -> None:
+                if args.source_config_task is completed:
+                    args.source_config_task = None
+
+            task.add_done_callback(clear_config_task)
+            await client.call("action.result", {
+                "world_id": world_id,
+                "lease": lease,
+                "event_id": interaction.get("id"),
+                "ok": True,
+                "message": None,
+            })
+            continue
+        if action.startswith("quota.source.remove:"):
+            try:
+                remove_source(args, action.partition(":")[2])
+                ok, error = True, None
+                outcome = "changed"
+            except Exception:
+                ok, error, outcome = False, "The selected source could not be removed.", "continue"
+        else:
+            continue
+        await client.call("action.result", {
+            "world_id": world_id,
+            "lease": lease,
+            "event_id": interaction.get("id"),
+            "ok": ok,
+            "message": error,
+        })
+        if outcome == "changed" and ok:
+            return "changed"
+
+
+def tkinter_available() -> bool:
+    try:
+        import tkinter  # noqa: F401
+    except Exception:
+        return False
+    return True
+
+
+def remove_source(args: argparse.Namespace, source: str) -> None:
+    if source == "codex_rollout":
+        args.codex_rollout_quota = False
+    elif source == "codex_live":
+        args.codex_quota = False
+    elif source == "deepseek_balance":
+        args.deepseek_quota = False
+        os.environ.pop(DEEPSEEK_API_KEY_ENV, None)
+    elif source == "minimax_quota":
+        args.minimax_quota = False
+        os.environ.pop(MINIMAX_API_KEY_ENV, None)
 
 
 def main() -> None:
@@ -283,12 +525,6 @@ def main() -> None:
         parser.error("choose only one Codex quota source")
     if args.codex_home is not None and not (args.codex_quota or args.codex_rollout_quota):
         parser.error("--codex-home requires --codex-quota or --codex-rollout-quota")
-    if not args.demo and not any(
-        (args.codex_quota, args.codex_rollout_quota, args.deepseek_quota, args.minimax_quota)
-    ):
-        parser.error(
-            "enable at least one quota source unless --demo is used"
-        )
     try:
         asyncio.run(run(args))
     except KeyboardInterrupt:

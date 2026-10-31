@@ -8,11 +8,11 @@ Windows 原生能力的细化计划（事件订阅、语义位置、Shell、主�
 
 ## 阶段 0：本次原型源码
 
-世界/窗口层级；单写租约与读快照；动态组件树；事件回执；托盘；内部管理器；外部 Python 提供者；TrafficMonitor 与 Obsidian Obsidian Workspace 本机只读投影。协议 0.3 的窗口文本默认可选属性已进入真实 lease probe；尚未完成的 Windows 手工验收见 [`engineering/VALIDATION.md`](engineering/VALIDATION.md)，机器专属证据位于默认忽略的 `evidence/local/nextgen-2026-10-26/`。
+世界/窗口层级；单写租约与读快照；动态组件树；事件回执；托盘；内部管理器；外部 Python 提供者；TrafficMonitor 本机只读投影，以及一个尚待实机验收的通用 Obsidian Workspace 插件样例。协议 0.3 的窗口文本默认可选属性已进入真实 lease probe；尚未完成的 Windows 手工验收见 [`engineering/VALIDATION.md`](engineering/VALIDATION.md)，机器专属证据位于默认忽略的 `evidence/local/nextgen-2026-10-26/`。
 
 ## 阶段 1：同一条真实链路跑通
 
-Rust core/server 与 Tauri release 已构建并通过对应测试；最新真实 release lease probe 覆盖严格 0.3、窗口文本选择配置、认证、单写/读者、动态 patch、过期、重连 fencing 与慢消费者。TrafficMonitor x64 Lite 和 Obsidian Obsidian Workspace 的只读数据流均进入 Tauri 原生世界。剩余文本选择手势、点击穿透救援、人类/提供者几何、多屏/DPI、休眠恢复和 ACL 等边界继续按验证矩阵推进。ExoMind RT 由用户暂缓。
+Rust core/server 与 Tauri release 已构建并通过对应测试；最新真实 release lease probe 覆盖严格 0.3、窗口文本选择配置、认证、单写/读者、动态 patch、过期、重连 fencing 与慢消费者。TrafficMonitor x64 Lite 只读数据流已进入 Tauri 原生世界。通用 Obsidian Workspace 样例尚未完成 Obsidian 插件加载与原生点击验收。剩余文本选择手势、点击穿透救援、人类/提供者几何、多屏/DPI、休眠恢复和 ACL 等边界继续按验证矩阵推进。ExoMind RT 由用户暂缓。
 
 ## 阶段 2：从一世界单写到多提供者组合
 

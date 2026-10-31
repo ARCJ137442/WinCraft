@@ -1,5 +1,7 @@
 # Model quota HUD
 
+Chinese-first manual startup instructions are in [README.zh-CN.md](README.zh-CN.md).
+
 This read-only Provider shows Codex, DeepSeek, and MiniMax quota sources in one
 WinCraft world. It never calls the TeamSense service. The implementation borrows two
 separate TeamSense collection patterns: bounded Codex rollout event parsing and fixed,
@@ -36,6 +38,14 @@ used by the synthetic tests. Sub2API management data is deliberately excluded be
 it is not a quota measurement.
 
 ## Run
+
+For a double-click workflow, run `examples/launchers/start-model-quota.cmd`. It opens
+a console for the copied runtime descriptor path and a small source-selection window.
+The floating panel also has an **Add / manage sources** control: unchecked sources do
+not appear in the panel, missing API keys show a configuration button, and each source
+can be removed. DeepSeek and MiniMax keys are masked and kept only in the Provider's
+process memory; they are not written to a settings file. Canceling the source dialog
+does not change the current configuration.
 
 Use synthetic values for a visual/Host smoke. Demo mode reads no credentials and makes
 no network requests:

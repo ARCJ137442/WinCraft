@@ -40,7 +40,7 @@
 | VERIFIED_LOCAL | 本包工具在当前环境执行 | 仅覆盖包内检查与纯数据模型 |
 | NOT_RUN / BLOCKED | 未执行或受阻 | 列明缺失环境/来源，不计 PASS |
 
-交接包固定基线中的仓库摘要曾记录 Rust 测试、19 项真实 0.3 协议探针、TrafficMonitor 与 Obsidian Workspace 原生投影；这只是基线快照，不是当前计数。后续本机结果与仍待验收项以 `plan/status.json`、根目录 `docs/engineering/VALIDATION.md` 和被忽略的本机证据为准。不要把旧“制作环境没有 Cargo”的历史表格误读成当前 dev 没跑过 Rust，也不要把任一摘要扩大成全部已验收。[W-VALIDATION]
+交接包固定基线中的仓库摘要曾记录 Rust 测试、19 项真实 0.3 协议探针与 TrafficMonitor 原生投影；这只是基线快照，不是当前计数。后续本机结果与仍待验收项以 `plan/status.json`、根目录 `docs/engineering/VALIDATION.md` 和被忽略的本机证据为准。不要把旧“制作环境没有 Cargo”的历史表格误读成当前 dev 没跑过 Rust，也不要把任一摘要扩大成全部已验收。[W-VALIDATION]
 
 ## 接入来源边界
 

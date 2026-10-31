@@ -63,9 +63,10 @@
 | W22 | 托盘全局临时隐藏/显示 | 隐藏当前逻辑可见的窗口但不销毁 world、不改变 lease/`window.visible`；提供者在隐藏期间创建的窗口也保持隐藏；“显示全部”只恢复仍逻辑可见的窗口；再次打开管理器能聚焦已有 manager |
 | W23 | 标题栏图标、折叠与拖动 | 标题栏品牌/最小化/关闭图标为 SVG 并与标题共用垂直中轴；单击标题区域（移动小于 5px）只折叠/展开；折叠后原生窗口收敛到标题栏所需宽高，不留大块空白；展开恢复折叠前宽度并继续按内容适配高度；拖动超过阈值才移动窗口 |
 | W24 | 健康状态降噪与恢复提示 | `online` host 行与空的健康 provider badge 隐藏；`stale`、`vacant`、来源暂停/过期/错误仍可见且可访问 |
-| W25 | 无标题栏 Obsidian Workspace HUD | `Obsidian Workspace` 以 `--hide-titlebar`、provider geometry、`position_control=human`、`resizable=false`、`background_drag_enabled=true` 创建窗口；无标题栏时未配置动作的非文本背景可拖动，文本/按钮/输入与选中内容不启动移动；穿透恢复和托盘全局隐藏/显示仍可用 |
+| W25 | 无标题栏 HUD | 合成 provider 以无标题栏、`position_control=human`、`background_drag_enabled=true` 创建窗口；未配置动作的非文本背景可拖动，文本/按钮/输入与选中内容不启动移动；穿透恢复和托盘全局隐藏/显示仍可用 |
 | W26 | Windows 虚拟桌面范围 | 默认只在当前桌面；provider 可显式请求所有桌面；若平台未实现请求必须明确报告 unsupported，不能把 Tauri no-op 记作通过。当前 Windows 公共 Tauri/tao API 不支持，整体保持未实现 |
 | W27 | 提供者原生窗口动作 | Obsidian/TrafficMonitor 仍只对已存在、可见的 allowlisted 窗口执行枚举操作；另验证 Codex App `codex_thread_navigation` 只接受 UUID thread_id 并构造固定 `codex://threads/<UUID>`，仅响应用户点击；无 protocol handler 时动作失败且不误报会话已打开。禁止任意 URL、shell、进程路径和会话正文。|
+| W28 | `.wcp` 提供者代码包 | 拖入合成包只产生有界预览；安装只解包、不运行/装依赖/覆盖同版本；未执行最终确认时启动器调用次数必须为 0；确认后启动无 shell 子进程，并验证归档与入口 SHA-256；宿主退出时只回收本 Host 启动的 child |
 
 首版未提供鼠标跟随或外部窗口附着；不要把它们列为“验证失败”，应列为未实现。
 

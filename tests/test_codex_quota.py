@@ -228,6 +228,7 @@ class CodexQuotaTests(unittest.TestCase):
             SYNTHETIC_RESPONSE,
             observed_at="2026-10-31T00:00:00Z",
         )
+        projection["sources"] = ["codex_live"]
         scene = build_quota_scene(projection)
         nodes: list[dict[str, object]] = []
 

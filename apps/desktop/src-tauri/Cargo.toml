@@ -9,6 +9,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-clipboard-manager = "2"
 wincraft-core = { path = "../../../crates/wincraft-core" }
 wincraft-server = { path = "../../../crates/wincraft-server" }
 serde.workspace = true

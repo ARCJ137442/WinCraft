@@ -1,6 +1,7 @@
 # Draft WinCraft pack export
 
-`export_pack.py` creates a configuration-only `.wcp` archive from an explicit draft
+`export_pack.py` creates a configuration-only `.wcp` archive with kind
+`wincraft.pack.draft` from an explicit draft
 pack and its referenced blueprint. It validates both files against the proposals in
 `docs/strategy/2026-10-26/contracts/`, bounds each JSON input to 1 MiB, rejects
 traversal and symlinked blueprint paths, and never overwrites an existing output.
@@ -17,6 +18,11 @@ python tools/pack/export_pack.py `
   --pack docs/strategy/2026-10-26/examples/packs/workday.pack.json `
   --output workday.wcp
 ```
+
+This configuration archive is distinct from the local executable Provider bundle
+kind `wincraft.provider-bundle`. Dragging a Provider bundle to the manager does not
+change the behavior of this exporter or the configuration-only import path. See the
+[Provider bundle guide](../../docs/provider-bundles.zh-CN.md).
 
 This is a draft interchange format, not a protocol 0.3 feature. Review the pack's
 human-readable titles and adapter reference before sharing; schema validation cannot

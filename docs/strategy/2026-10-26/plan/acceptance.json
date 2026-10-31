@@ -796,7 +796,7 @@
       "level": "L1-L4",
       "criterion": "真实Tauri用户点击Obsidian Workspace标题激活既有匹配Obsidian窗口，不启动新进程；动作失败向用户显示失败并且不向provider伪造成功回执",
       "status": "PARTIAL",
-      "evidence": "Provider unit test verifies title action is acknowledged only after the Host focus call succeeds; Host failure test verifies no interaction broadcast/ACK on native action failure. Current-release click against an existing Obsidian window and absence of process launch remain unverified after Computer Use activation failure."
+      "evidence": "Host failure tests verify no interaction broadcast/ACK on native action failure. The current generic Obsidian Workspace Provider has synthetic tests, but current-release click against an existing Obsidian window and absence of process launch remain NOT_RUN."
     },
     {
       "id": "B04-03-A1",
@@ -1346,8 +1346,8 @@
       ],
       "level": "L1-L5",
       "criterion": "真实来源失败不会改变其他区域业务状态",
-      "status": "PASS",
-      "evidence": "PASS: real x64 TrafficMonitor bridge snapshot and read-only Obsidian Obsidian Workspace query were composed into separate scopes over the real Rust WebSocket host. Stopping the staged TrafficMonitor source marked only its scope stale; Obsidian Workspace scope data remained identical. The temporary world was destroyed; no Obsidian or original TrafficMonitor configuration writes occurred."
+      "status": "NOT_RUN",
+      "evidence": "The current generic Obsidian Workspace Provider has synthetic composition coverage only. A current-release real-source isolation run with its local plugin snapshots remains NOT_RUN."
     },
     {
       "id": "B08-01-A1",
