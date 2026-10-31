@@ -1080,6 +1080,18 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 本机脱敏证据 [`b05-02-codex-quota-optin.json`](../../evidence/local/nextgen-2026-10-31/b05-02-codex-quota-optin.json) 被 `.gitignore` 忽略，仅记命令与汇总结果，不含令牌、账户 ID、runtime descriptor 或业务数据。
 
+## 2026-10-31 B05-02 synthetic quota scene on Tauri release
+
+**Given** 当前标准 Tauri release 与 demo-only quota Provider；**when** `--demo --duration-seconds 3` 创建场景并结束；**then** 真实 Host 接受窗口 capability 和合成 Codex/MiniMax/DeepSeek 场景，Provider 退出码为 0 并清理自有世界。此项验证 Tauri Host 集成路径，不验证像素或用户账户。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python examples/integrations/model_quota/provider.py --runtime <actual descriptor> --demo --duration-seconds 3` | PASS（Tauri Host / synthetic only） | 退出码 0；`capabilities_accepted=true`、`scene_created=true`、`world_cleanup_confirmed=true`。无 credentials read、无网络请求，descriptor 仅由 SDK 短暂读取并在清理时删除。|
+| 当前像素与真实来源 | NOT_RUN | Computer Use native pipe 无法连接；TeamSense token/Codex opt-in 未提供，故未发真实 API 请求、未读 `auth.json`。|
+| B05-02-A1/A2/A3/A4 | PARTIAL / PARTIAL / PARTIAL / PARTIAL | 本 smoke 加强真实 Tauri scene/cleanup 证据；账户归属、缓存时效/断线实际窗口呈现、真实 GET 和 Codex 身份/像素边界仍未验证。任务保持 `IMPLEMENTED_UNVERIFIED`。|
+
+本机合成 smoke 汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b05-02-quota-tauri-20261031-145409/summary.json) 在忽略的 `evidence/local/`；不含 runtime descriptor、账户标识或原始 provider 输出。
+
 ## 2026-10-31 B06-03 Manager permission/re-preview and stale-action regression
 
 **Given** 一个需要 `metrics.read`、inventory 中存在已声明但尚未授权的合成 Provider；**When** 内部 Manager 通过通用组件场景触发 `pack.grant`；**Then** 成功授权后旧 preview 被撤销、generation 变化后立即生成新 preview，已授权候选不再显示空权限 grant 按钮，只有新 `Ready` preview 可以创建 world 并将单窗写租约交给该 Provider。若 inventory 在点击旧 grant 动作前变化，Host 返回 `STALE_PLAN`、Manager 清除旧 preview 并显示重新规划提示，且不创建 world。
