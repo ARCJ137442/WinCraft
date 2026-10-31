@@ -1046,6 +1046,8 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | Windows Actions run [41178832248](https://github.com/exomind-team/WinCraft/actions/runs/41178832248) | PASS | `npm run check:local` 成功；source job 用时 12m18s。CI 不替代原生 UI 验收。|
 | Commit `10a3df9` / `origin/dev` | PASS | B02-03 headless smoke 结果与 phase checkpoint 文档已推送；EXE/guide 本地 bundle 不作为 GitHub Release。|
 | Windows Actions run [41179930393](https://github.com/exomind-team/WinCraft/actions/runs/41179930393) | PASS | `npm run check:local` 成功；source job 用时 9m12s。该提交只含文档与证据状态，不含产品运行时代码。|
+| Commit `850ee0d` / `origin/dev` | PASS | B11-01 三轮 Provider crash/reacquire 证据与本机性能边界已同步；产品运行时代码未改。|
+| Windows Actions run [41182047022](https://github.com/exomind-team/WinCraft/actions/runs/41182047022) | PASS | `npm run check:local` 全量门禁通过；source job 用时 12m05s。|
 
 阶段性交付包（本机 Git 忽略）：`evidence/local/nextgen-2026-10-31/delivery-continuation-10a3df9/WinCraft-0.1.0-alpha.1-local-acceptance-20261031.zip`，含与 `9073b3b` 产品代码一致的 EXE、中文验收指南及当前 build/CI hash；不是 GitHub Release。
 
