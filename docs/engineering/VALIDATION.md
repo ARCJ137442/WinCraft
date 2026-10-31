@@ -1297,3 +1297,20 @@ Audit evidence is in ignored `evidence/local/`; it contains no runtime descripto
 | B05-02-A1/A2/A3/A4 | PASS / PARTIAL / PASS / PASS（synthetic/code） | A1/A3/A4 由合成投影、固定端点/opt-in 检查、敏感字段脱敏与 rollout 事件用例覆盖；A2 的时效字段和场景节点已验证，真实来源 freshness 与 native pixels 未验收，所以保持 PARTIAL。B05-02 仍为 `IMPLEMENTED_UNVERIFIED`。|
 
 本地合成 smoke 没有把 descriptor、rollout 正文、凭据或来源值写入证据。汇总记录见 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b05-02-quota-refactor-20261031/summary.json)；实现入口为 [`model_quota/`](../../examples/integrations/model_quota/)，本机 evidence 目录不跟踪提交。
+
+## 2026-10-31 仓库公开与定向历史脱敏
+
+**Given** 用户已授权修改 Git 历史并强推，且已将 `exomind-team/WinCraft` 由私有改为公开；**When** 在公开状态下复核工作树与全部可达 Git 历史中的凭据与个人路径标识，并对泄露字符串做定向替换后强制推送；**Then** 全部 114 个提交及其作者、提交信息与时间戳保持不变，只有含本机绝对路径的 2 个文件各改动 1 行，公开历史中不再残留凭据或本机身份标识。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `gh api repos/exomind-team/WinCraft` 可见性核对 | PASS | `exomind-team/WinCraft` 返回 `visibility: public`、`private: false`、默认分支 `dev`；`ARCJ137442/WinCraft` 重定向到同一仓库。公开动作由所有者执行，不是本轮 release 门的结果。|
+| 公开前全历史凭据扫描 | PASS | 对 `git rev-list dev` 全部 114 个版本执行 `git grep -lIE` 匹配 `ghp_*`、`github_pat_*`、`AKIA*`、`sk-*`、`eyJ*`、`xox[baprs]-*` 等模式，命中 0 个版本。|
+| 公开前全历史个人标识盘点 | PASS | 命中集中在本机用户目录路径（106 处）与本机交接下载目录（10 处），仅出现在 `docs/engineering/VALIDATION.md` 与 `docs/integrations/touchai-gap-matrix.md`；文档中的用户主目录已是占位写法，私人业务提供者名称在全历史 0 命中。|
+| `git filter-repo --replace-text` 定向替换 | PASS | 保留全部 114 个提交、作者（ARCJ137442 / Argon）、提交信息与时间戳；重写后全历史个人路径与本机用户名命中数为 0。替换为 `<repo>`、`<touchai-checkout>`、`<handoff-dir>` 占位。|
+| 重写差异范围核对 | PASS | 用重写前 bundle 对比新旧 HEAD：`git diff --stat` 显示仅 2 个文件、2 行改动，均为上述路径字符串，无其他内容差异；HEAD 树仍为 374 个跟踪文件。|
+| 本地回归（`npm run test:ui` / `cargo test --workspace` / `npm run check:python`） | PASS | UI 30 项通过；Rust workspace 155 项通过、1 项 ignored；Python 238 项通过、1 项 skipped；Provider Skill 45 个引用存在。|
+| `git push --force-with-lease=refs/heads/dev:b39f3f7...` | PASS | 远端 `dev` 由 `b39f3f7` 强制更新到 `96a66d3`；`gh api .../git/refs` 确认远端只保留 `refs/heads/dev` 一个引用，无 tag、无 release、无 PR。|
+| GitHub Actions run `41209376248` | PASS | 公开后首次推送触发，耗时 5m50s，`npm run check:local` 步骤全绿（setup-python / rust-toolchain / npm ci / pip install / check:local）。CI 只验证源码，不替代原生窗口验收。|
+
+重写前的本机备份为被忽略的 `target/wincraft-before-path-scrub.bundle`，仅用于本机恢复，不进入提交。历史中曾出现的私人业务提供者名称已在更早一次改写中移除，本次只处理路径标识。

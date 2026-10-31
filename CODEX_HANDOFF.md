@@ -44,7 +44,7 @@
 - B09-02 `adb devices -l` 当前发现 1 台在线设备与 1 台离线设备；未枚举应用或读取通知。没有用户选定的 app/source 和通知权限，任务状态为 `BLOCKED`。
 - Python 提供者已统一按真实 wire envelope 读取顶层 `world.deleted.world_id`；Tauri-hosted `lease_probe.py` 最终 41 项通过，包含删除事件送达原成员检查。
 - 本地 Tauri release 和用户人工验收状态按验证矩阵记录；浏览器预览、合成 provider、真实协议和原生 UI 证据不可互相替代。
-- 当前主仓库是 GitHub `exomind-team/WinCraft`，默认分支 `dev`，远端为私有仓库。之前的 `ARCJ137442/WinCraft` 公开历史已转入该仓库；可达历史扫描没有发现凭据命中，但一个旧提交曾包含本机绝对目录。重新公开前必须清理或替换该历史并再次扫描。
+- 当前主仓库是 GitHub `exomind-team/WinCraft`，默认分支 `dev`，所有者已于 2026-10-31 将其改为公开；`ARCJ137442/WinCraft` 重定向到同一仓库。公开前已完成全历史扫描：凭据模式 0 命中，本机绝对路径经 `git filter-repo --replace-text` 定向替换为占位（保留全部 114 个提交、作者与时间戳，只改动 2 个文件各 1 行）。后续新增提交不得再写入本机路径或私人业务内容。
 - 工作树的 `evidence/local/` 被忽略且可能含过期 runtime 描述文件和机器路径；这些内容不是可提交证据。当前扫描发现 5 个旧测试描述文件命中凭据规则，不能打包或分享。原始日志继续保留在本地。
 - 核心与独立 Provider/应用按仓库边界演进，子项目名统一 `wincraft-XXX`；实际业务世界状态不入库，只能提交审查过的无业务数据蓝图与合成样例。
 
