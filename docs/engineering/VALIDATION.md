@@ -1092,3 +1092,18 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B06-03-A1/A2/A3 | PARTIAL / PARTIAL / PARTIAL | Host 与 Manager action 路由增加了更强的 L1-L2 证据；Computer Use/UIA 不可用，Windows release 的人工预览、授权、应用、回执、取消和回退路径仍未验收。|
 
 本机脱敏回归摘要 [`b06-03-manager-permission-repreview.json`](../../evidence/local/nextgen-2026-10-31/b06-03-manager-permission-repreview.json) 位于默认忽略的 `evidence/local/`；不含 runtime descriptor、Provider source 内容或业务数据。
+
+## 2026-10-31 B11-01 short Windows Tauri process-tree and RPC baseline
+
+**Given** 提交 `9073b3b` 的 Windows Tauri release、一个显示内部 Manager 的窗口和 repository-owned synthetic `lease_probe.py` Provider；**When** 运行 60 秒 WMI process-tree sampler 并执行合成 create/destroy/snapshot/data-replace/reconnect 探针；**Then** 记录本机与版本、release hash、负载规模、进程树/句柄/内存/CPU，以及本机环回请求的 p50/p95/p99；清理所有合成世界和 runtime descriptor。该场景只形成短时样本，不证明长期泄漏/睡眠恢复或跨机器表现。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 60 -SampleIntervalMilliseconds 1000` | PASS（一次短时样本） | Windows 11 Pro build 22000；AMD Ryzen 9 9950X 16-Core、32 logical processors；Rust/Cargo 1.93.0、Python 3.11.4；Tauri EXE 为 13,600,256 bytes，SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`。60.092 秒、29 个样本，WMI query 开销使实际 median/p95 cadence 为 2.110/2.278 秒。进程树包含 `wincraft-desktop.exe` 与 `msedgewebview2.exe`，峰值 8 个进程、工作集 579,964,928 bytes、private bytes 388,829,184、4,237 handles、348 threads；p95 machine CPU 1.257%、p95 one-core CPU 40.231%。|
+| Tauri release + `python examples/python/lease_probe.py --runtime <actual descriptor>` | PASS | tray-only 协议 probe 41 项通过；包含 lease expiry/reacquire、断线重连和 1,024 × 32 KiB slow-reader 配置。该 slow-reader 的实际 achieved message rate 未单独计量。|
+| `python tests/performance_probe.py --runtime <actual descriptor> --world-cycles 50 --snapshot-iterations 200 --data-iterations 100 --payload-bytes 1024 --reconnect-cycles 20 --inter-call-interval-ms 25`（两次） | PASS（合成 loopback） | 每次 50 次 world create/destroy、200 次 snapshot、100 次 raw `data.replace`、20 次断线后 writer reconnect/join。两次 p95 ms（run1/run2）：create 11.754/1.624，destroy 1.353/1.572，snapshot 1.346/1.296，data.replace 1.502/1.518，reconnect+join 1.860/1.841；两次最大观察值分别为 20.474/22.493/35.785/43.430/3.061 ms。调用按 25 ms 间隔串行；RTT 是本机环回，不代表 UI 延迟或并发吞吐；运行间尾部尖峰不取平均。|
+| runtime descriptor、Host 和 Provider 临时世界清理 | PASS | Tauri Host 已停止；只删除本次 Host 日志标识的确切 descriptor；Provider probe 正常清理自有世界。descriptor 内容从未读取；保留的 process-tree 和 latency JSON 仅含聚合进程名/计数及合成样本，不含 PID、用户路径或 token。|
+| `npm run check:local` after adding the probes | PASS | 退出码 0：UI 28、Rust workspace 149、Python 220（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。PowerShell sampler 的 parser/self-smoke 和 performance percentile 的 4 项单元测试通过。|
+| B11-01-A1/A2/A3 | PASS（单次样本） / NOT_RUN / PASS | A1 本次采样上下文完整；A2 的长期 idle/refresh 趋势、crash cleanup、sleep/wake 和阈值 ADR 尚未执行；A3 继续禁止把单次样本宣传成轻量、无泄漏或性能保证。任务保持 `IMPLEMENTED_UNVERIFIED`。|
+
+本次忽略的本机证据位于 [`b11-01-runtime-1793411883613`](../../evidence/local/nextgen-2026-10-31/b11-01-runtime-1793411883613/) 与 [`b11-01-latency-final-1793412870532`](../../evidence/local/nextgen-2026-10-31/b11-01-latency-final-1793412870532/)；包括 aggregate `summary.json`、`process-tree-samples.json` 和 synthetic `perf-probe-output.v2.json`。runtime descriptor、原始 Host log 和原始 lease probe 输出已删除。

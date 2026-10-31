@@ -760,7 +760,7 @@ cargo test --workspace
 
 **前置：** B05-01；**需求：** R013, R063
 
-**输入：** TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。用户要求同一 HUD 也呈现 Codex。TeamSense 源码 e63bbe5 存在单独的 Codex quota 读取实现，但使用的 chatgpt.com backend route 不是公开稳定 API；WinCraft 将其做为默认关闭、明确 opt-in 的本机实验源。自动化回归用合成 auth/HTTP，不读取真实凭据或访问实时账户。
+**输入：** TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。用户要求同一 HUD 也呈现 Codex。TeamSense 源码 e63bbe5 存在单独的 Codex quota 读取实现，但使用的 chatgpt.com backend route 不是公开稳定 API；WinCraft 将其做为默认关闭、明确 opt-in 的本机凭据适配器。自动化回归用合成 auth/HTTP，不读取真实凭据或访问实时账户。
 
 **定位：** `examples/integrations/model_quota/`；`proposed: contracts/usage-observation.schema.json`
 

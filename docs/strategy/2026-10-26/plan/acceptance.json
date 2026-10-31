@@ -1919,7 +1919,7 @@
       ],
       "level": "L1-L5",
       "criterion": "每次测量带机器/版本/负载而非泛称轻量",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B11-01-A2",
@@ -1943,7 +1943,7 @@
       ],
       "level": "L1-L5",
       "criterion": "未测性能不写宣传数字",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B11-02-A1",
