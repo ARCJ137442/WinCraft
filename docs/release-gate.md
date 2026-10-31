@@ -1,7 +1,7 @@
 ---
 title: WinCraft release gate and claims boundary
-updated_at: 2026-10-30
-last_verified_at: 2026-10-30
+updated_at: 2026-10-31
+last_verified_at: 2026-10-31
 protocol_baseline: 0.3
 status: pre-release-gate
 audience: maintainer, release-validator
@@ -9,38 +9,34 @@ audience: maintainer, release-validator
 
 # Release gate and claims boundary
 
-This is a pre-release audit for the current working tree. It is not a release approval and contains no unmeasured performance claims.
+This is a pre-release audit for WinCraft `0.1.0-alpha.1`. It is not release approval. The repository remains private; no GitHub Release, tag, installer or public announcement was created.
 
 ## Claims allowed from current evidence
 
-- The current Windows worktree passed `npm run check:local`: 28 Node UI tests, Rust fmt/check/workspace tests/Clippy, 176 Python tests (one symlink case skipped because Windows denied creation), offline contracts and 27 Provider Skill references. The handoff suite separately passed 40 tests. These do not replace native acceptance.
-- Historical Windows Actions run `40876095509` passed for pushed commit `32c8eee` in 11m42s; it validates that commit's automated source checks, not the current worktree. B06 checkpoint commit `e3e8df4` run `40976867333` passed fmt/check/workspace tests but failed Clippy 1.99's new `chunks_exact_to_as_chunks` lint. Fix commit `e3a4c4d` passed Windows Actions run `40979104886` in 11m26s. CI does not replace native manager UI acceptance.
-- `npm run desktop:build` after commit `e3a4c4d` built `target/release/wincraft-desktop.exe` (13,279,232 bytes; SHA-256 `0FCC6BB2FD9E6FA462B1A04972180700995345F4B0F1BDA4C57B9749D2693E5A`) and launched it with `--open-manager`. A prior feature-equivalent candidate's two Computer Use state captures failed with `GetCursorPos` access denied; no UI input was sent and the post-fix Manager UI remains NOT_RUN. This is a local artifact, not a GitHub release.
-- A Python SDK hello/capability request to the live Tauri host negotiated `0.4-preview.1` and verified `provider_import` schema/event/claim/writer-scope/local-confirmation fields; it did not register inventory or create worlds.
-- Protocol, lease, revocation, reader/writer isolation, dynamic scene, theme, event subscription and anchor behavior have automated tests.
-- A real isolated Rust headless host previously passed a 41-check `lease_probe.py` run; the current workspace also passes its Rust core/server/Tauri automated suite.
-- B06-01/B06-02 are VERIFIED at draft-export/pure-planner scope; B06-03/B06-04 are `IMPLEMENTED_UNVERIFIED` with PARTIAL acceptance. The new `.wcp` manual flow and two-user sharing checks are documented in the Chinese acceptance guide and remain NOT_RUN.
-- A preceding Tauri release host reported native application of `always_on_top=false/true`; the current 2026-10-30 build has not repeated that setter test, and actual z-order against ordinary and other topmost windows remains NOT_RUN.
-- An earlier release UIA smoke showed four session-card fields with a synthetic Codex App snapshot; the current release window could not be captured by Computer Use, so no current-build pixel/UIA claim is made. The current working-tree source now uses process presence plus bounded local files for Codex App/Claude Code; native release presentation and UUID-only deep-link click/load remain NOT_RUN.
-- TrafficMonitor and Obsidian Obsidian Workspace providers have documented read-only/source boundaries and prior current-release evidence.
-- Native external actions are allowlisted and fail closed in service tests; real Windows click success/failure remains unverified.
+- Source validation on commit `f39de58` passed `npm run check:local`: 28 UI tests, 149 Rust workspace tests, 225 Python tests (one Windows symlink-capability skip), Clippy, contracts and 33 Provider Skill references. Windows Actions run [41170007833](https://github.com/exomind-team/WinCraft/actions/runs/41170007833) passed in 12m19s. The documentation-only follow-up `8746400` passed Windows Actions run [41173578234](https://github.com/exomind-team/WinCraft/actions/runs/41173578234) in 12m05s. CI validates source; it does not replace native UI acceptance.
+- `target/release/wincraft-desktop.exe` is a local, unsigned, single-file Tauri build from product-source commit `9073b3b`: 13,600,256 bytes, SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`. It launches tray-only by default and has passed real Tauri-hosted `lease_probe.py` checks. The build is not an installer and is not a GitHub Release.
+- Synthetic performance evidence includes 5-, 15- and 30-minute visible refresh runs (60/180/360 updates), provider-crash reacquisition, headless Host disconnect and one forced Tauri Host shutdown. In the Tauri crash sample, six WebView descendants exited within three seconds. The 30-minute sample's private-byte median declined while working set increased about 20 MB; this is not a long-term leak guarantee or a cross-machine performance claim. Full context and boundaries are in [`docs/performance.md`](performance.md).
+- `B06-03` stale-grant logic and `B06-04` export hygiene have automated checks. Manager preview/grant/apply/rollback pixels and two-user import remain NOT_RUN/PARTIAL; detailed steps are in the [Chinese acceptance guide](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md).
+- Repository identity remains `exomind-team/WinCraft`, private on branch `dev`. No release or tags exist. The current license files, product/package names and ownership were not changed from baseline; `WinCraft` and `窗构` remain explicitly provisional names.
+- The Chinese Windows acceptance guide is versioned for `0.1.0-alpha.1` and updated `2026-10-31`; this English gate states the same claim limits and pending native checks. Neither document declares the prototype ready for public release.
 
 ## Claims forbidden until manual gates pass
 
-- default tray-only startup, tray-menu focus/open, global hide/show and graceful tray Exit on the current build;
-- pixel-perfect content fitting/no window-level scrollbar across changing content, current-build collapse sizing recheck, click-through rescue;
-- multi-monitor/DPI behavior, monitor detach migration and virtual-desktop behavior;
-- real Popup UI success/cancel, keyboard/IME/UIA/reader and position reuse;
-- real Obsidian Workspace Obsidian activation or TrafficMonitor window actions;
-- Windows global hotkeys, voice APIs, browser bridges, TeamSense, TouchAI, SysTorch or ExoMind;
-- CPU, memory, latency, throughput, leak or “lightweight” performance numbers;
-- signed installer, ACL isolation or production security certification.
+- current-build manager preview/grant/re-preview/apply/cancel/rollback and tray reopen behavior;
+- screenshot-level fit, collapse, hidden-window restoration, click-through rescue and z-order;
+- multi-monitor/DPI, monitor detach, Windows virtual desktop and native hotkey behavior;
+- real Popup user success/cancel/position reuse, WebView2 UIA/IME and screen-reader operation;
+- Obsidian Workspace activation of an existing Obsidian window, TrafficMonitor actions and UUID-only Codex App navigation;
+- live TeamSense/Codex quota, browser bridge, voice, TouchAI, SysTorch, ExoMind or Android sources;
+- long-term leak freedom, sleep/wake, resource thresholds, signed installer, ACL isolation or production security certification.
+
+The Computer Use helper's Windows native pipe failed both initial and post-reset attempts on `2026-10-31`; no clicks or screenshots were issued during those attempts. Historical user reports for tray/window behaviors are not tied to this exact executable hash and are not substituted for a current-build PASS.
 
 ## Manual gate packet
 
 Run these in one controlled Windows session against the final isolated release, recording only redacted screenshots/exit codes:
 
-1. `W01/W02/W07/W09/W11/W12/W13/W15/W17/W18/W19/W20/W22/W23/W25/W27` from `docs/engineering/ACCEPTANCE.md`.
+1. `W01/W02/W07/W09/W11/W12/W13/W15/W17/W18/W19/W20/W22/W23/W25/W27` from `docs/engineering/ACCEPTANCE.md` against the exact EXE hash above.
 2. `R01/R02/R03/R06` after closing any previous WinCraft host.
 3. B03-02 Popup success/cancel/position/keyboard/IME/UIA.
 4. B04-03 native hotkey only after explicit user authorization.

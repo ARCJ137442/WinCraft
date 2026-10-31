@@ -1,6 +1,7 @@
 # WinCraft · 可组合桌面窗口运行时
 
 **版本：0.1.0-alpha.1 / 原型源码交接，非已验收发行版。**
+**文档更新时间：2026-10-31。**
 
 本机 lifecycle release 已与真实 TrafficMonitor x64 provider、Obsidian Obsidian Workspace 只读 provider 联调；可提交的验证摘要见 [`docs/engineering/VALIDATION.md`](docs/engineering/VALIDATION.md)，逐项本机记录位于默认不提交的 `evidence/local/`。TrafficMonitor 桥接已从当前源码重编并实测报告 1.8.6.0；这仍是本地原型验证，不代表对外发行或安全认证。
 

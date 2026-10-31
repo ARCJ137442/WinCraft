@@ -1186,3 +1186,17 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | 电源、清理与 A2 状态 | PASS / PARTIAL | `Turbo` 前后不变；0 battery devices、无 ACPI power-source provider；未注入 sleep/wake。Host、descriptor 和 PID/path 文件已清理。30 分钟活跃期 private-byte 中位数下降，working set 上升约 20 MB；不足以证明长期趋势，A2 仍 PARTIAL。|
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-30m-20261031-130727/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-30m-20261031-130727/process-tree-samples.json) 位于忽略的 `evidence/local/`；只保留聚合测量，不含 PID、runtime path、descriptor 或 token。
+
+## 2026-10-31 B11-04 offline pre-release audit
+
+**Given** baseline `6929056700b1ba6702288534579debc8a502c139` and current `dev` checkout; **when** compare license/name/ownership files, query the connected GitHub repository and release inventory, and inspect the versioned Chinese/English release documents; **then** confirm the repository remains private, no GitHub Release or tag exists, no license/name/owner migration occurred, and release materials state version/update date and the unverified native gates. A local acceptance ZIP is a test artifact, not publication.
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| Baseline license, product/package names and ownership | PASS | `git diff <baseline>..HEAD -- LICENSE LICENSE-NOTES.md` has no changes; `package.json` remains `wincraft-prototype`, Tauri crate remains `wincraft-desktop`, and the verified remote is `exomind-team/WinCraft` on `dev`. No ownership or visibility change was made.|
+| GitHub Release/tags and publication boundary | PASS | `gh repo view` reports `PRIVATE`; `gh release list` returns `[]`; `git tag --list` is empty. No remote release, tag, installer or public upload was created.|
+| Public-facing release documentation | PASS | README names `0.1.0-alpha.1` and `2026-10-31`; Chinese acceptance guide front matter has matching version/update date; English `docs/release-gate.md` is current and lists known limits. Handoff validation reports 43 documents and 143 relative links with no errors.|
+| Local EXE + Chinese guide package | PASS | [`WinCraft-0.1.0-alpha.1-local-acceptance-20261031.zip`](../../evidence/local/nextgen-2026-10-31/delivery-b11-04-20261031-140158/WinCraft-0.1.0-alpha.1-local-acceptance-20261031.zip) is 4,558,082 bytes, SHA-256 `A0BEF3D637E0E120BFAD1B2D27B7C3C34990BB202D465A2FBE4EBB0D926D8BC9`; exactly three entries (EXE, Chinese guide, BUILD.txt), and the embedded EXE hash matches the release binary.|
+| B11-04-A1/A2/A3 | PASS / PASS / PASS (offline preparation scope) | No unauthorized license/name/ownership migration; only local materials were generated without a Release; versioned Chinese and English documents are readable. Task remains `IMPLEMENTED_UNVERIFIED` because B11-02 native gates and any future publication authorization are separate prerequisites.|
+
+Audit evidence is in ignored `evidence/local/`; it contains no runtime descriptor, credential, user content or process ID. This audit does not authorize making the repository public or publishing a Release.

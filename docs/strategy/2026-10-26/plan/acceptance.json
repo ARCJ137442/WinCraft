@@ -2034,7 +2034,8 @@
       ],
       "level": "L0-L6",
       "criterion": "无擅自重许可/定名/归属迁移",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: `git diff 6929056700b1ba6702288534579debc8a502c139..HEAD -- LICENSE LICENSE-NOTES.md` is empty; package.json remains `wincraft-prototype`, Tauri crate remains `wincraft-desktop`, remote remains exomind-team/WinCraft private on dev, and the internal working names are still labeled provisional. No license, ownership or product-name migration was made."
     },
     {
       "id": "B11-04-A2",
@@ -2050,7 +2051,8 @@
       ],
       "level": "L0-L6",
       "criterion": "未获发布授权仅生成材料不发Release",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: `gh release list --repo exomind-team/WinCraft` returned no releases and `git tag --list` is empty. A three-file unsigned acceptance ZIP was created only under ignored evidence/local; no GitHub Release or public upload was made. The repository is still private."
     },
     {
       "id": "B11-04-A3",
@@ -2066,7 +2068,8 @@
       ],
       "level": "L0-L6",
       "criterion": "公众文档可读且适用版本/更新时间明确",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence": "PASS: README names version 0.1.0-alpha.1 and document date 2026-10-31; the Chinese Windows acceptance guide has versioned front matter with updated_at/last_verified_at 2026-10-31; the English docs/release-gate.md states the same pre-release scope and current limitations. The local acceptance ZIP includes the EXE, Chinese guide and BUILD.txt only."
     }
   ]
 }
