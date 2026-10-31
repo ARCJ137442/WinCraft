@@ -1169,6 +1169,19 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-crash-20261031-121253/summary.json) 保存在忽略的 `evidence/local/`；Host descriptor、owner record 和进程信息没有保留。
 
+## 2026-10-31 B11-01 三轮 Provider crash/reacquire
+
+**Given** 当前 release headless Rust Host；**when** 串行运行三轮合成 owner Provider 崩溃探针；**then** 每轮都观测到 `stale`、以更高 epoch 重获 writer、销毁仅属于该轮的世界并验证 `NOT_FOUND`。这补强了 Provider 崩溃恢复的可重复性，但不覆盖 Host 崩溃循环、sleep/wake 或长期泄漏。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python tests/crash_recovery_probe.py --runtime <ephemeral descriptor> --record-file <ephemeral record>` × 3 | PASS（3/3） | 每轮退出码 0；`owner_process_terminated`、`stale_status_observed`、`writer_reacquired`、`lease_epoch_advanced`、`synthetic_world_destroyed` 与 `private_record_removed` 全部为 true。|
+| `python -m unittest tests.test_crash_recovery_probe -v` | PASS | 3 项探针记录/终态事件单测通过。|
+| Host 与临时记录清理 | PASS / NOT_TESTED | 三个私有 owner record 均已删除；测试 Host 在全部 cycle 后由 runner 终止，descriptor 随临时目录销毁；未将这次清理计作 graceful Host shutdown。|
+| B11-01-A2 判定 | PARTIAL | 三轮 Provider crash/reacquire 可重复通过；长时无泄漏、重复 Host crash/restart、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
+
+忽略的聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-repeated-crash-recovery-20261031/summary.json) 只保留 cycle 结果与 Host artifact hash，不含 owner/world ID、join key、PID、descriptor 路径或原始输出。
+
 ## 2026-10-31 B11-01 forced headless Host shutdown
 
 **Given** release `wincraft-headless` Host 与持有合成世界的 Python Provider；**when** parent 强制终止本次 Host 进程；**then** Provider 收到 SDK `connection.error` 并自行退出，Host descriptor 和 ready marker 被删除。此项只验证 headless transport；Tauri/WebView 子进程另见后续实测。

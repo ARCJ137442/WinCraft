@@ -27,7 +27,7 @@ audience: maintainer, Windows tester
 
 ## 性能与崩溃边界
 
-合成可见刷新分别完成 5、15、30 分钟（60、180、360 次更新）。30 分钟样本中私有内存首尾中位数下降约 4.5 MB，working set 上升约 19.9 MB；清理后进程树回到单个 Host。一次 Provider crash/reacquire 和一次 headless Host 断线通过；一次强制 Tauri Host 退出后，6 个 WebView2 后代在 3 秒内自行退出。该证据不构成长期无泄漏、睡眠恢复或性能保证。细节与脱敏本机证据位置见 [`docs/performance.md`](../performance.md)。
+合成可见刷新分别完成 5、15、30 分钟（60、180、360 次更新）。30 分钟样本中私有内存首尾中位数下降约 4.5 MB，working set 上升约 19.9 MB；清理后进程树回到单个 Host。三轮连续 Provider crash/reacquire、一次 headless Host 断线通过；一次强制 Tauri Host 退出后，6 个 WebView2 后代在 3 秒内自行退出。该证据不构成长期无泄漏、睡眠恢复或性能保证。细节与脱敏本机证据位置见 [`docs/performance.md`](../performance.md)。
 
 ## 快速启动
 
