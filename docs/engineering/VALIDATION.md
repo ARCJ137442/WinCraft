@@ -1108,3 +1108,18 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-01-A1/A2/A3 | PASS（context-complete sample） / NOT_RUN / PASS | A1 的机器、版本、负载、运行时长和电源计划上下文已记录；WMI 没有提供 ACPI power-source state，因此电源来源本身仍未知。A2 的长期 idle/refresh 趋势、crash cleanup、sleep/wake 和阈值 ADR 尚未执行；A3 继续禁止把短时样本宣传成轻量、无泄漏或性能保证。任务保持 `IMPLEMENTED_UNVERIFIED`。|
 
 本次忽略的 context-complete 本机证据位于 [`b11-01-contextual-1793415605844`](../../evidence/local/nextgen-2026-10-31/b11-01-contextual-1793415605844/)；包括 aggregate `summary.json`、`process-tree-samples.json` 和两次 synthetic latency JSON。runtime descriptor、原始 Host log 和 lease-probe 输出已删除。
+
+## 2026-10-31 B11-01 visible synthetic refresh soak
+
+**Given** 同一份 `9073b3b` Windows Tauri release 与 repository-owned synthetic Provider；**when** Provider 保持 320 × 200 世界可见，每 5 秒更新一次合成计数，共运行 5 分钟，同时以 5 秒请求间隔采集进程树；**then** 60 次更新均获得回执，Provider 清理自有世界，WebView 子进程退出。此场景补充短时刷新观察，不等同于长期无泄漏验收。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `tests/performance_probe.py --runtime <actual descriptor> --world-cycles 1 --snapshot-iterations 1 --data-iterations 1 --payload-bytes 128 --reconnect-cycles 1 --soak-seconds 300 --refresh-interval-seconds 5 --soak-visible` | PASS（合成可见刷新） | 60 次 `data.replace` 更新，事务延迟 p50/p95/p99/max 为 1.524/12.018/35.939/35.939 ms。无 revision conflict 被误当作写入成功；probe 经 SDK `mutate` 仅在明确 `REVISION_CONFLICT` 时刷新 revision。|
+| `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 330 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 333.434 秒、56 个样本；采样 median/p95 间隔 5.940/6.237 秒；峰值 7 个进程、367,558,656 bytes working set、202,756,096 private bytes、3,655 handles、297 threads；p95 CPU 为 machine-normalized 0.050%、one-core-normalized 1.607%。活跃窗口首尾 5 个样本中位数：working set 355,131,392 → 366,673,920 bytes，private bytes 202,338,304 → 186,630,144 bytes，handles 3,562 → 3,583，threads 289 → 277。世界销毁后 8 个连续样本只剩 tray Host（28,262,400 bytes working set、7,020,544 private bytes、353 handles、40 threads）。|
+| 电源与睡眠上下文 | PARTIAL | 采样前后电源计划均为 `Turbo`；WMI 报告 0 battery devices 且没有 ACPI power-source provider，物理电源来源未知；未注入 sleep/wake。|
+| Provider/Host/runtime descriptor 清理 | PASS | Provider 进程结束并确认只销毁自己的世界；核对精确 EXE 后停止本次 release Host，移除其本地 runtime descriptor。raw Provider/Host logs、PID 文件和 descriptor 路径文件已删除。|
+| `npm run check:local` after the visible-soak addition | PASS | 退出码 0：UI 28、Rust workspace 149、Python 222（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。|
+| B11-01-A1/A2/A3 | PASS / PARTIAL / PASS | A2 仅推进到 PARTIAL：5 分钟样本未显示活跃期 private-byte 中位数上行，且 Provider 清理后 WebView 子进程退出；仍不能断言长期 leak-free，也未验证 crash cleanup、sleep/wake 或资源阈值 ADR。任务仍为 `IMPLEMENTED_UNVERIFIED`。|
+
+本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/process-tree-samples.json) 位于忽略的 `evidence/local/`；未保留运行时描述、凭据、PID 或原始日志。

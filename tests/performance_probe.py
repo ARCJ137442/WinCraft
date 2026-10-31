@@ -51,16 +51,20 @@ def summarize(values: Sequence[float]) -> dict[str, float | int | None]:
 
 
 async def create_synthetic_world(
-    client: Client, sequence: int
+    client: Client,
+    sequence: int,
+    *,
+    visible: bool = False,
+    title_prefix: str = "WinCraft B11-01 synthetic",
 ) -> tuple[str, dict[str, Any], str]:
     created = await client.call(
         "world.create",
         {
             "window": {
-                "title": f"WinCraft B11-01 synthetic {sequence}",
+                "title": f"{title_prefix} {sequence}",
                 "width": 320,
                 "height": 200,
-                "visible": False,
+                "visible": visible,
                 "always_on_top": False,
             },
             "join_policy": "open_authenticated",
@@ -174,6 +178,59 @@ async def measure_reconnect(runtime: str, sequence: int) -> float:
     return elapsed
 
 
+async def measure_refresh_soak(client: Client, args: argparse.Namespace) -> dict[str, Any]:
+    world_id, lease, _join_key = await create_synthetic_world(
+        client,
+        args.world_cycles + 1,
+        visible=args.soak_visible,
+        title_prefix="WinCraft B11-01 synthetic refresh soak",
+    )
+    samples: list[float] = []
+    updates = 0
+    try:
+        scene = {
+            "root": {
+                "id": "root",
+                "kind": "stack",
+                "props": {"gap": 8},
+                "children": [
+                    {"id": "title", "kind": "text", "props": {"text": "Synthetic refresh soak", "size": "heading"}},
+                    {"id": "counter", "kind": "metric", "props": {
+                        "label": "Synthetic refreshes",
+                        "value": {"$path": "/counter"},
+                    }},
+                ],
+            },
+            "data": {"counter": 0},
+        }
+        await client.mutate("scene.replace", world_id, lease, scene=scene)
+        deadline = time.monotonic() + args.soak_seconds
+        payload = {"synthetic": "refresh", "sample": "x" * args.payload_bytes}
+        while time.monotonic() < deadline:
+            started = time.perf_counter()
+            await client.mutate(
+                "data.replace",
+                world_id,
+                lease,
+                data={"counter": updates, **payload},
+            )
+            samples.append((time.perf_counter() - started) * 1000)
+            updates += 1
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                await asyncio.sleep(min(args.refresh_interval_seconds, remaining))
+    finally:
+        await quiet_destroy(client, world_id, lease)
+    return {
+        "duration_seconds_requested": args.soak_seconds,
+        "refresh_interval_seconds": args.refresh_interval_seconds,
+        "window_visible": args.soak_visible,
+        "updates": updates,
+        "cleanup_confirmed": True,
+        "data_replace_transaction_latency_ms": summarize(samples),
+    }
+
+
 async def run(args: argparse.Namespace) -> None:
     timings: dict[str, list[float]] = {
         "world_create": [],
@@ -211,6 +268,11 @@ async def run(args: argparse.Namespace) -> None:
     for sequence in range(args.reconnect_cycles):
         timings["reconnect_and_write_join"].append(await measure_reconnect(args.runtime, sequence))
 
+    refresh_soak = None
+    if args.soak_seconds > 0:
+        async with Client(args.runtime, "wincraft.b11-01.synthetic-refresh-soak") as client:
+            refresh_soak = await measure_refresh_soak(client, args)
+
     print(json.dumps({
         "schema": "wincraft.synthetic-provider-latency.v1",
         "synthetic_only": True,
@@ -222,9 +284,13 @@ async def run(args: argparse.Namespace) -> None:
             "payload_bytes": args.payload_bytes,
             "inter_call_interval_ms": args.inter_call_interval_ms,
             "reconnect_cycles": args.reconnect_cycles,
+            "soak_seconds": args.soak_seconds,
+            "refresh_interval_seconds": args.refresh_interval_seconds,
+            "soak_visible": args.soak_visible,
             "window_visible": False,
         },
         "latency_ms": {name: summarize(values) for name, values in timings.items()},
+        "refresh_soak": refresh_soak,
         "identifiers_or_leases_recorded": False,
     }, ensure_ascii=False, indent=2))
 
@@ -238,6 +304,10 @@ def main() -> None:
     parser.add_argument("--payload-bytes", type=int, default=1024)
     parser.add_argument("--reconnect-cycles", type=int, default=3)
     parser.add_argument("--inter-call-interval-ms", type=int, default=25)
+    parser.add_argument("--soak-seconds", type=int, default=0)
+    parser.add_argument("--refresh-interval-seconds", type=float, default=5)
+    parser.add_argument("--soak-visible", action="store_true",
+                        help="Show the small synthetic refresh window during the soak")
     args = parser.parse_args()
     require_runtime(parser, args)
     if not 1 <= args.world_cycles <= 50:
@@ -252,6 +322,12 @@ def main() -> None:
         parser.error("--reconnect-cycles must be between 1 and 20")
     if not 10 <= args.inter_call_interval_ms <= 1000:
         parser.error("--inter-call-interval-ms must be between 10 and 1000")
+    if not 0 <= args.soak_seconds <= 3600:
+        parser.error("--soak-seconds must be between 0 and 3600")
+    if not 1 <= args.refresh_interval_seconds <= 60:
+        parser.error("--refresh-interval-seconds must be between 1 and 60")
+    if args.soak_visible and args.soak_seconds == 0:
+        parser.error("--soak-visible requires --soak-seconds")
     asyncio.run(run(args))
 
 

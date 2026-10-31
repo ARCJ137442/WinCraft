@@ -1931,7 +1931,7 @@
       ],
       "level": "L1-L5",
       "criterion": "无资源持续泄漏趋势或明确阻塞发布",
-      "status": "NOT_RUN"
+      "status": "PARTIAL"
     },
     {
       "id": "B11-01-A3",
