@@ -23,7 +23,7 @@ WinCraft uses a per-checkout CodeGraph index for source navigation. The database
 
 本机 Harness 数据规则：Codex App 与 Claude Code 的来源在线状态只通过宿主读取 OS 进程元数据判断，详情只读其明确数据目录；不得为采集而启动 Codex App/Claude CLI 或调用 App/MCP connector。Codex CLI 的 app-server 状态库适配是独立来源，固定 `useStateDbOnly=true`。进程离线时仍可展示有界历史，来源进程状态、数据目录可读性、新鲜度和逐会话状态分开；本机文件无权威逐会话状态时保留 `unknown`，不得伪造成 idle。Codex App 输出须校验 `session_meta` UUID；Claude 子 Agent 只能从已知 session/subagents 文件布局读取并校验父会话与 agentId。文本脱敏后仅留在本机 Provider/Host 内存，不写到日志或公开证据；Codex thread 导航只由用户点击受限 `codex://threads/<UUID>` Host 动作触发。
 
-模型额度来源规则：TeamSense 只用固定的 `GET /v1/integrations/models` `data:read` 缓存接口，不用宽泛 dashboard、管理员接口或刷新/写入路由。Codex 本机额度仅允许在独立 Provider 中通过显式 `--codex-quota` opt-in 使用；只在内存中使用 `auth.json` 必要字段，不刷新/写回/上传，不显示或记录令牌及账户 ID。该 ChatGPT backend route 未公开为稳定 API，必须保持默认关闭、实验性标识、固定 HTTPS/GET、限制大小/超时/重定向并在账号切换或身份不明时清除旧数据；自动测试只能使用合成凭据和模拟 HTTP。宿主本身不读取 Codex 凭据。
+模型额度来源规则：TeamSense 本机 collector 只作实现参考；WinCraft 不调用 TeamSense API，也不需要 TeamSense `data:read` token。Codex rollout quota 只解析有界 `sessions/` 与 `archived_sessions/` JSONL 尾部中的 `event_msg.token_count.rate_limits` 字段，不读对话正文、`auth.json`、state SQLite，不启动或连接 Codex App；缺少有效事件时保持 `unknown`。Codex live quota 是独立默认关闭的实验性来源，只能由明确的 `--codex-quota` opt-in 使用；固定 HTTPS GET、有界响应、拒绝重定向，内存中只使用必要 `auth.json` 字段，不刷新/写回/上传，不显示或记录令牌及账户 ID，切号或身份不明时清除旧数据。DeepSeek/MiniMax 各自固定 HTTPS GET 也须独立显式 opt-in，key 只在对应 flag 启用后从本机环境读取；不得使用 TeamSense API、宽泛 dashboard、管理员、刷新或写入路由。自动测试只用合成 fixture 与模拟 HTTP，真实凭据、rollout 内容和供应商网络请求不得写入证据。宿主本身不读取 Codex 凭据。
 
 默认允许：在解压工作目录中修改源码、安装正常开发依赖、构建、运行本项目测试与创建临时测试世界。先列计划并分步报告依据，不重复问用户已经决定的问题。
 

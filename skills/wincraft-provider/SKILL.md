@@ -386,16 +386,20 @@ at the original installation's configuration or put source values in evidence.
   Codex App or Claude Code; Codex CLI uses the explicit `useStateDbOnly=true` adapter.
 - `examples/integrations/model_quota/README.md` and
   `examples/integrations/model_quota/provider.py` — independent quota projection for
-  TeamSense cached data and an optional Codex source authenticated by the local
-  profile. TeamSense uses only the fixed `GET /v1/integrations/models` with `data:read`;
-  do not use refresh/admin/vendor paths or the broad `/v1/dashboard` response. Codex
-  remains disabled unless `--codex-quota` is explicitly supplied; it parses the bounded
-  selected local `auth.json` in memory but uses only `tokens.access_token` and
-  `tokens.account_id`, ignoring other fields. It uses one fixed experimental HTTPS GET.
-  It never refreshes or writes credentials, displays account IDs, or derives quota from
-  session history. The Codex backend route is undocumented, not a stable public API;
-  keep it opt-in and fail closed on schema/auth changes. `--demo` uses synthetic values
-  without network or credential reads.
+  Codex, DeepSeek, and MiniMax sources. TeamSense collector code is an implementation
+  reference only; this Provider does not call TeamSense or need a `data:read` token.
+  `--codex-rollout-quota` reads only bounded local `token_count.rate_limits` fields and
+  does not read conversation text, `auth.json`, SQLite, the Codex App, or the network.
+  `--codex-quota` is a separate opt-in for the experimental fixed Codex HTTPS GET; it
+  reads only the required local access token/account ID in memory, never writes or
+  displays them, and fails closed on schema/auth changes. DeepSeek and MiniMax each
+  require their own opt-in flag and local API key; they call only their fixed HTTPS GET
+  endpoints, reject redirects, and project bounded display fields. No source is enabled
+  by default. `--demo` uses synthetic values without credential reads or network calls.
+- `scripts/model_quota_headless_smoke.py` — starts the release headless Rust Host on an
+  isolated loopback port, creates a synthetic Codex quota rollout, runs the real Provider
+  for five seconds, then removes its temporary descriptor and fixture. The runner force-
+  stops only its own Host after the Provider cleanup; it does not validate Tauri pixels.
 - Codex App title links require `codex_thread_navigation`. The host accepts only a typed
   UUID and constructs `codex://threads/<UUID>` itself; never send a general URL or shell
   command. Clicks are explicit user actions, and OS acceptance is not proof that the

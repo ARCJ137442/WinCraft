@@ -35,7 +35,7 @@
 | R010 | 长问题等待与10秒动作ack分离，结果不被晚到/重复消息改写 | engineering | [09_EPHEMERAL_POPUP_SYSTORCH](../docs/09_EPHEMERAL_POPUP_SYSTORCH.md) | B03-01, B03-02, B03-04, B08-04 |
 | R011 | SysTorch延伸人类发起与人类决策，业务执行仍在来源 | latest | [09_EPHEMERAL_POPUP_SYSTORCH](../docs/09_EPHEMERAL_POPUP_SYSTORCH.md) | B03-03 |
 | R012 | 主题适配源软件风格，同时保留真实来源与可信授权区 | latest | [10_THEME_I18N_ACCESSIBILITY](../docs/10_THEME_I18N_ACCESSIBILITY.md) | B02-02, B03-03 |
-| R013 | TeamSense服务器负载/额度只读桌面投影，标明口径与新鲜度 | latest | [11_BROWSER_TEAMSENSE_VOICE](../docs/11_BROWSER_TEAMSENSE_VOICE.md) | B05-02 |
+| R013 | Codex、DeepSeek、MiniMax额度的只读桌面投影；按来源、单位、窗口与新鲜度分别呈现，TeamSense collector 仅作方法参考而不作为服务依赖 | latest | [11_BROWSER_TEAMSENSE_VOICE](../docs/11_BROWSER_TEAMSENSE_VOICE.md) | B05-02 |
 | R014 | ChatGPT/DeepSeek网页语义投影与官方API模式区分 | latest | [11_BROWSER_TEAMSENSE_VOICE](../docs/11_BROWSER_TEAMSENSE_VOICE.md) | B05-01, B05-03 |
 | R015 | 系统语音一次性显式授权，取消可恢复，不默认常驻监听 | latest | [11_BROWSER_TEAMSENSE_VOICE](../docs/11_BROWSER_TEAMSENSE_VOICE.md) | B05-04 |
 | R016 | 浏览器不获宿主token，不放宽Origin；受控桥接 | engineering | [11_BROWSER_TEAMSENSE_VOICE](../docs/11_BROWSER_TEAMSENSE_VOICE.md) | B05-01 |

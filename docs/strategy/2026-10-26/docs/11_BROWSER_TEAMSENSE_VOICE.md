@@ -2,7 +2,7 @@
 {
   "doc_id": "docs__11_BROWSER_TEAMSENSE_VOICE",
   "title": "浏览器、TeamSense 与一次性语音",
-  "updated_at": "2026-10-26",
+  "updated_at": "2026-10-31",
   "last_verified_at": "2026-10-26",
   "baseline_commit": "6929056700b1ba6702288534579debc8a502c139",
   "protocol_baseline": "0.3",
@@ -39,11 +39,15 @@
 
 浏览器休眠、标签销毁、SPA 导航、DOM 改版和扩展重启都有独立失效路径。页面原文不当指令，注入来的文本不能触发工具批准、热键或系统操作。
 
-## TeamSense
+## TeamSense 额度采集参考
 
-首个候选用例：服务器负载/模型服务状态/额度摘要的只读投影。TeamSense API 未在本轮核得，先由本地读取真实 schema、授权和缓存策略，再绑定 Adapter；不用猜的 URL 做业务请求。
+TeamSense 的本机 Codex 用量 collector 与账号额度 collector 是两条独立实现路径；它们只作为 WinCraft 的源码参考，不代表 WinCraft 要连接 TeamSense 服务，也不要求 `data:read` token。
 
-额度字段必须携带账户范围、窗口长度、重置时间、单位、来源时间、权威/估算标签。不能把各会话 token 简单相加当订阅总额度，不能将不同模型权重与计费机制当恒定。无数据是 unknown/stale，不是零；真实限流和花费控制仍归提供者与上游。
+- Codex rollout collector 只从 `sessions/` 与 `archived_sessions/` 的 JSONL `event_msg.token_count` 事件提取 quota 字段；其会话 metadata/SQLite 读取属于另一种用途。WinCraft quota HUD 只需要 `rate_limits.primary` 和可选 `secondary`，不读取正文、Codex App、`auth.json` 或 state DB。
+- TeamSense 的可选 Codex live quota collector 从本机 `auth.json` 读取必要字段后调用实验性 backend GET。WinCraft 将其保留为独立默认关闭的 `--codex-quota` 路径；Codex backend route 不是稳定公开 API。
+- TeamSense Worker 中的 DeepSeek/MiniMax adapters 直接调用固定 vendor HTTPS GET。WinCraft 复用这些已定位的端点和字段语义，但必须各自显式 opt-in，只从本机环境读取对应 key；不经过 TeamSense cache API。
+
+额度字段仍须按来源、账户作用域、窗口长度、重置时间、单位、来源时间与 freshness 分开呈现。不能把各会话 token 简单相加当订阅总额度，也不能将不同模型权重与计费机制当恒定。无数据是 unknown/stale，不是零；真实限流和花费控制仍归提供者与上游。
 
 ## ChatGPT / DeepSeek 网页
 

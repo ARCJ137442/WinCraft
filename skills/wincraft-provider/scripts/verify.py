@@ -39,7 +39,15 @@ REQUIRED_PATHS = (
     "examples/integrations/device-inbox/provider.py",
     "examples/integrations/model_quota/README.md",
     "examples/integrations/model_quota/provider.py",
-    "examples/integrations/model_quota/team_sense_quota.py",
+    "examples/integrations/model_quota/quota_projection.py",
+    "examples/integrations/model_quota/provider_sources.py",
+    "examples/integrations/model_quota/codex_rollout_quota.py",
+    "examples/integrations/model_quota/codex_quota.py",
+    "scripts/model_quota_headless_smoke.py",
+    "tests/test_quota_projection.py",
+    "tests/test_codex_quota.py",
+    "tests/test_provider_quota_sources.py",
+    "tests/test_codex_rollout_quota.py",
 )
 
 
@@ -121,7 +129,7 @@ def main() -> int:
         print("FAIL: skill does not link the scope interaction example")
         return 1
     if "examples/integrations/model_quota/provider.py" not in content:
-        print("FAIL: provider skill is missing the TeamSense read-only quota example")
+        print("FAIL: provider skill is missing the local quota HUD example")
         return 1
     if "examples/integrations/agent-board/scoped_live_sources.py" not in content:
         print("FAIL: provider skill is missing the independent scope writer example")

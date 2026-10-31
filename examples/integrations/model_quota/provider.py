@@ -1,10 +1,8 @@
-"""Show TeamSense and optional local Codex quota in a read-only WinCraft window."""
+'''在 WinCraft 悬浮窗呈现本机 Codex、DeepSeek 与 MiniMax 额度。'''
 from __future__ import annotations
 
 import argparse
 import asyncio
-import getpass
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,127 +12,129 @@ PYTHON_EXAMPLES = Path(__file__).resolve().parents[2] / "python"
 if str(PYTHON_EXAMPLES) not in sys.path:
     sys.path.insert(0, str(PYTHON_EXAMPLES))
 
-from client import Client, add_runtime_args, destroy_world_safely, event_world_id, require_runtime  # noqa: E402
+from client import (  # noqa: E402
+    Client,
+    add_runtime_args,
+    destroy_world_safely,
+    event_world_id,
+    require_runtime,
+)
 from codex_quota import (  # noqa: E402
     refresh_codex_source,
     synthetic_codex_quota,
 )
-from team_sense_quota import (  # noqa: E402
-    TeamSenseApiError,
+from codex_rollout_quota import refresh_codex_rollout_source  # noqa: E402
+from provider_sources import (  # noqa: E402
+    DEEPSEEK_API_KEY_ENV,
+    MINIMAX_API_KEY_ENV,
+    refresh_local_sources,
+)
+from quota_projection import (  # noqa: E402
     build_quota_scene,
-    fetch_team_sense_models,
-    normalize_models_snapshot,
+    normalize_quota_snapshot,
     quota_window_spec,
     synthetic_demo_snapshot,
-    validate_base_url,
-    with_api_read_state,
 )
 
 
-def _now() -> str:
+def __now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
-def _team_sense_token() -> str:
-    token = os.environ.get("TEAM_SENSE_API_TOKEN")
-    if token:
-        return token
-    if not sys.stdin.isatty():
-        raise RuntimeError("TEAM_SENSE_API_TOKEN is required in a non-interactive session")
-    return getpass.getpass("TeamSense data:read token (input hidden): ")
-
-
-async def _refresh_sources(
+async def __refresh_sources(
     *,
-    base_url: str | None,
-    team_sense_token: str | None,
     codex_enabled: bool,
+    codex_rollout_enabled: bool,
     codex_home: Path | None,
+    deepseek_enabled: bool,
+    minimax_enabled: bool,
     previous: dict[str, Any] | None,
-) -> dict[str, Any]:
-    observed_at = _now()
+    previous_source_snapshots: dict[str, Any] | None,
+    now: datetime | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    observed = now or datetime.now(timezone.utc)
+    observed_at = (
+        observed.astimezone(timezone.utc)
+        .isoformat(timespec="seconds")
+        .replace("+00:00", "Z")
+    )
     if previous is None:
-        projection = normalize_models_snapshot(
+        projection = normalize_quota_snapshot(
             {},
-            api_connected=False,
-            api_observed_at=observed_at,
-            api_error_code="NOT_CONFIGURED",
+            observed_at=observed_at,
+            enabled_sources=[],
         )
     else:
         projection = dict(previous)
     last_codex = projection.get("codex")
-
-    if base_url is not None and team_sense_token is not None:
-        try:
-            payload = await asyncio.to_thread(fetch_team_sense_models, base_url, team_sense_token)
-            projection = normalize_models_snapshot(
-                payload,
-                api_connected=True,
-                api_observed_at=observed_at,
-            )
-            if isinstance(last_codex, dict):
-                projection["codex"] = last_codex
-        except TeamSenseApiError as exc:
-            if previous is None:
-                projection = normalize_models_snapshot(
-                    {},
-                    api_connected=False,
-                    api_observed_at=observed_at,
-                    api_error_code=exc.code,
-                )
-                projection["codex"] = last_codex
-            else:
-                projection = with_api_read_state(
-                    projection,
-                    api_connected=False,
-                    api_observed_at=observed_at,
-                    api_error_code=exc.code,
-                )
-
-    projection["codex"] = await asyncio.to_thread(
-        refresh_codex_source,
-        enabled=codex_enabled,
-        explicit_home=codex_home,
-        previous=projection.get("codex"),
-    )
-    if codex_enabled:
-        projection["identity_scope"] = (
-            "TeamSense 接口不提供账户标识；Codex 额度只绑定本机当前登录且不显示账户ID"
-            if base_url
-            else "TeamSense 未配置；Codex 额度只绑定本机当前登录且不显示账户ID"
+    if codex_rollout_enabled:
+        codex_projection = await asyncio.to_thread(
+            refresh_codex_rollout_source,
+            enabled=True,
+            explicit_home=codex_home,
+            previous=last_codex,
+            now=now,
         )
-        sources = projection.get("sources", [])
-        if not isinstance(sources, list):
-            sources = []
-        if "codex_local_quota" not in sources:
-            sources = [*sources, "codex_local_quota"]
-        projection["sources"] = sources
-    return projection
+    else:
+        codex_projection = await asyncio.to_thread(
+            refresh_codex_source,
+            enabled=codex_enabled,
+            explicit_home=codex_home,
+            previous=last_codex,
+        )
+    projection = await asyncio.to_thread(
+        refresh_local_sources,
+        deepseek_enabled=deepseek_enabled,
+        minimax_enabled=minimax_enabled,
+        previous=previous_source_snapshots,
+        now=now,
+    )
+    projection["codex"] = codex_projection
+    enabled_sources = [
+        source
+        for source, enabled in (
+            ("codex_rollout", codex_rollout_enabled),
+            ("codex_live", codex_enabled),
+            ("deepseek_balance", deepseek_enabled),
+            ("minimax_quota", minimax_enabled),
+        )
+        if enabled
+    ]
+    projected = normalize_quota_snapshot(
+        projection,
+        observed_at=observed_at,
+        enabled_sources=enabled_sources,
+    )
+    projected["codex"] = codex_projection
+    source_snapshots = {
+        source: projection[source]
+        for source, enabled in (("deepseek", deepseek_enabled), ("minimax", minimax_enabled))
+        if enabled and isinstance(projection.get(source), dict)
+    }
+    return projected, source_snapshots
 
 
 async def run(args: argparse.Namespace) -> None:
-    base_url: str | None = None
-    token: str | None = None
     last_projection: dict[str, Any]
+    source_snapshots: dict[str, Any]
     if args.demo:
-        last_projection = normalize_models_snapshot(
+        last_projection = normalize_quota_snapshot(
             synthetic_demo_snapshot(),
-            api_connected=True,
-            api_observed_at=_now(),
+            observed_at=__now(),
+            enabled_sources=[],
             demo=True,
         )
-        last_projection["codex"] = synthetic_codex_quota(observed_at=_now())
+        last_projection["codex"] = synthetic_codex_quota(observed_at=__now())
+        source_snapshots = {}
     else:
-        raw_base_url = args.api_base_url
-        if raw_base_url:
-            base_url = validate_base_url(raw_base_url)
-            token = _team_sense_token()
-        last_projection = await _refresh_sources(
-            base_url=base_url,
-            team_sense_token=token,
+        last_projection, source_snapshots = await __refresh_sources(
             codex_enabled=args.codex_quota,
+            codex_rollout_enabled=args.codex_rollout_quota,
             codex_home=args.codex_home,
+            deepseek_enabled=args.deepseek_quota,
+            minimax_enabled=args.minimax_quota,
             previous=None,
+            previous_source_snapshots=None,
         )
 
     world_id: str | None = None
@@ -151,8 +151,9 @@ async def run(args: argparse.Namespace) -> None:
             {
                 "window": quota_window_spec(
                     demo=args.demo,
-                    codex_enabled=args.codex_quota,
-                    teamsense_enabled=base_url is not None,
+                    codex_enabled=args.codex_quota or args.codex_rollout_quota,
+                    deepseek_enabled=args.deepseek_quota,
+                    minimax_enabled=args.minimax_quota,
                 ),
                 "join_policy": "invite",
                 "claim": True,
@@ -176,19 +177,26 @@ async def run(args: argparse.Namespace) -> None:
                     )
                     announced = True
                 if args.demo:
-                    if await _wait_for_world_or_timeout(client, world_id, args.duration_seconds):
+                    if await __wait_for_world_or_timeout(client, world_id, args.duration_seconds):
                         world_deleted = True
                         return
                     break
-                if await _wait_for_world_or_timeout(client, world_id, args.refresh_seconds):
+                if args.duration_seconds is not None:
+                    if await __wait_for_world_or_timeout(client, world_id, args.duration_seconds):
+                        world_deleted = True
+                        return
+                    break
+                if await __wait_for_world_or_timeout(client, world_id, args.refresh_seconds):
                     world_deleted = True
                     return
-                last_projection = await _refresh_sources(
-                    base_url=base_url,
-                    team_sense_token=token,
+                last_projection, source_snapshots = await __refresh_sources(
                     codex_enabled=args.codex_quota,
+                    codex_rollout_enabled=args.codex_rollout_quota,
                     codex_home=args.codex_home,
+                    deepseek_enabled=args.deepseek_quota,
+                    minimax_enabled=args.minimax_quota,
                     previous=last_projection,
+                    previous_source_snapshots=source_snapshots,
                 )
         finally:
             if world_id is not None and lease is not None and not world_deleted:
@@ -200,7 +208,7 @@ async def run(args: argparse.Namespace) -> None:
                 )
 
 
-async def _wait_for_world_or_timeout(client: Client, world_id: str, duration: float) -> bool:
+async def __wait_for_world_or_timeout(client: Client, world_id: str, duration: float) -> bool:
     deadline = asyncio.get_running_loop().time() + duration
     while True:
         remaining = deadline - asyncio.get_running_loop().time()
@@ -220,19 +228,32 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_runtime_args(parser)
     parser.add_argument(
-        "--api-base-url",
-        default=os.environ.get("TEAM_SENSE_BASE_URL"),
-        help="Optional TeamSense API origin; remote origins must use HTTPS",
-    )
-    parser.add_argument(
         "--codex-quota",
         action="store_true",
-        help="Opt in to reading Codex auth.json in memory and a fixed experimental HTTPS quota GET",
+        help="Opt in to the experimental Codex HTTPS quota GET using local auth.json",
+    )
+    parser.add_argument(
+        "--codex-rollout-quota",
+        action="store_true",
+        help="Read quota snapshots from bounded local Codex token_count rollout events; no network",
+    )
+    parser.add_argument(
+        "--deepseek-quota",
+        action="store_true",
+        help=f"Opt in to DeepSeek fixed GET; reads {DEEPSEEK_API_KEY_ENV} only when enabled",
+    )
+    parser.add_argument(
+        "--minimax-quota",
+        action="store_true",
+        help=f"Opt in to MiniMax fixed GET; reads {MINIMAX_API_KEY_ENV} only when enabled",
     )
     parser.add_argument(
         "--codex-home",
         type=Path,
-        help="Explicit Codex home containing auth.json (default: CODEX_HOME or ~/.codex)",
+        help=(
+            "Explicit Codex home containing sessions/ and/or auth.json "
+            "(default: CODEX_HOME or ~/.codex)"
+        ),
     )
     parser.add_argument(
         "--refresh-seconds",
@@ -248,19 +269,26 @@ def main() -> None:
     parser.add_argument(
         "--duration-seconds",
         type=float,
-        default=120,
-        help="Demo window lifetime (1..600 seconds)",
+        help="Optional bounded Provider lifetime (1..600 seconds); --demo defaults to 120 seconds",
     )
     args = parser.parse_args()
     require_runtime(parser, args)
     if not 10 <= args.refresh_seconds <= 300:
         parser.error("--refresh-seconds must be between 10 and 300")
-    if not 1 <= args.duration_seconds <= 600:
+    if args.demo and args.duration_seconds is None:
+        args.duration_seconds = 120
+    if args.duration_seconds is not None and not 1 <= args.duration_seconds <= 600:
         parser.error("--duration-seconds must be between 1 and 600")
-    if args.codex_home is not None and not args.codex_quota:
-        parser.error("--codex-home requires --codex-quota")
-    if not args.demo and not args.api_base_url and not args.codex_quota:
-        parser.error("configure TeamSense or explicitly enable --codex-quota unless --demo is used")
+    if args.codex_quota and args.codex_rollout_quota:
+        parser.error("choose only one Codex quota source")
+    if args.codex_home is not None and not (args.codex_quota or args.codex_rollout_quota):
+        parser.error("--codex-home requires --codex-quota or --codex-rollout-quota")
+    if not args.demo and not any(
+        (args.codex_quota, args.codex_rollout_quota, args.deepseek_quota, args.minimax_quota)
+    ):
+        parser.error(
+            "enable at least one quota source unless --demo is used"
+        )
     try:
         asyncio.run(run(args))
     except KeyboardInterrupt:

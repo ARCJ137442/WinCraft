@@ -43,7 +43,7 @@
 | B04-03 | 授权快捷键资源 | B01-02, B04-01 | L1-L4 |
 | B04-04 | TouchAI窄用例与等价性清单 | B04-03, B02-02 | L2-L5 |
 | B05-01 | 浏览器Native Messaging桥接 | B01-03, B01-04 | L1-L5 |
-| B05-02 | TeamSense 与 Codex 本机只读额度投影 | B05-01 | L0-L5 |
+| B05-02 | Codex、DeepSeek 与 MiniMax 本机只读额度投影 | B05-01 | L0-L5 |
 | B05-03 | 网页聊天语义对象与动作边界 | B05-01, B03-02 | L1-L5 |
 | B05-04 | 主动语音输入与朗读POC | B05-03, B02-04 | L3-L5 |
 | B06-01 | 配置包格式与无秘密导出 | B01-03, B02-02 | L1-L2 |
@@ -756,37 +756,38 @@ cargo test --workspace
 
 **证据：** baseline commit及工作区差异、实际命令/退出码与环境、用例状态和不含秘密的证据路径、未测项/阻塞来源、回滚验证结果
 
-## B05-02 · TeamSense 与 Codex 本机只读额度投影
+## B05-02 · Codex、DeepSeek 与 MiniMax 本机只读额度投影
 
 **前置：** B05-01；**需求：** R013, R063
 
-**输入：** TeamSense Agent API GET /v1/integrations/models 已由 docs/agent-api.md 与 worker routes 确认，受 data:read token 保护，返回缓存 DeepSeek/MiniMax/Sub2API 与 freshness；不含 Codex 或账户标识。用户要求同一 HUD 也呈现 Codex。TeamSense 源码 e63bbe5 存在单独的 Codex quota 读取实现，但使用的 chatgpt.com backend route 不是公开稳定 API；WinCraft 将其做为默认关闭、明确 opt-in 的本机凭据适配器。自动化回归用合成 auth/HTTP，不读取真实凭据或访问实时账户。
+**输入：** TeamSense 本地采集器源码仅作实现参考，不调用 TeamSense 服务，也不需要 data:read token。Codex rollout 的 event_msg.token_count.rate_limits 提供可选的本机历史额度快照；Codex 实验性 backend GET 保留为独立 opt-in 路径；DeepSeek/MiniMax 固定 vendor GET 仅在显式启用且本机环境提供对应 API key 时使用。不得读取或记录 key、account ID、会话正文或业务内容。
 
-**定位：** `examples/integrations/model_quota/`；`proposed: contracts/usage-observation.schema.json`
+**定位：** `examples/integrations/model_quota/`；`tests/test_quota_projection.py`；`tests/test_codex_rollout_quota.py`；`tests/test_provider_quota_sources.py`；`proposed: contracts/usage-observation.schema.json`
 
 ### 实施
-1. 核对 TeamSense 真实只读 API、身份/账号/窗口口径与授权；本地文档/路由已确认 data:read GET，账户标识及真实授权仍待验证；不读取密钥、不调用写 API
-2. 将 quota 单独建字段并保留 provider、currency/model/window、单位与缓存更新时间；本机 UI 将 status/freshness/API 连接分别呈现，不合并单位或周期
-3. Codex 与 TeamSense 保持独立来源；仅在显式 opt-in 后有界解析本机 auth.json，并只使用必要的 access_token/account_id 字段到内存请求固定 HTTPS GET；不使用其他字段或会话历史，不显示或记录账户 ID/令牌
-4. Codex 响应按主/次窗口和剩余比例分别投影；缺字段、无效周期、登录切换或无法确认本机账号时失败关闭，不输出零值冒充未知
+1. 只读复核 TeamSense 本机 collector 与 DeepSeek/MiniMax worker 端点来源；适配器在 WinCraft 内独立实现，不调用 TeamSense API
+2. Codex rollout source 仅解析有界 sessions/archived_sessions JSONL 尾部的 event_msg.token_count rate_limits；不读取正文、auth.json、state SQLite 或启动 Codex App
+3. Codex backend HTTPS GET 保持单独默认关闭的实验性 opt-in；DeepSeek/MiniMax 固定 HTTPS GET 只在对应 flag 启用且读取到本机 key 后运行，拒绝重定向并限制响应大小
+4. quota 仍按 provider/currency/model/window/freshness 分开；刷新失败保留内存 last-good 并标记陈旧，缺失保持 unknown，不写密钥/账号/业务数据
 
 ### 验收
-- **B05-02-A1** 账号/提供商/窗口期不同数据不混算
-- **B05-02-A2** 数据过期和断线清晰
-- **B05-02-A3** TeamSense 仅请求已授权的缓存 GET；Codex 仅请求默认关闭的固定实验性只读 GET；不调用 TeamSense 写接口或使用宽泛 dashboard API
-- **B05-02-A4** Codex 额度需显式 opt-in；有界解析本机 auth.json 后只使用必要 access_token/account_id 字段到本机内存，账号切换/身份无法确认时清除旧读数，令牌和账户 ID 不进入投影/日志；主次窗口、剩余比例与读取时间分开展示
+- **B05-02-A1** 账号/提供商/币种/窗口期不同数据不混算，金额单位与 quota 百分比不混用
+- **B05-02-A2** 快照时间、来源可读性与新鲜度分别呈现；断线保留的值标记陈旧，未知不伪造成零
+- **B05-02-A3** 不调用 TeamSense 服务；供应商/Codex 固定 HTTPS GET 默认关闭、仅显式 opt-in，拒绝重定向与宽泛/写入接口
+- **B05-02-A4** Codex rollout 仅有界解析 token_count.rate_limits；Codex live 读取 auth.json 仍须独立 opt-in；DeepSeek/MiniMax key 只从显式启用后的本机环境读取；令牌、账号标识和正文不进入场景/日志
 
 **验证层/目录：** L0-L5 / current WinCraft checkout
 
 ```text
-python -m unittest discover -s tests -p test_team_sense_quota.py -v
-python -m unittest discover -s tests -p test_codex_quota.py -v
-npm run check:python
+python -m unittest tests.test_quota_projection tests.test_codex_quota tests.test_codex_rollout_quota tests.test_provider_quota_sources -v
+python skills/wincraft-provider/scripts/verify.py
 python scripts/check_contracts.py
+npm run check:python
 cargo test --workspace
+python scripts/model_quota_headless_smoke.py
 ```
 
-**说明：** 合成回归检查 provider/window/currency 隔离、unknown/zero、新鲜度/断线、脱敏、固定 GET/禁止重定向、auth 文件上限及账号切换栅栏；合成数据不替代真实账号接口；Codex backend route 未形成公开稳定契约，实时读取保持显式 opt-in；未明确启动时不读取 auth.json、不联网。真实 TeamSense 未有 data:read token 时保持 NOT_RUN；原生窗口像素须另行 Computer Use 或人工验收
+**说明：** 合成用例覆盖 rollout 事件筛选/窗口校验/扫描上限、供应商固定 GET/重定向/响应上限、显式环境 key gate、unknown/zero、freshness/last-good、字段脱敏；不得使用真实用户 auth、rollout 内容或供应商 key 作为测试样本；TeamSense token 与 TeamSense 服务都不是 WinCraft 的运行前置；任何真实 DeepSeek/MiniMax 请求和 Codex backend GET 均 NOT_RUN，除非本机明确提供凭据并再次决定执行；Codex 本机 quota 快照来自事件时间，不是实时 App 通信；无有效事件时保留 unknown；native pixels 另按 Computer Use/人工验收记录；Release headless smoke 使用隔离 loopback Host 和本次生成的 synthetic rollout；Provider 有界运行、清理自己的 world 后，runner 只强制结束本次 Host。该路径不验证 Tauri 原生像素或 graceful Host shutdown。
 
 **回滚：** 停只读Provider；Host与服务无业务修改。
 

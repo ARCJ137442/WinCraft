@@ -8,7 +8,7 @@
 
 本文件按时间追加，不回写早期观察。对同一验收项，较新的明确复核段落与生成的 `plan/acceptance.json`、`plan/status.json` 是当前状态；旧日期段落只保留发生当时的事实。
 
-TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条路径：历史用量库读本机 `state_*.sqlite` 与 rollout 的 token/quota 事件，不连接 Codex App 或读取 `auth.json`；TeamSense 桌面 collector 另有默认关闭、单独授权的可选实时额度查询。Agent 只读 API 的 `GET /v1/integrations/models` 受 `data:read` token 保护，可从缓存返回 DeepSeek、MiniMax、Sub2API 与 freshness metadata，但不包含 Codex；现有 `/api/codex/usage` 仍在既有 `/api` 身份边界内。WinCraft B05-02 使用该 TeamSense 固定缓存 GET；新增 Codex 额度源默认关闭，只有显式传 `--codex-quota` 才使用固定的实验性 HTTPS GET，并只在适配器内使用本机 `auth.json` 的 access token/account ID，不刷新或写回、不显示或记录凭据/账户标识。该 Codex backend route 不是稳定公开 API；本轮只做合成回归，没有读取真实 auth 文件或发起真实账户请求。真实 TeamSense 联调、Codex 实时请求与原生像素验收仍未完成。
+TeamSense 的 Codex 本机 rollout collector 与账号额度 collector 是不同来源：前者解析 rollout 的 `event_msg.token_count.rate_limits`，后者可选读取 auth 并调用实验性 Codex backend GET；`GET /v1/integrations/models` 则是另一条受 `data:read` 保护的 TeamSense 缓存 API。WinCraft B05-02 已改为只借鉴这些实现方法，不调用 TeamSense API、不需要 TeamSense token：Codex rollout 适配器只读有界 JSONL 尾部并投影 quota 字段；DeepSeek/MiniMax 使用显式 opt-in 的固定供应商 HTTPS GET 和本机环境 key；Codex live GET 仍作为单独实验性 opt-in 路径。对话正文、凭据、账户标识不会进入场景或日志。当前合成回归不读取真实 Codex 文件或凭据，也未发起外网请求；真实来源 freshness 和原生像素仍未验收。
 
 ## 2026-10-30 B02-02 主题与无障碍偏好验收
 
@@ -1259,3 +1259,20 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-04-A1/A2/A3 | PASS / PASS / PASS (offline preparation scope) | No unauthorized license/name/ownership migration; only local materials were generated without a Release; versioned Chinese and English documents are readable. Task remains `IMPLEMENTED_UNVERIFIED` because B11-02 native gates and any future publication authorization are separate prerequisites.|
 
 Audit evidence is in ignored `evidence/local/`; it contains no runtime descriptor, credential, user content or process ID. This audit does not authorize making the repository public or publishing a Release.
+
+## 2026-10-31 B05-02 local quota-source refactor
+
+**Given** TeamSense collector source and synthetic Codex/vendor snapshots; **when** WinCraft projects Codex, DeepSeek, and MiniMax quota through its ordinary Provider and shared renderer; **then** the app does not call TeamSense, Codex rollout parsing remains bounded to quota events, vendor reads require explicit opt-in, and unknown/freshness/error states remain separate.
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python -m unittest tests.test_quota_projection tests.test_codex_quota tests.test_codex_rollout_quota tests.test_provider_quota_sources -v` | PASS | 36 项 synthetic tests：额度投影、`token_count.rate_limits` 事件读取、超时/过期/未知、固定 DeepSeek/MiniMax GET、密钥 gate、重定向/响应上限、MiniMax 模型截断披露、last-good 标陈旧及 Provider 场景脱敏。没有真实 Codex 文件、供应商 key 或网络请求。|
+| `python skills/wincraft-provider/scripts/verify.py` | PASS | 41 个 Provider Skill 源码、示例、测试、脚本和文档引用存在；引用清单已从 TeamSense 模块名改为本机 quota adapter。|
+| `npm run check:local` | PASS | 退出码 0；UI 28 项、Rust workspace 149 项、Python 239 项（1 项 Windows symlink 能力跳过）、离线 schema/配置一致性与 strict Clippy 通过。|
+| `npm run codegraph:sync` / `npm run codegraph:status` | PASS | 索引同步后为 current：109 files、3,084 nodes、10,036 edges；数据库留在被忽略的 `.codegraph/`。|
+| `python scripts/model_quota_headless_smoke.py` | PASS（真实 release Rust Host） | 退出码 0；隔离 loopback descriptor 创建成功，Provider 读取仅由本次测试生成的 `token_count` fixture、发布 quota 场景并在有界运行期后清理自己的世界。无真实文件、凭据或外网访问；测试后强制结束的仅是本次启动的 headless Host。临时 descriptor、fixture 与日志已清理。|
+| TeamSense API、真实 Codex rollout/auth、DeepSeek/MiniMax live API | NOT_RUN | TeamSense 不再是 WinCraft 数据源；本轮只研究其本地实现。未读取真实用户 rollout/auth 文件、未设置/读取供应商 key、未发起真实上游请求。|
+| Current native quota HUD pixels | NOT_RUN | Computer Use 重置后仍报 `Computer Use native pipe is unavailable: failed to connect native pipe: 系统找不到指定的文件。 (os error 2)`；renderer 场景由合成测试覆盖，不把协议 smoke 当作像素验收。|
+| B05-02-A1/A2/A3/A4 | PASS / PARTIAL / PASS / PASS（synthetic/code） | A1/A3/A4 由合成投影、固定端点/opt-in 检查、敏感字段脱敏与 rollout 事件用例覆盖；A2 的时效字段和场景节点已验证，真实来源 freshness 与 native pixels 未验收，所以保持 PARTIAL。B05-02 仍为 `IMPLEMENTED_UNVERIFIED`。|
+
+本地合成 smoke 没有把 descriptor、rollout 正文、凭据或来源值写入证据。汇总记录见 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b05-02-quota-refactor-20261031/summary.json)；实现入口为 [`model_quota/`](../../examples/integrations/model_quota/)，本机 evidence 目录不跟踪提交。

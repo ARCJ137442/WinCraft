@@ -13,7 +13,7 @@ if str(INTEGRATION_DIR) not in sys.path:
     sys.path.insert(0, str(INTEGRATION_DIR))
 
 import codex_quota  # noqa: E402
-from team_sense_quota import build_quota_scene, normalize_models_snapshot  # noqa: E402
+from quota_projection import build_quota_scene, normalize_quota_snapshot  # noqa: E402
 
 
 SYNTHETIC_TOKEN = "synthetic-access-token-never-send"
@@ -215,15 +215,15 @@ class CodexQuotaTests(unittest.TestCase):
         self.assertIn("账号状态不明确", changed_account["observed_label"])
 
     def test_given_disabled_codex_source_when_scene_is_built_then_state_is_explicit_and_unknown(self):
-        projection = normalize_models_snapshot({}, api_connected=False, api_error_code="NOT_CONFIGURED")
+        projection = normalize_quota_snapshot({}, enabled_sources=[])
         scene = build_quota_scene(projection)
         codex = scene["data"]["codex"]
         self.assertEqual(codex["state_label"], "未启用")
         self.assertEqual(codex["windows"], [])
-        self.assertIn("会话历史推算", codex["detail"])
+        self.assertIn("不会读取 Codex App", codex["detail"])
 
     def test_given_codex_quota_windows_when_scene_is_built_then_remaining_percent_uses_progress_bars(self):
-        projection = normalize_models_snapshot({}, api_connected=False, api_error_code="NOT_CONFIGURED")
+        projection = normalize_quota_snapshot({}, enabled_sources=[])
         projection["codex"] = codex_quota.normalize_codex_usage(
             SYNTHETIC_RESPONSE,
             observed_at="2026-10-31T00:00:00Z",

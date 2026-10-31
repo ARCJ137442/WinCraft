@@ -33,7 +33,7 @@
 | 配置型 `.wcp` 导出与本机管理器导入 | [tools/pack/README.md](../tools/pack/README.md)、[合成包人工验收](release/WINCRAFT_ALPHA1_ACCEPTANCE_CN.md#b06-03-配置包导入人工验收) |
 | 配置包新机器/来源状态边界 | [configuration-pack-status.md](integrations/configuration-pack-status.md)、[configuration-pack-new-machine.md](integrations/configuration-pack-new-machine.md) |
 | Agent Activity 三来源只读总览示例 | [examples/integrations/agent-board/README.md](../examples/integrations/agent-board/README.md) |
-| TeamSense 缓存额度与 Codex 本机实验源 HUD | [examples/integrations/model_quota/README.md](../examples/integrations/model_quota/README.md) |
+| Codex rollout、DeepSeek 与 MiniMax 本机额度 HUD（TeamSense 仅作实现参考） | [examples/integrations/model_quota/README.md](../examples/integrations/model_quota/README.md) |
 | 宿主原生窗口动作 allowlist | [references/native-window-actions.md](../skills/wincraft-provider/references/native-window-actions.md) |
 | Popup-Ask 到临时 WinCraft 世界的可选传输 | [references/popup-ask.md](../skills/wincraft-provider/references/popup-ask.md) |
 | 可提交的本机验收摘要 | [engineering/VALIDATION.md](engineering/VALIDATION.md) |

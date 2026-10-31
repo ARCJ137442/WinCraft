@@ -319,7 +319,7 @@
     },
     {
       "id": "R013",
-      "requirement": "TeamSense服务器负载/额度只读桌面投影，标明口径与新鲜度",
+      "requirement": "Codex、DeepSeek、MiniMax额度的只读桌面投影；按来源、单位、窗口与新鲜度分别呈现，TeamSense collector 仅作方法参考而不作为服务依赖",
       "origin": "latest",
       "source_ids": [
         "U-LATEST"
