@@ -1119,7 +1119,7 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 330 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 333.434 秒、56 个样本；采样 median/p95 间隔 5.940/6.237 秒；峰值 7 个进程、367,558,656 bytes working set、202,756,096 private bytes、3,655 handles、297 threads；p95 CPU 为 machine-normalized 0.050%、one-core-normalized 1.607%。活跃窗口首尾 5 个样本中位数：working set 355,131,392 → 366,673,920 bytes，private bytes 202,338,304 → 186,630,144 bytes，handles 3,562 → 3,583，threads 289 → 277。世界销毁后 8 个连续样本只剩 tray Host（28,262,400 bytes working set、7,020,544 private bytes、353 handles、40 threads）。|
 | 电源与睡眠上下文 | PARTIAL | 采样前后电源计划均为 `Turbo`；WMI 报告 0 battery devices 且没有 ACPI power-source provider，物理电源来源未知；未注入 sleep/wake。|
 | Provider/Host/runtime descriptor 清理 | PASS | Provider 进程结束并确认只销毁自己的世界；核对精确 EXE 后停止本次 release Host，移除其本地 runtime descriptor。raw Provider/Host logs、PID 文件和 descriptor 路径文件已删除。|
-| `npm run check:local` after the visible-soak and crash-probe additions | PASS | 退出码 0：UI 28、Rust workspace 149、Python 224（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。|
+| `npm run check:local` after the refresh and Host-disconnect probe additions | PASS | 退出码 0：UI 28、Rust workspace 149、Python 225（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。|
 | B11-01-A1/A2/A3 | PASS / PARTIAL / PASS | A2 仅推进到 PARTIAL：5 分钟样本未显示活跃期 private-byte 中位数上行，Provider 清理后 WebView 子进程退出；一次 abrupt Provider exit 也通过 stale/reacquire/epoch fence/自有世界清理。仍不能断言长期 leak-free，也未验证 Host-crash、sleep/wake 或资源阈值 ADR。任务仍为 `IMPLEMENTED_UNVERIFIED`。|
 
 本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/process-tree-samples.json) 位于忽略的 `evidence/local/`；未保留运行时描述、凭据、PID 或原始日志。
@@ -1133,9 +1133,21 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `cargo build --locked --release -p wincraft-server --bin wincraft-headless` | PASS | 退出码 0；Windows 11 Pro build 22000；checkout `71d92fd`；artifact `target/release/wincraft-headless.exe` SHA-256 `1BB21942FA052A900088624095438ACA9ACCF9B5D6E3B1E3C954D3E6EF8131B4`。|
 | `python tests/crash_recovery_probe.py --runtime <actual descriptor> --record-file <ignored local private record>` | PASS | 退出码 0；`owner_process_terminated`、`stale_status_observed`、`writer_reacquired`、`lease_epoch_advanced` 和 `synthetic_world_destroyed` 全部为 true；IDs/join key/lease 不在聚合输出中。|
 | `Host`、descriptor 与私有记录清理 | PASS | 精确 headless Host 已停止，descriptor 与临时 owner record 已删除；本机汇总证据不含 PID、descriptor 路径或 Provider 原始输出。|
-| B11-01-A2 | PARTIAL | 一次 Provider 进程崩溃后重获 writer 的真实 Host 路径通过；Host 自身崩溃、重复崩溃循环、长时趋势、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
+| B11-01-A2 | PARTIAL | 一次 Provider 进程崩溃后重获 writer 的真实 Host 路径通过；headless Host 强制停止后的 Provider 断线事件也通过。Tauri/WebView 子进程清理、重复崩溃循环、长时趋势、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-crash-20261031-121253/summary.json) 保存在忽略的 `evidence/local/`；Host descriptor、owner record 和进程信息没有保留。
+
+## 2026-10-31 B11-01 forced headless Host shutdown
+
+**Given** release `wincraft-headless` Host 与持有合成世界的 Python Provider；**when** parent 强制终止本次 Host 进程；**then** Provider 收到 SDK `connection.error` 并自行退出，Host descriptor 和 ready marker 被删除。该用例只验证 headless Host 的 transport 断线处理，不代表 Tauri/WebView 子进程清理已经通过。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python tests/crash_recovery_probe.py --runtime <actual descriptor> --record-file <ignored local ready marker> --expect-host-disconnect` | PASS | Provider 创建合成世界后等待 Host 断线；强制关闭精确 headless Host 后收到 `connection.error`，退出码 0。聚合结果只记录事件类别，不包含 world ID、join key、lease 或错误文本。|
+| Host、descriptor 与 Provider 清理 | PASS | headless Host 已停止；精确 descriptor 与 ready marker 已删除；raw 输出及 PID 文件未保留。|
+| B11-01-A2 | PARTIAL | 一次 headless Host shutdown → Provider disconnect 已验证；Tauri/WebView 子进程清理、重启恢复、重复 Host crash、sleep/wake、长期泄漏趋势和阈值 ADR 仍 NOT_RUN。|
+
+本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-host-crash-20261031-124420/summary.json) 位于忽略的 `evidence/local/`；没有 descriptor、PID 或原始 Provider 输出。
 
 ## 2026-10-31 B11-01 fifteen-minute visible refresh soak
 
@@ -1146,6 +1158,6 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `tests/performance_probe.py --runtime <actual descriptor> --world-cycles 1 --snapshot-iterations 1 --data-iterations 1 --payload-bytes 128 --reconnect-cycles 1 --soak-seconds 900 --refresh-interval-seconds 5 --soak-visible` | PASS（合成可见刷新） | 180 次 `data.replace` 更新；事务延迟 p50/p95/p99/max 为 1.683/6.653/23.050/41.275 ms；`cleanup_confirmed=true`。|
 | `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 930 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 931.6 秒、152 个样本；median/p95 采样间隔 6.122/6.434 秒；峰值 7 个进程、377,720,832 bytes working set、207,622,144 private bytes、3,680 handles、303 threads；p95 CPU machine/one-core-normalized 为 0.049%/1.555%。活跃期首尾 5 样本中位数：working set 359,313,408 → 376,774,656 bytes，private bytes 206,450,688 → 196,370,432 bytes，handles 3,549 → 3,568，threads 290 → 271。销毁世界后 5 个连续样本只剩 tray Host（31,748,096 bytes working set、7,995,392 private bytes、336 handles、40 threads）。|
 | 电源上下文与清理 | PASS / PARTIAL | `Turbo` 在采样前后保持不变；WMI 报告 0 battery devices 且无 ACPI power-source provider，实际电源来源未知。Host 已停止，runtime descriptor 已删除，未注入 sleep/wake。|
-| B11-01-A2 | PARTIAL | 与先前 5 分钟样本一样，15 分钟活跃期私有内存中位数没有上行，世界清理后只剩 Host；这些样本仍不足以证明长期 leak-free。单次 Provider crash/reacquire 已另行通过；Host crash、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
+| B11-01-A2 | PARTIAL | 与先前 5 分钟样本一样，15 分钟活跃期私有内存中位数没有上行，世界清理后只剩 Host；这些样本仍不足以证明长期 leak-free。单次 Provider crash/reacquire 与 headless Host 断线已另行通过；Tauri/WebView crash cleanup、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
 
 本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/process-tree-samples.json) 在忽略的 `evidence/local/`；仅保留聚合数据，不含 PID、runtime path、descriptor、token 或 Provider 原始输出。

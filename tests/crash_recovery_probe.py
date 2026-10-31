@@ -31,8 +31,16 @@ OWNER_READY_TIMEOUT_SECONDS: float = 15.0
 STALE_WAIT_TIMEOUT_SECONDS: float = 8.0
 '''Maximum time to wait for the Host to observe the abrupt WebSocket disconnect.'''
 
+HOST_DISCONNECT_TIMEOUT_SECONDS: float = 15.0
+'''Maximum time to wait for a forced Host shutdown to close the Provider socket.'''
+
 POLL_INTERVAL_SECONDS: float = 0.1
 '''Interval for idempotent status snapshots while waiting for disconnect propagation.'''
+
+HOST_DISCONNECT_EVENTS: frozenset[str] = frozenset(
+    {'connection.error', 'connection.closed'}
+)
+'''Provider SDK events emitted after the Host WebSocket becomes unavailable.'''
 
 if str(EXAMPLES_PYTHON_DIR) not in sys.path:
     sys.path.insert(0, str(EXAMPLES_PYTHON_DIR))
@@ -71,6 +79,11 @@ def parse_crash_owner_record(content: str) -> CrashOwnerRecord:
         'join_key': join_key,
         'owner_epoch': owner_epoch,
     }
+
+
+def is_host_disconnect_event(event: dict[str, object]) -> bool:
+    '''Identify only terminal transport events for the active Host connection.'''
+    return event.get('event') in HOST_DISCONNECT_EVENTS
 
 
 async def hold_crash_owner(runtime_path: str, record_path: Path) -> None:
@@ -225,18 +238,89 @@ async def run_probe(runtime_path: str, record_path: Path) -> dict[str, bool | st
             record_path.unlink()
 
 
+async def wait_for_host_disconnect(runtime_path: str, ready_path: Path) -> dict[str, bool | str]:
+    '''Create a visible synthetic world and wait for its Host socket to close.
+    - 🎯The parent terminates the disposable Tauri Host after the ready marker.
+    - 📌The report includes only the terminal event name, never its error text.
+    '''
+    async with Client(runtime_path, f'wincraft.b11-01.host-crash.{uuid.uuid4().hex}') as client:
+        world_id, lease, _join_key = await create_synthetic_world(
+            client,
+            0,
+            visible=False,
+            title_prefix='WinCraft B11-01 synthetic Host crash',
+        )
+        scene = {
+            'root': {
+                'id': 'root',
+                'kind': 'stack',
+                'props': {'gap': 8},
+                'children': [
+                    {'id': 'title', 'kind': 'text', 'props': {
+                        'text': 'Synthetic Host crash probe', 'size': 'heading',
+                    }},
+                    {'id': 'counter', 'kind': 'metric', 'props': {
+                        'label': 'Synthetic counter',
+                        'value': {'$path': '/counter'},
+                    }},
+                ],
+            },
+            'data': {'counter': 0},
+        }
+        await client.mutate('scene.replace', world_id, lease, scene=scene)
+        ready_path.write_text('ready', encoding='utf-8')
+
+        deadline = time.monotonic() + HOST_DISCONNECT_TIMEOUT_SECONDS
+        while time.monotonic() < deadline:
+            remaining = deadline - time.monotonic()
+            event = await asyncio.wait_for(client.events.get(), timeout=remaining)
+            if is_host_disconnect_event(event):
+                return {
+                    'status': 'PASS',
+                    'host_connection_lost': True,
+                    'synthetic_world_created': True,
+                    'terminal_event': str(event['event']),
+                    'identifiers_or_leases_recorded': False,
+                }
+
+    raise TimeoutError('Provider did not observe the forced Host shutdown')
+
+
+async def run_host_disconnect_probe(
+    runtime_path: str,
+    ready_path: Path,
+) -> dict[str, bool | str]:
+    '''Run the disconnect observer and remove only its ready marker.'''
+    if ready_path.exists():
+        raise FileExistsError(f'Refusing to overwrite an existing marker: {ready_path.name}')
+
+    ready_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        return await wait_for_host_disconnect(runtime_path, ready_path)
+    finally:
+        if ready_path.exists():
+            ready_path.unlink()
+
+
 def main() -> None:
     '''Parse the probe mode and print aggregate results only.'''
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime', type=Path, required=True)
     parser.add_argument('--record-file', type=Path, required=True)
-    parser.add_argument('--owner-child', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--owner-child', action='store_true')
+    mode.add_argument('--expect-host-disconnect', action='store_true')
     args = parser.parse_args()
 
     runtime_path = str(args.runtime.resolve())
     record_path = args.record_file.resolve()
     if args.owner_child:
         asyncio.run(hold_crash_owner(runtime_path, record_path))
+        return
+
+    if args.expect_host_disconnect:
+        result = asyncio.run(run_host_disconnect_probe(runtime_path, record_path))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
     result = asyncio.run(run_probe(runtime_path, record_path))

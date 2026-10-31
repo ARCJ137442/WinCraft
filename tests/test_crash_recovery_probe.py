@@ -12,7 +12,7 @@ TEST_ROOT = Path(__file__).resolve().parent
 if str(TEST_ROOT) not in sys.path:
     sys.path.insert(0, str(TEST_ROOT))
 
-from crash_recovery_probe import parse_crash_owner_record
+from crash_recovery_probe import is_host_disconnect_event, parse_crash_owner_record
 
 
 class CrashOwnerRecordTests(unittest.TestCase):
@@ -39,6 +39,17 @@ class CrashOwnerRecordTests(unittest.TestCase):
         ):
             with self.subTest(content=content), self.assertRaises(ValueError):
                 parse_crash_owner_record(content)
+
+
+class HostDisconnectEventTests(unittest.TestCase):
+    def test_only_terminal_connection_events_confirm_host_loss(self):
+        for event_name in ('connection.error', 'connection.closed'):
+            with self.subTest(event=event_name):
+                self.assertTrue(is_host_disconnect_event({'event': event_name}))
+
+        for event_name in ('world.snapshot', 'interaction', 'provider.error'):
+            with self.subTest(event=event_name):
+                self.assertFalse(is_host_disconnect_event({'event': event_name}))
 
 
 if __name__ == '__main__':
