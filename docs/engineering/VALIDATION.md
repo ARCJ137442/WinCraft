@@ -1119,7 +1119,20 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 330 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 333.434 秒、56 个样本；采样 median/p95 间隔 5.940/6.237 秒；峰值 7 个进程、367,558,656 bytes working set、202,756,096 private bytes、3,655 handles、297 threads；p95 CPU 为 machine-normalized 0.050%、one-core-normalized 1.607%。活跃窗口首尾 5 个样本中位数：working set 355,131,392 → 366,673,920 bytes，private bytes 202,338,304 → 186,630,144 bytes，handles 3,562 → 3,583，threads 289 → 277。世界销毁后 8 个连续样本只剩 tray Host（28,262,400 bytes working set、7,020,544 private bytes、353 handles、40 threads）。|
 | 电源与睡眠上下文 | PARTIAL | 采样前后电源计划均为 `Turbo`；WMI 报告 0 battery devices 且没有 ACPI power-source provider，物理电源来源未知；未注入 sleep/wake。|
 | Provider/Host/runtime descriptor 清理 | PASS | Provider 进程结束并确认只销毁自己的世界；核对精确 EXE 后停止本次 release Host，移除其本地 runtime descriptor。raw Provider/Host logs、PID 文件和 descriptor 路径文件已删除。|
-| `npm run check:local` after the visible-soak addition | PASS | 退出码 0：UI 28、Rust workspace 149、Python 222（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。|
-| B11-01-A1/A2/A3 | PASS / PARTIAL / PASS | A2 仅推进到 PARTIAL：5 分钟样本未显示活跃期 private-byte 中位数上行，且 Provider 清理后 WebView 子进程退出；仍不能断言长期 leak-free，也未验证 crash cleanup、sleep/wake 或资源阈值 ADR。任务仍为 `IMPLEMENTED_UNVERIFIED`。|
+| `npm run check:local` after the visible-soak and crash-probe additions | PASS | 退出码 0：UI 28、Rust workspace 149、Python 224（1 项 Windows symlink 能力跳过），Clippy、合同检查、33 个 Provider Skill 引用通过。|
+| B11-01-A1/A2/A3 | PASS / PARTIAL / PASS | A2 仅推进到 PARTIAL：5 分钟样本未显示活跃期 private-byte 中位数上行，Provider 清理后 WebView 子进程退出；一次 abrupt Provider exit 也通过 stale/reacquire/epoch fence/自有世界清理。仍不能断言长期 leak-free，也未验证 Host-crash、sleep/wake 或资源阈值 ADR。任务仍为 `IMPLEMENTED_UNVERIFIED`。|
 
 本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-soak-1793417556075/process-tree-samples.json) 位于忽略的 `evidence/local/`；未保留运行时描述、凭据、PID 或原始日志。
+
+## 2026-10-31 B11-01 abrupt synthetic Provider crash recovery
+
+**Given** 当前 checkout 的 release headless Rust Host 与一个通过共享 SDK 建立的合成 writer；**when** 父进程强制结束该 owner Provider 子进程；**then** recovery Provider 先读到 `stale`，随后以更高 lease epoch 获得 writer 权限，删除自有世界，并确认后续 snapshot 返回 `NOT_FOUND`。父进程停止精确 headless Host 并移除该 Host 创建的 runtime descriptor。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `cargo build --locked --release -p wincraft-server --bin wincraft-headless` | PASS | 退出码 0；Windows 11 Pro build 22000；checkout `71d92fd`；artifact `target/release/wincraft-headless.exe` SHA-256 `1BB21942FA052A900088624095438ACA9ACCF9B5D6E3B1E3C954D3E6EF8131B4`。|
+| `python tests/crash_recovery_probe.py --runtime <actual descriptor> --record-file <ignored local private record>` | PASS | 退出码 0；`owner_process_terminated`、`stale_status_observed`、`writer_reacquired`、`lease_epoch_advanced` 和 `synthetic_world_destroyed` 全部为 true；IDs/join key/lease 不在聚合输出中。|
+| `Host`、descriptor 与私有记录清理 | PASS | 精确 headless Host 已停止，descriptor 与临时 owner record 已删除；本机汇总证据不含 PID、descriptor 路径或 Provider 原始输出。|
+| B11-01-A2 | PARTIAL | 一次 Provider 进程崩溃后重获 writer 的真实 Host 路径通过；Host 自身崩溃、重复崩溃循环、长时趋势、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
+
+本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-crash-20261031-121253/summary.json) 保存在忽略的 `evidence/local/`；Host descriptor、owner record 和进程信息没有保留。
