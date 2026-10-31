@@ -1174,3 +1174,15 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-01-A2 | PARTIAL | 一次 Tauri 强制退出后 6 个 WebView 后代均自行退出；长时趋势、重复 crash/restart、sleep/wake 和阈值 ADR 仍 NOT_RUN。|
 
 本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-tauri-crash-20261031-130240/summary.json) 在忽略的 `evidence/local/`；没有保存进程 ID、descriptor 路径或窗口截图。
+
+## 2026-10-31 B11-01 thirty-minute visible refresh soak
+
+**Given** 同一份 `9073b3b` Windows Tauri release 与合成 Provider；**when** 320 × 200 世界保持可见并每 5 秒刷新计数 30 分钟，同时采集进程树；**then** 360 次更新完成，Provider 清理世界，WebView 子进程退出，清理后连续 5 个样本只剩 Host。此 30 分钟样本仍不构成长时无泄漏承诺。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `tests/performance_probe.py --runtime <actual descriptor> --world-cycles 1 --snapshot-iterations 1 --data-iterations 1 --payload-bytes 128 --reconnect-cycles 1 --soak-seconds 1800 --refresh-interval-seconds 5 --soak-visible` | PASS（合成可见刷新） | 360 次 `data.replace` 更新，p50/p95/p99/max 为 1.602/11.845/29.075/43.275 ms；`cleanup_confirmed=true`。|
+| `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 1830 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 1,830.697 秒、303 点；median/p95 间隔 6.062/6.326 秒；峰值 7 个进程、375,549,952 bytes working set、206,430,208 private bytes、3,623 handles、301 threads；p95 CPU machine/one-core-normalized 为 0.041%/1.327%。首尾 5 点中位数：working set 354,414,592 → 374,341,632 bytes，private bytes 205,438,976 → 200,908,800 bytes，handles 3,475 → 3,483，threads 288 → 268。清理后 5 点只剩 tray Host（26,324,992 bytes working set、6,979,584 private bytes、292 handles、38 threads）。|
+| 电源、清理与 A2 状态 | PASS / PARTIAL | `Turbo` 前后不变；0 battery devices、无 ACPI power-source provider；未注入 sleep/wake。Host、descriptor 和 PID/path 文件已清理。30 分钟活跃期 private-byte 中位数下降，working set 上升约 20 MB；不足以证明长期趋势，A2 仍 PARTIAL。|
+
+本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-30m-20261031-130727/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-30m-20261031-130727/process-tree-samples.json) 位于忽略的 `evidence/local/`；只保留聚合测量，不含 PID、runtime path、descriptor 或 token。
