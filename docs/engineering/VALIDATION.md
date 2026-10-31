@@ -1196,6 +1196,18 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-host-crash-20261031-124420/summary.json) 位于忽略的 `evidence/local/`；没有 descriptor、PID 或原始 Provider 输出。
 
+## 2026-10-31 B11-01 三轮 headless Host crash/disconnect
+
+**Given** 三个顺序启动的隔离 release headless Host 与各自的合成 Provider；**when** 每轮 Provider 创建合成世界后，测试器强制终止该轮唯一的 Host 进程；**then** Provider 收到 `connection.error` 并以退出码 0 结束，随后新 Host 可以接受下一轮连接。该项证明重复 headless transport disconnect 路径，不证明 Host graceful shutdown 或 Tauri/WebView 进程树重启。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python tests/crash_recovery_probe.py --runtime <ephemeral descriptor> --record-file <ephemeral marker> --expect-host-disconnect` × 3 | PASS（3/3） | 三轮均创建合成世界；每次只终止测试器启动的 Host；Provider 都观察到 `connection.error` 并以退出码 0 清理自身连接。|
+| Host、Provider 与临时资源清理 | PASS / PARTIAL | 三个 Host 与 Provider 全部退出，ready marker 均删除；强制终止的 Host 未自行删除 descriptor，由隔离临时目录在每轮结束时清理。未将此项记录为 graceful shutdown。|
+| B11-01-A2 判定 | PARTIAL | 三轮 headless Host disconnect 通过；重复 Tauri/WebView crash/restart、sleep/wake、长期泄漏趋势与阈值 ADR 仍 NOT_RUN。|
+
+忽略的聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-repeated-host-disconnect-20261031/summary.json) 只保留每轮终态事件/退出码与 Host artifact hash，不含 world ID、ready marker 路径、PID、descriptor 内容或原始输出。
+
 ## 2026-10-31 B11-01 fifteen-minute visible refresh soak
 
 **Given** 同一份 `9073b3b` Windows Tauri release 与合成 Provider；**when** 保持 320 × 200 世界可见并每 5 秒刷新合成计数 15 分钟，同时用 WMI 采集 Host/WebView 进程树；**then** 180 次更新完成，Provider 清理世界，WebView 子进程退出。该样本延长活动刷新观察，不等同于长期无泄漏验收。
