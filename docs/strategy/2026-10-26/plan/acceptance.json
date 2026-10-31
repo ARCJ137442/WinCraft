@@ -1697,7 +1697,7 @@
       ],
       "level": "L1-L6",
       "criterion": "能够显示用户场景：若干Agent等待与一条联系人待回复，并注明模拟/真实",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B09-03-A2",
@@ -1709,7 +1709,7 @@
       ],
       "level": "L1-L6",
       "criterion": "去重以来源身份而非文本近似",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B09-03-A3",
@@ -1721,7 +1721,7 @@
       ],
       "level": "L1-L6",
       "criterion": "通知正文中的指令不能授予执行权限",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "B09-04-A1",

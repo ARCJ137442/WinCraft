@@ -2426,7 +2426,7 @@
       "id": "B09-03",
       "batch": "B09",
       "title": "手机与Agent待办合并呈现",
-      "status": "NOT_STARTED",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "depends_on": [
         "B09-02",
         "B08-01"
