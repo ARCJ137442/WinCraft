@@ -238,7 +238,12 @@ async def run_probe(runtime_path: str, record_path: Path) -> dict[str, bool | st
             record_path.unlink()
 
 
-async def wait_for_host_disconnect(runtime_path: str, ready_path: Path) -> dict[str, bool | str]:
+async def wait_for_host_disconnect(
+    runtime_path: str,
+    ready_path: Path,
+    *,
+    visible: bool,
+) -> dict[str, bool | str]:
     '''Create a visible synthetic world and wait for its Host socket to close.
     - 🎯The parent terminates the disposable Tauri Host after the ready marker.
     - 📌The report includes only the terminal event name, never its error text.
@@ -247,7 +252,7 @@ async def wait_for_host_disconnect(runtime_path: str, ready_path: Path) -> dict[
         world_id, lease, _join_key = await create_synthetic_world(
             client,
             0,
-            visible=False,
+            visible=visible,
             title_prefix='WinCraft B11-01 synthetic Host crash',
         )
         scene = {
@@ -279,6 +284,7 @@ async def wait_for_host_disconnect(runtime_path: str, ready_path: Path) -> dict[
                     'status': 'PASS',
                     'host_connection_lost': True,
                     'synthetic_world_created': True,
+                    'window_visible': visible,
                     'terminal_event': str(event['event']),
                     'identifiers_or_leases_recorded': False,
                 }
@@ -289,6 +295,8 @@ async def wait_for_host_disconnect(runtime_path: str, ready_path: Path) -> dict[
 async def run_host_disconnect_probe(
     runtime_path: str,
     ready_path: Path,
+    *,
+    visible: bool = False,
 ) -> dict[str, bool | str]:
     '''Run the disconnect observer and remove only its ready marker.'''
     if ready_path.exists():
@@ -296,7 +304,11 @@ async def run_host_disconnect_probe(
 
     ready_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        return await wait_for_host_disconnect(runtime_path, ready_path)
+        return await wait_for_host_disconnect(
+            runtime_path,
+            ready_path,
+            visible=visible,
+        )
     finally:
         if ready_path.exists():
             ready_path.unlink()
@@ -310,7 +322,11 @@ def main() -> None:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--owner-child', action='store_true')
     mode.add_argument('--expect-host-disconnect', action='store_true')
+    parser.add_argument('--visible-window', action='store_true')
     args = parser.parse_args()
+
+    if args.visible_window and not args.expect_host_disconnect:
+        parser.error('--visible-window requires --expect-host-disconnect')
 
     runtime_path = str(args.runtime.resolve())
     record_path = args.record_file.resolve()
@@ -319,7 +335,13 @@ def main() -> None:
         return
 
     if args.expect_host_disconnect:
-        result = asyncio.run(run_host_disconnect_probe(runtime_path, record_path))
+        result = asyncio.run(
+            run_host_disconnect_probe(
+                runtime_path,
+                record_path,
+                visible=args.visible_window,
+            )
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 

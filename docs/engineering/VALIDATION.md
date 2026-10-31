@@ -1139,13 +1139,13 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 
 ## 2026-10-31 B11-01 forced headless Host shutdown
 
-**Given** release `wincraft-headless` Host 与持有合成世界的 Python Provider；**when** parent 强制终止本次 Host 进程；**then** Provider 收到 SDK `connection.error` 并自行退出，Host descriptor 和 ready marker 被删除。该用例只验证 headless Host 的 transport 断线处理，不代表 Tauri/WebView 子进程清理已经通过。
+**Given** release `wincraft-headless` Host 与持有合成世界的 Python Provider；**when** parent 强制终止本次 Host 进程；**then** Provider 收到 SDK `connection.error` 并自行退出，Host descriptor 和 ready marker 被删除。此项只验证 headless transport；Tauri/WebView 子进程另见后续实测。
 
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `python tests/crash_recovery_probe.py --runtime <actual descriptor> --record-file <ignored local ready marker> --expect-host-disconnect` | PASS | Provider 创建合成世界后等待 Host 断线；强制关闭精确 headless Host 后收到 `connection.error`，退出码 0。聚合结果只记录事件类别，不包含 world ID、join key、lease 或错误文本。|
 | Host、descriptor 与 Provider 清理 | PASS | headless Host 已停止；精确 descriptor 与 ready marker 已删除；raw 输出及 PID 文件未保留。|
-| B11-01-A2 | PARTIAL | 一次 headless Host shutdown → Provider disconnect 已验证；Tauri/WebView 子进程清理、重启恢复、重复 Host crash、sleep/wake、长期泄漏趋势和阈值 ADR 仍 NOT_RUN。|
+| B11-01-A2 | PARTIAL | 一次 headless Host shutdown → Provider disconnect 已验证；Tauri/WebView 子进程 crash 回收另有一轮通过；重启恢复、重复 Host crash、sleep/wake、长期泄漏趋势和阈值 ADR 仍 NOT_RUN。|
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-host-crash-20261031-124420/summary.json) 位于忽略的 `evidence/local/`；没有 descriptor、PID 或原始 Provider 输出。
 
@@ -1161,3 +1161,16 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-01-A2 | PARTIAL | 与先前 5 分钟样本一样，15 分钟活跃期私有内存中位数没有上行，世界清理后只剩 Host；这些样本仍不足以证明长期 leak-free。单次 Provider crash/reacquire 与 headless Host 断线已另行通过；Tauri/WebView crash cleanup、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
 
 本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/process-tree-samples.json) 在忽略的 `evidence/local/`；仅保留聚合数据，不含 PID、runtime path、descriptor、token 或 Provider 原始输出。
+
+## 2026-10-31 B11-01 forced Tauri Host shutdown and WebView cleanup
+
+**Given** 当前 release `wincraft-desktop.exe` 与一个可见的合成世界；**when** synthetic Provider 创建窗口后 parent 强制结束该 Tauri Host；**then** Provider 收到 `connection.error`，并在 Host 退出后 3 秒内所有 WebView2 后代进程均自行结束。精确 Tauri descriptor 已移除，没有遗留本次 Host 的 WebView 子进程。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `python tests/crash_recovery_probe.py --runtime <actual descriptor> --record-file <ignored local ready marker> --expect-host-disconnect --visible-window` + 精确 Tauri root termination | PASS（process tree） | Tauri EXE SHA-256 `7E910E01057DADB17991B00D2A51CE63419628F818C35C06C1EE3D0C3179D691`；Provider 收到 `connection.error` 并退出。终止前识别 6 个 WebView2 后代，3 秒后剩余 0，探针没有手动杀 WebView 子进程。|
+| UI pixels / window interaction | NOT_RUN | Computer Use native pipe 在重试与 JS kernel reset 后仍不可用；本项只证明 Tauri 进程与 WebView 子进程生命周期，不证明屏幕内容、鼠标或标题栏行为。|
+| Host、descriptor、Provider 与 WebView 子进程清理 | PASS | 精确 Tauri Host 已停止；descriptor、ready marker、Provider 输出与 PID 文件已删除；进程树中无本次 Host 的剩余后代。|
+| B11-01-A2 | PARTIAL | 一次 Tauri 强制退出后 6 个 WebView 后代均自行退出；长时趋势、重复 crash/restart、sleep/wake 和阈值 ADR 仍 NOT_RUN。|
+
+本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-tauri-crash-20261031-130240/summary.json) 在忽略的 `evidence/local/`；没有保存进程 ID、descriptor 路径或窗口截图。
