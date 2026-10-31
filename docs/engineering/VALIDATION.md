@@ -1136,3 +1136,16 @@ count-only 结果记录在忽略的 `evidence/local/nextgen-2026-10-30/b08-02-lo
 | B11-01-A2 | PARTIAL | 一次 Provider 进程崩溃后重获 writer 的真实 Host 路径通过；Host 自身崩溃、重复崩溃循环、长时趋势、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
 
 本机汇总 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-crash-20261031-121253/summary.json) 保存在忽略的 `evidence/local/`；Host descriptor、owner record 和进程信息没有保留。
+
+## 2026-10-31 B11-01 fifteen-minute visible refresh soak
+
+**Given** 同一份 `9073b3b` Windows Tauri release 与合成 Provider；**when** 保持 320 × 200 世界可见并每 5 秒刷新合成计数 15 分钟，同时用 WMI 采集 Host/WebView 进程树；**then** 180 次更新完成，Provider 清理世界，WebView 子进程退出。该样本延长活动刷新观察，不等同于长期无泄漏验收。
+
+| 检查 | 状态 | 实际结果 |
+|---|---|---|
+| `tests/performance_probe.py --runtime <actual descriptor> --world-cycles 1 --snapshot-iterations 1 --data-iterations 1 --payload-bytes 128 --reconnect-cycles 1 --soak-seconds 900 --refresh-interval-seconds 5 --soak-visible` | PASS（合成可见刷新） | 180 次 `data.replace` 更新；事务延迟 p50/p95/p99/max 为 1.683/6.653/23.050/41.275 ms；`cleanup_confirmed=true`。|
+| `tests/measure_windows_process_tree.ps1 -RootProcessId <Tauri PID> -DurationSeconds 930 -SampleIntervalMilliseconds 5000` | PASS（bounded sample） | 实测 931.6 秒、152 个样本；median/p95 采样间隔 6.122/6.434 秒；峰值 7 个进程、377,720,832 bytes working set、207,622,144 private bytes、3,680 handles、303 threads；p95 CPU machine/one-core-normalized 为 0.049%/1.555%。活跃期首尾 5 样本中位数：working set 359,313,408 → 376,774,656 bytes，private bytes 206,450,688 → 196,370,432 bytes，handles 3,549 → 3,568，threads 290 → 271。销毁世界后 5 个连续样本只剩 tray Host（31,748,096 bytes working set、7,995,392 private bytes、336 handles、40 threads）。|
+| 电源上下文与清理 | PASS / PARTIAL | `Turbo` 在采样前后保持不变；WMI 报告 0 battery devices 且无 ACPI power-source provider，实际电源来源未知。Host 已停止，runtime descriptor 已删除，未注入 sleep/wake。|
+| B11-01-A2 | PARTIAL | 与先前 5 分钟样本一样，15 分钟活跃期私有内存中位数没有上行，世界清理后只剩 Host；这些样本仍不足以证明长期 leak-free。单次 Provider crash/reacquire 已另行通过；Host crash、sleep/wake 与阈值 ADR 仍 NOT_RUN。|
+
+本机聚合证据 [`summary.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/summary.json) 与 [`process-tree-samples.json`](../../evidence/local/nextgen-2026-10-31/b11-01-refresh-long-20261031-121838/process-tree-samples.json) 在忽略的 `evidence/local/`；仅保留聚合数据，不含 PID、runtime path、descriptor、token 或 Provider 原始输出。
