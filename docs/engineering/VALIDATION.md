@@ -27,8 +27,9 @@ TeamSense 的 Codex session/usage collector 与账号额度 collector 是两条�
 | 检查 | 状态 | 实际结果 |
 |---|---|---|
 | `python -m unittest tests.test_provider_tutorial -v` | PASS | 8 项 synthetic unit/schema 测试；覆盖五课合法组件、动态插入、选择/文本状态、主题应用/复位、计数发现、正常交互清理和有界运行时清理。发现动作只调用 `world.list`，不调用 `world.join`/`world.snapshot`，也不保留标题或世界 ID。|
-| `npm run check:local` | PASS | 当前工作树：28 项 Node UI、116 项 Rust workspace、174 项 Python（1 项环境能力跳过）；离线契约、Clippy 和 27 个 Provider Skill 引用检查通过，退出码 0。|
-| B02-03-A1 新用户完整旅程 | PARTIAL | 当前 release 的 5 秒有界 smoke 确认 Provider 可创建 synthetic 世界并销毁自己的测试世界；五课按钮/输入/主题/发现动作尚未通过原生点击连续验收。|
+| `npm run check:local` | PASS | 2026-10-31 恢复开发后的当前工作树：28 项 Node UI、149 项 Rust workspace、225 项 Python（1 项 symlink 环境能力跳过）；离线契约、Clippy 和 33 个 Provider Skill 引用检查通过，退出码 0。|
+| 当前 release headless 教程 smoke | PASS（Provider 闭环） / PARTIAL（Host 退出） | `target/release/wincraft-headless.exe` 接受 `provider_tutorial.py --duration-seconds 5`；Provider 退出码 0 并确认只销毁自己的教学世界。测试后向隔离进程组发送 `CTRL_C_EVENT`，Host 在 5 秒内未退出；测试器仅终止该子进程（退出码 1），Host 未确认删除 descriptor，随后删除了隔离临时目录。因此不记 graceful Host shutdown PASS。摘要见忽略的 `evidence/local/nextgen-2026-10-31/tutorial-headless-smoke-20261031-resume/summary.json`。|
+| B02-03-A1 新用户完整旅程 | PARTIAL | 有界真实协议 smoke 确认 Provider 可创建 synthetic 世界并销毁自己的测试世界；五课按钮/输入/主题/发现动作尚未通过原生点击连续验收。|
 
 ## 2026-10-30 B02-04 键盘与 IME renderer 覆盖
 
